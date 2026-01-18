@@ -1,0 +1,1584 @@
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Shopifix | Quick Shopify Fixes NZ</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            :root {
+                --brand-green: #2d5d3f;
+                --brand-charcoal: #4a5568;
+                --gradient-primary: linear-gradient(135deg, #2d5d3f 0%, #1e4029 100%);
+                --gradient-secondary: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+                --gradient-accent: linear-gradient(135deg, #38a169 0%, #2d5d3f 100%);
+                --dark-bg: #1a202c;
+                --dark-card: #2d3748;
+                --dark-border: #4a5568;
+                --text-primary: #ffffff;
+                --text-secondary: #cbd5e0;
+                --accent-green: #38a169;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                line-height: 1.6;
+                color: var(--text-primary);
+                background: var(--dark-bg);
+                overflow-x: hidden;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            header {
+                position: fixed;
+                top: 0;
+                width: 100%;
+                z-index: 1000;
+                background: rgba(26, 32, 44, 0.95);
+                backdrop-filter: blur(20px);
+                border-bottom: 1px solid var(--dark-border);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            header.scrolled {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                background: rgba(26, 32, 44, 0.98);
+            }
+
+            nav {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 1rem 3rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .logo {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .logo-img {
+                height: 50px;
+                width: auto;
+            }
+
+            .nav-links {
+                display: flex;
+                gap: 3rem;
+                list-style: none;
+                align-items: center;
+            }
+
+            .nav-links a {
+                color: var(--text-primary);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: 0.95rem;
+                transition: all 0.2s;
+            }
+
+            .nav-links a:hover {
+                color: var(--accent-green);
+            }
+
+            .menu-toggle {
+                display: none;
+                flex-direction: column;
+                gap: 6px;
+                cursor: pointer;
+            }
+
+            .menu-toggle span {
+                width: 28px;
+                height: 2px;
+                background: var(--text-primary);
+                transition: all 0.3s;
+            }
+
+            .hero {
+                min-height: 90vh;
+                display: flex;
+                align-items: center;
+                padding: 8rem 3rem 4rem;
+                background: var(--gradient-secondary);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .hero::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background:
+                    radial-gradient(circle at 20% 50%, rgba(45, 93, 63, 0.2) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 80%, rgba(56, 161, 105, 0.15) 0%, transparent 50%);
+                animation: pulse 8s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            .hero-container {
+                max-width: 1400px;
+                width: 100%;
+                margin: 0 auto;
+                display: grid;
+                grid-template-columns: 1.1fr 0.9fr;
+                gap: 5rem;
+                align-items: center;
+                position: relative;
+                z-index: 1;
+            }
+
+            .hero-content h1 {
+                font-size: clamp(2.8rem, 5vw, 4rem);
+                font-weight: 700;
+                margin-bottom: 1.5rem;
+                line-height: 1.1;
+                background: linear-gradient(135deg, #ffffff 0%, #38a169 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                letter-spacing: -1.5px;
+            }
+
+            .hero-content p {
+                font-size: 1.2rem;
+                margin-bottom: 2.5rem;
+                color: var(--text-secondary);
+                line-height: 1.7;
+                max-width: 580px;
+            }
+
+            .hero-stats {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 2rem;
+                margin-top: 2.5rem;
+                padding-top: 2.5rem;
+                border-top: 1px solid var(--dark-border);
+            }
+
+            .stat-item {
+                text-align: center;
+            }
+
+            .stat-number {
+                font-size: 2.2rem;
+                font-weight: 700;
+                background: var(--gradient-accent);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                display: block;
+                margin-bottom: 0.5rem;
+            }
+
+            .stat-label {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                font-weight: 500;
+            }
+
+            .contact-card {
+                background: var(--dark-card);
+                padding: 2.5rem;
+                border: 1px solid var(--dark-border);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            }
+
+            .contact-card h2 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin-bottom: 0.6rem;
+                color: var(--text-primary);
+                letter-spacing: -0.5px;
+            }
+
+            .contact-card p {
+                color: var(--text-secondary);
+                margin-bottom: 1.2rem;
+                font-size: 0.9rem;
+            }
+
+            .contact-form {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .form-group {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .form-group label {
+                margin-bottom: 0.4rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                font-size: 0.85rem;
+            }
+
+            .form-group input,
+            .form-group textarea {
+                padding: 0.75rem;
+                border: 1px solid var(--dark-border);
+                font-size: 0.9rem;
+                font-family: inherit;
+                transition: all 0.2s;
+                background: var(--dark-bg);
+                color: var(--text-primary);
+                border-radius: 4px;
+            }
+
+            .form-group input:hover,
+            .form-group textarea:hover {
+                border-color: rgba(56, 161, 105, 0.5);
+            }
+
+            .form-group input:focus,
+            .form-group textarea:focus {
+                outline: none;
+                border-color: var(--accent-green);
+                box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.2);
+            }
+
+            .form-group textarea {
+                resize: vertical;
+                min-height: 80px;
+            }
+
+            .voice-recording-section {
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+
+            .voice-recording-section>label {
+                font-weight: 600;
+                color: var(--text-primary);
+                font-size: 0.85rem;
+            }
+
+            .voice-controls {
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+
+            .voice-button {
+                background: var(--gradient-primary);
+                color: white;
+                padding: 0.75rem 1.2rem;
+                border: none;
+                border-radius: 4px;
+                font-size: 0.9rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                width: 100%;
+            }
+
+            .voice-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(45, 93, 63, 0.4);
+            }
+
+            .voice-button.recording {
+                background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+                animation: recordPulse 1.5s infinite;
+            }
+
+            @keyframes recordPulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.8;
+                }
+            }
+
+            .recording-timer {
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+                font-weight: 500;
+                text-align: center;
+                padding: 0.5rem;
+            }
+
+            .audio-preview {
+                margin-top: 0.5rem;
+                padding: 1rem;
+                background: var(--dark-bg);
+                border: 1px solid var(--dark-border);
+                border-radius: 4px;
+                display: none;
+            }
+
+            .audio-preview.active {
+                display: block;
+            }
+
+            .audio-preview audio {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+
+            .delete-audio {
+                background: transparent;
+                color: #f56565;
+                border: 1px solid #f56565;
+                border-radius: 4px;
+                padding: 0.5rem 1rem;
+                cursor: pointer;
+                font-size: 0.85rem;
+                transition: all 0.2s;
+                width: 100%;
+            }
+
+            .delete-audio:hover {
+                background: #f56565;
+                color: white;
+            }
+
+            .submit-button {
+                background: var(--gradient-primary);
+                color: white;
+                padding: 0.85rem;
+                border: none;
+                border-radius: 4px;
+                font-size: 0.95rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+
+            .submit-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(45, 93, 63, 0.4);
+            }
+
+            .submit-button:active {
+                transform: translateY(0);
+            }
+
+            section {
+                padding: clamp(5rem, 10vw, 8rem) 3rem;
+            }
+
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+
+            .section-header {
+                margin-bottom: 4rem;
+            }
+
+            .section-label {
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                background: rgba(45, 93, 63, 0.2);
+                color: var(--accent-green);
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 700;
+                margin-bottom: 1.5rem;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+            }
+
+            .section-title {
+                font-size: clamp(2.5rem, 4vw, 3.5rem);
+                font-weight: 700;
+                margin-bottom: 1rem;
+                color: var(--text-primary);
+                letter-spacing: -1px;
+            }
+
+            .section-subtitle {
+                font-size: 1.2rem;
+                color: var(--text-secondary);
+                max-width: 600px;
+            }
+
+            .services {
+                background: var(--dark-bg);
+            }
+
+            .service-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .service-examples {
+                margin-top: 3rem;
+                padding: 2.5rem;
+                background: var(--dark-card);
+                border: 1px solid var(--dark-border);
+                border-radius: 8px;
+                max-width: 1200px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .service-examples h3 {
+                font-size: 1.4rem;
+                margin-bottom: 1.5rem;
+                color: var(--text-primary);
+                text-align: center;
+            }
+
+            .examples-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1.2rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .example-item {
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                padding: 0.8rem;
+                background: rgba(56, 161, 105, 0.1);
+                border-radius: 4px;
+                border-left: 3px solid var(--accent-green);
+            }
+
+            .example-item span {
+                font-size: 1.2rem;
+            }
+
+            .example-item p {
+                color: var(--text-secondary);
+                font-size: 0.95rem;
+            }
+
+            .cta-text {
+                text-align: center;
+                color: var(--text-secondary);
+                font-size: 1.05rem;
+                margin-top: 1.5rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid var(--dark-border);
+            }
+
+            .cta-text strong {
+                color: var(--accent-green);
+            }
+
+            .how-it-works {
+                background: var(--dark-bg);
+            }
+
+            .steps-container {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 3rem;
+                max-width: 1200px;
+                margin: 0 auto;
+                position: relative;
+            }
+
+            .step-card {
+                text-align: center;
+                padding: 2.5rem 2rem;
+                background: var(--dark-card);
+                border: 1px solid var(--dark-border);
+                border-radius: 8px;
+                position: relative;
+                transition: all 0.3s;
+            }
+
+            .step-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+
+            .step-number {
+                width: 60px;
+                height: 60px;
+                background: var(--gradient-primary);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.8rem;
+                font-weight: 700;
+                color: white;
+                margin: 0 auto 1.5rem;
+            }
+
+            .step-card h3 {
+                font-size: 1.4rem;
+                margin-bottom: 1rem;
+                color: var(--text-primary);
+            }
+
+            .step-card p {
+                color: var(--text-secondary);
+                line-height: 1.6;
+            }
+
+            .testimonials {
+                background: var(--gradient-secondary);
+            }
+
+            .testimonial-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .testimonial-card {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 2.5rem;
+                border: 1px solid var(--dark-border);
+                border-radius: 8px;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s;
+            }
+
+            .testimonial-card:hover {
+                background: rgba(255, 255, 255, 0.05);
+                transform: translateY(-4px);
+            }
+
+            .testimonial-header {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .testimonial-avatar {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: var(--gradient-primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.3rem;
+                font-weight: 700;
+                color: white;
+            }
+
+            .testimonial-info h4 {
+                color: var(--text-primary);
+                font-size: 1rem;
+                margin-bottom: 0.2rem;
+            }
+
+            .testimonial-info p {
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+            }
+
+            .testimonial-content {
+                color: var(--text-secondary);
+                line-height: 1.7;
+                font-style: italic;
+            }
+
+            .testimonial-rating {
+                color: #fbbf24;
+                font-size: 1.2rem;
+                margin-top: 1rem;
+            }
+
+            .footer-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 3rem;
+                max-width: 1400px;
+                margin: 0 auto 3rem;
+                text-align: left;
+            }
+
+            .footer-section h3 {
+                font-size: 1.1rem;
+                margin-bottom: 1rem;
+                color: var(--text-primary);
+            }
+
+            .footer-section p,
+            .footer-section a {
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+                line-height: 1.8;
+                display: block;
+            }
+
+            .footer-section a {
+                text-decoration: none;
+                transition: color 0.2s;
+            }
+
+            .footer-section a:hover {
+                color: var(--accent-green);
+            }
+
+            .social-links {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .social-link {
+                width: 40px;
+                height: 40px;
+                background: var(--dark-bg);
+                border: 1px solid var(--dark-border);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.2rem;
+                transition: all 0.2s;
+            }
+
+            .social-link:hover {
+                background: var(--accent-green);
+                border-color: var(--accent-green);
+                transform: translateY(-2px);
+            }
+
+            .service-card {
+                background: var(--dark-card);
+                padding: 3rem;
+                border: 1px solid var(--dark-border);
+                border-radius: 8px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .service-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: var(--gradient-primary);
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+
+            .service-card:hover {
+                transform: translateY(-4px);
+                border-color: var(--accent-green);
+                box-shadow: 0 20px 40px rgba(45, 93, 63, 0.3);
+            }
+
+            .service-card:hover::before {
+                opacity: 0.05;
+            }
+
+            .service-icon {
+                width: 64px;
+                height: 64px;
+                background: var(--gradient-primary);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 2rem;
+                margin-bottom: 2rem;
+                position: relative;
+                z-index: 1;
+            }
+
+            .service-card h3 {
+                font-size: 1.6rem;
+                margin-bottom: 1rem;
+                color: var(--text-primary);
+                font-weight: 700;
+                letter-spacing: -0.3px;
+                position: relative;
+                z-index: 1;
+            }
+
+            .service-card p {
+                color: var(--text-secondary);
+                line-height: 1.7;
+                font-size: 1.05rem;
+                position: relative;
+                z-index: 1;
+            }
+
+            .benefits {
+                background: var(--gradient-secondary);
+            }
+
+            .benefit-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .benefit-item {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 3rem;
+                border: 1px solid var(--dark-border);
+                border-radius: 8px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                backdrop-filter: blur(10px);
+            }
+
+            .benefit-item:hover {
+                background: rgba(255, 255, 255, 0.05);
+                transform: translateY(-4px);
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            }
+
+            .benefit-icon {
+                width: 56px;
+                height: 56px;
+                background: var(--gradient-accent);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.6rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .benefit-item h3 {
+                font-size: 1.4rem;
+                margin-bottom: 0.8rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                letter-spacing: -0.3px;
+            }
+
+            .benefit-item p {
+                color: var(--text-secondary);
+                line-height: 1.7;
+                font-size: 1.05rem;
+            }
+
+            .pricing {
+                background: var(--gradient-primary);
+                color: white;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .pricing::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 600px;
+                height: 600px;
+                background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+                border-radius: 50%;
+            }
+
+            .pricing .section-title,
+            .pricing .section-label,
+            .pricing .section-subtitle {
+                color: white;
+            }
+
+            .pricing .section-label {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+            }
+
+            .price-container {
+                max-width: 900px;
+                margin: 0 auto;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 4rem;
+                border-radius: 8px;
+                position: relative;
+                z-index: 1;
+            }
+
+            .price-header {
+                text-align: center;
+                margin-bottom: 3rem;
+            }
+
+            .price {
+                font-size: clamp(4rem, 7vw, 5.5rem);
+                font-weight: 700;
+                margin: 1.5rem 0;
+                letter-spacing: -2px;
+            }
+
+            .price-features {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+
+            .price-feature {
+                display: flex;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .check-icon {
+                width: 28px;
+                height: 28px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                font-weight: 700;
+            }
+
+            .price-feature strong {
+                font-size: 1.1rem;
+                display: block;
+                margin-bottom: 0.3rem;
+            }
+
+            footer {
+                background: var(--dark-card);
+                color: white;
+                padding: 4rem 3rem;
+                border-top: 1px solid var(--dark-border);
+            }
+
+            .footer-content {
+                max-width: 1400px;
+                margin: 0 auto;
+                text-align: center;
+            }
+
+            .footer-links {
+                display: flex;
+                gap: 3rem;
+                justify-content: center;
+                margin-bottom: 2rem;
+            }
+
+            .footer-links a {
+                color: var(--text-secondary);
+                text-decoration: none;
+                transition: color 0.2s;
+                font-weight: 500;
+            }
+
+            .footer-links a:hover {
+                color: var(--text-primary);
+            }
+
+            .scroll-arrow {
+                position: absolute;
+                bottom: 2rem;
+                left: 50%;
+                transform: translateX(-50%);
+                cursor: pointer;
+                z-index: 10;
+                transition: all 0.3s;
+            }
+
+            .scroll-arrow:hover {
+                transform: translateX(-50%) translateY(4px);
+            }
+
+            .scroll-arrow svg {
+                width: 40px;
+                height: 40px;
+                stroke: var(--text-secondary);
+                animation: bounce 2s infinite;
+            }
+
+            @keyframes bounce {
+
+                0%,
+                100% {
+                    transform: translateY(0);
+                }
+
+                50% {
+                    transform: translateY(10px);
+                }
+            }
+
+            @media (max-width: 1100px) {
+                .hero-container {
+                    grid-template-columns: 1fr;
+                    gap: 4rem;
+                }
+
+                .contact-card {
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+
+                .hero-stats {
+                    max-width: 600px;
+                }
+            }
+
+            @media (max-width: 900px) {
+
+                .service-grid,
+                .benefit-grid,
+                .price-features {
+                    grid-template-columns: 1fr;
+                }
+
+                nav {
+                    padding: 1rem 2rem;
+                }
+
+                section {
+                    padding: 4rem 2rem;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .menu-toggle {
+                    display: flex;
+                }
+
+                .nav-links {
+                    position: fixed;
+                    top: 73px;
+                    left: 0;
+                    width: 100%;
+                    background: rgba(26, 32, 44, 0.98);
+                    backdrop-filter: blur(20px);
+                    flex-direction: column;
+                    padding: 2rem;
+                    gap: 1.5rem;
+                    transform: translateX(-100%);
+                    transition: transform 0.3s;
+                    border-bottom: 1px solid var(--dark-border);
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                }
+
+                .nav-links.active {
+                    transform: translateX(0);
+                }
+
+                .hero {
+                    padding-top: 7rem;
+                    min-height: auto;
+                }
+
+                .price-container {
+                    padding: 2.5rem 2rem;
+                }
+
+                .hero-stats {
+                    grid-template-columns: 1fr;
+                    gap: 1.5rem;
+                }
+            }
+
+            @media (max-width: 480px) {
+
+                .service-card,
+                .benefit-item,
+                .contact-card {
+                    padding: 2rem;
+                }
+
+                .hero-content h1 {
+                    font-size: 2.5rem;
+                }
+
+                .logo-img {
+                    height: 40px;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <header id="header">
+            <nav>
+                <div class="logo">
+                    <img src="shopifix_fulltext_logo_noBG.png" alt="Shopifix" class="logo-img">
+                </div>
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="#services">Services</a></li>
+                    <li><a href="#benefits">Benefits</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                </ul>
+                <div class="menu-toggle" id="menuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1>Quick Shopify Fixes for NZ Businesses</h1>
+                    <p>Need something changed on your Shopify store? We handle small updates and fixes so you don't have to.
+                    </p>
+
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">1-3</span>
+                            <span class="stat-label">Day Turnaround</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">$100+</span>
+                            <span class="stat-label">Starting Price</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">100%</span>
+                            <span class="stat-label">NZ Based</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-card">
+                    <h2>Get Your Free Quote</h2>
+                    <p>Tell us what you need and we'll get back to you within 24 hours</p>
+                    <form class="contact-form" onsubmit="handleSubmit(event)">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" id="name" required placeholder="John Smith">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" required placeholder="john@example.co.nz">
+                        </div>
+                        <div class="form-group">
+                            <label for="store">Your Store URL</label>
+                            <input type="text" id="store" name="store" required
+                                pattern="[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+                                title="Please enter a valid website address (e.g., mysite.com or www.mysite.com)"
+                                placeholder="yourwebsite.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">What needs fixing?</label>
+                            <textarea id="message" placeholder="Describe what you need help with..."></textarea>
+                        </div>
+                        <div class="voice-recording-section">
+                            <label>Or record a voice note</label>
+                            <div class="voice-controls">
+                                <button type="button" class="voice-button" id="voiceButton">
+                                    🎤 Record Voice Note
+                                </button>
+                                <span class="recording-timer" id="recordingTimer"></span>
+                            </div>
+                            <div class="audio-preview" id="audioPreview">
+                                <audio controls id="audioPlayer"></audio>
+                                <button type="button" class="delete-audio" id="deleteAudio">Delete Recording</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="submit-button">Get Free Quote</button>
+                    </form>
+                </div>
+            </div>
+            <div class="scroll-arrow" onclick="scrollToServices()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M19 12l-7 7-7-7" />
+                </svg>
+            </div>
+        </section>
+
+        <section id="services" class="services">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-label">WHAT WE DO</span>
+                    <h2 class="section-title">Quick Shopify Fixes</h2>
+                    <p class="section-subtitle">Small changes and improvements for your store</p>
+                </div>
+                <div class="service-grid">
+                    <div class="service-card">
+                        <div class="service-icon">🎨</div>
+                        <h3>Design Updates</h3>
+                        <p>Logo changes, color adjustments, font updates, and layout tweaks to refresh your store's look.
+                        </p>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">📝</div>
+                        <h3>Content Changes</h3>
+                        <p>Update product descriptions, edit pages, change banners, and modify text throughout your store.
+                        </p>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">🐛</div>
+                        <h3>Bug Fixes</h3>
+                        <p>Fix broken links, display issues, and other technical problems affecting your store.</p>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">⚙️</div>
+                        <h3>Small Improvements</h3>
+                        <p>Menu updates, simple app setups, and minor functionality changes to improve your store.</p>
+                    </div>
+                </div>
+
+                <div class="service-examples">
+                    <h3>Recent Projects We've Completed</h3>
+                    <div class="examples-list">
+                        <div class="example-item">
+                            <span>📦</span>
+                            <p>Product uploads & CSV imports</p>
+                        </div>
+                        <div class="example-item">
+                            <span>🖼️</span>
+                            <p>Image resizing & optimization</p>
+                        </div>
+                        <div class="example-item">
+                            <span>📅</span>
+                            <p>Adding booking functionality</p>
+                        </div>
+                        <div class="example-item">
+                            <span>📧</span>
+                            <p>Automated customer emails</p>
+                        </div>
+                        <div class="example-item">
+                            <span>🎨</span>
+                            <p>Custom banner designs</p>
+                        </div>
+                        <div class="example-item">
+                            <span>⚙️</span>
+                            <p>App integration & setup</p>
+                        </div>
+                    </div>
+                    <div class="cta-text">
+                        <strong>Not sure if we can help?</strong> Just ask! We'll let you know if your project is something
+                        we can tackle.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-label">HOW IT WORKS</span>
+                    <h2 class="section-title">Simple 3-Step Process</h2>
+                    <p class="section-subtitle">From request to completion in just a few days</p>
+                </div>
+                <div class="steps-container">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <h3>Tell Us What You Need</h3>
+                        <p>Fill out the form or send a voice note describing what you'd like fixed or changed on your store.
+                        </p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <h3>Get Your Quote</h3>
+                        <p>We'll review your request and send you a fixed-price quote within 24 hours. No obligation to
+                            proceed.</p>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <h3>We Fix It Fast</h3>
+                        <p>Once approved, most fixes are completed within 1-3 days. We'll keep you updated throughout.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="testimonials">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-label">TESTIMONIALS</span>
+                    <h2 class="section-title">What Our Clients Say</h2>
+                    <p class="section-subtitle">Real feedback from NZ business owners</p>
+                </div>
+                <div class="testimonial-grid">
+                    <div class="testimonial-card">
+                        <div class="testimonial-header">
+                            <div class="testimonial-avatar">SM</div>
+                            <div class="testimonial-info">
+                                <h4>Sarah Mitchell</h4>
+                                <p>Fashion Boutique Owner, Auckland</p>
+                            </div>
+                        </div>
+                        <div class="testimonial-content">
+                            "I needed my product images resized urgently before a big sale. Shopifix had it done in 2 days
+                            and it looks professional. So much easier than trying to figure it out myself!"
+                        </div>
+                        <div class="testimonial-rating">★★★★★</div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="testimonial-header">
+                            <div class="testimonial-avatar">JC</div>
+                            <div class="testimonial-info">
+                                <h4>James Chen</h4>
+                                <p>Electronics Store, Wellington</p>
+                            </div>
+                        </div>
+                        <div class="testimonial-content">
+                            "Quick turnaround on fixing broken links and updating our contact form. Great communication
+                            throughout and the price was exactly as quoted. Highly recommend!"
+                        </div>
+                        <div class="testimonial-rating">★★★★★</div>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="testimonial-header">
+                            <div class="testimonial-avatar">LT</div>
+                            <div class="testimonial-info">
+                                <h4>Lisa Thompson</h4>
+                                <p>Home Decor Shop, Christchurch</p>
+                            </div>
+                        </div>
+                        <div class="testimonial-content">
+                            "Added automated email confirmations for my customers in just 3 days. The voice note option made
+                            it so easy to explain what I needed. Will definitely use again!"
+                        </div>
+                        <div class="testimonial-rating">★★★★★</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benefits" class="benefits">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-label">WHY CHOOSE US</span>
+                    <h2 class="section-title">Simple & Straightforward</h2>
+                    <p class="section-subtitle">No fuss, just fixes</p>
+                </div>
+                <div class="benefit-grid">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">⚡</div>
+                        <h3>Quick Turnaround</h3>
+                        <p>Most small fixes done within 1-3 days.</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-icon">💬</div>
+                        <h3>Easy to Work With</h3>
+                        <p>Simple communication, no technical jargon.</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-icon">🇳🇿</div>
+                        <h3>NZ Based</h3>
+                        <p>Local support in your timezone.</p>
+                    </div>
+                    <div class="benefit-item">
+                        <div class="benefit-icon">💰</div>
+                        <h3>Pay Per Fix</h3>
+                        <p>No monthly fees, just pay for what you need.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="pricing">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-label">PRICING</span>
+                    <h2 class="section-title">Simple, Transparent Rates</h2>
+                </div>
+                <div class="price-container">
+                    <div class="price-header">
+                        <h3 style="font-size: 1.5rem; margin-bottom: 1rem; font-weight: 600;">Pay Per Fix</h3>
+                        <div class="price">From $100</div>
+                        <p style="font-size: 1.15rem; opacity: 0.9;">Most fixes $50-$200</p>
+                    </div>
+                    <div class="price-features">
+                        <div class="price-feature">
+                            <div class="check-icon">✓</div>
+                            <div>
+                                <strong>Free Quote</strong>
+                                <p style="opacity: 0.8;">No obligation to proceed</p>
+                            </div>
+                        </div>
+                        <div class="price-feature">
+                            <div class="check-icon">✓</div>
+                            <div>
+                                <strong>Fixed Price</strong>
+                                <p style="opacity: 0.8;">You'll know the cost upfront</p>
+                            </div>
+                        </div>
+                        <div class="price-feature">
+                            <div class="check-icon">✓</div>
+                            <div>
+                                <strong>No Contracts</strong>
+                                <p style="opacity: 0.8;">Pay only for what you need</p>
+                            </div>
+                        </div>
+                        <div class="price-feature">
+                            <div class="check-icon">✓</div>
+                            <div>
+                                <strong>Quick Service</strong>
+                                <p style="opacity: 0.8;">Usually done in 1-3 days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#services">Services</a>
+                    <a href="#benefits">Benefits</a>
+                    <a href="#pricing">Pricing</a>
+                </div>
+                <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 Shopifix NZ</p>
+                <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">🇳🇿 Proudly serving New Zealand small
+                    businesses</p>
+            </div>
+        </footer>
+
+        <script>
+            const menuToggle = document.getElementById('menuToggle');
+            const navLinks = document.getElementById('navLinks');
+            const header = document.getElementById('header');
+
+            menuToggle.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+                const spans = menuToggle.querySelectorAll('span');
+                if (navLinks.classList.contains('active')) {
+                    spans[0].style.transform = 'rotate(45deg) translateY(8px)';
+                    spans[1].style.opacity = '0';
+                    spans[2].style.transform = 'rotate(-45deg) translateY(-8px)';
+                } else {
+                    spans[0].style.transform = '';
+                    spans[1].style.opacity = '1';
+                    spans[2].style.transform = '';
+                }
+            });
+
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', () => {
+                    navLinks.classList.remove('active');
+                    const spans = menuToggle.querySelectorAll('span');
+                    spans[0].style.transform = '';
+                    spans[1].style.opacity = '1';
+                    spans[2].style.transform = '';
+                });
+            });
+
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+
+            function scrollToServices() {
+                const servicesSection = document.getElementById('services');
+                const headerOffset = 90;
+                const elementPosition = servicesSection.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+            }
+
+            let mediaRecorder;
+            let audioChunks = [];
+            let recordingInterval;
+            let recordingSeconds = 0;
+            let recordedAudioBlob = null;
+
+            const voiceButton = document.getElementById('voiceButton');
+            const recordingTimer = document.getElementById('recordingTimer');
+            const audioPreview = document.getElementById('audioPreview');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const deleteAudio = document.getElementById('deleteAudio');
+            const messageTextarea = document.getElementById('message');
+
+            voiceButton.addEventListener('click', async () => {
+                if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+
+                        mediaRecorder.ondataavailable = (event) => {
+                            audioChunks.push(event.data);
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                            audioPlayer.src = audioUrl;
+                            audioPreview.classList.add('active');
+                            stream.getTracks().forEach(track => track.stop());
+                        };
+
+                        audioChunks = [];
+                        recordedAudioBlob = null;
+                        recordingSeconds = 0;
+                        voiceButton.classList.add('recording');
+                        mediaRecorder.start();
+                        voiceButton.textContent = '⏹️ Stop Recording';
+
+                        recordingInterval = setInterval(() => {
+                            recordingSeconds++;
+                            const minutes = Math.floor(recordingSeconds / 60);
+                            const seconds = recordingSeconds % 60;
+                            recordingTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }, 1000);
+
+                    } catch (error) {
+                        alert('Unable to access microphone. Please check your browser permissions.');
+                    }
+                } else {
+                    mediaRecorder.stop();
+                    voiceButton.classList.remove('recording');
+                    voiceButton.textContent = '🎤 Record Voice Note';
+                    clearInterval(recordingInterval);
+                    recordingTimer.textContent = '';
+                }
+            });
+
+            deleteAudio.addEventListener('click', () => {
+                audioPreview.classList.remove('active');
+                audioPlayer.src = '';
+                audioChunks = [];
+                recordedAudioBlob = null;
+            });
+
+            async function handleSubmit(e) {
+                e.preventDefault();
+
+                if (!e.target.checkValidity()) {
+                    return;
+                }
+
+                const messageValue = messageTextarea.value.trim();
+                const hasAudio = recordedAudioBlob !== null;
+
+                if (!messageValue && !hasAudio) {
+                    alert('Please either describe your issue in text or record a voice note.');
+                    return;
+                }
+
+                const button = e.target.querySelector('.submit-button');
+                const originalText = button.textContent;
+
+                button.textContent = 'Sending...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+
+                try {
+                    const formData = {
+                        timestamp: new Date().toLocaleString('en-NZ', {
+                            timeZone: 'Pacific/Auckland',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        }),
+                        name: document.getElementById('name').value,
+                        email: document.getElementById('email').value,
+                        storeUrl: document.getElementById('store').value || 'Not provided',
+                        message: messageValue || 'Voice note only - see audio file',
+                        hasVoiceNote: hasAudio ? 'Yes' : 'No',
+                        voiceNoteData: ''
+                    };
+
+                    if (hasAudio && recordedAudioBlob) {
+                        const reader = new FileReader();
+
+                        await new Promise((resolve) => {
+                            reader.onloadend = () => {
+                                formData.voiceNoteData = reader.result;
+                                resolve();
+                            };
+                            reader.readAsDataURL(recordedAudioBlob);
+                        });
+                    }
+
+                    const scriptURL = 'https://script.google.com/macros/s/AKfycbzvldgC2OPU3CXRiEVcUnr03P8JFm4RLQ8YibF6wBq-xJf9XX7ekTtefC4PEdOhkQL2/exec';
+
+                    await fetch(scriptURL, {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+
+                    button.textContent = '✓ Sent Successfully';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                        e.target.reset();
+                        audioPreview.classList.remove('active');
+                        audioPlayer.src = '';
+                        audioChunks = [];
+                        recordedAudioBlob = null;
+                    }, 2500);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    button.textContent = '✗ Error - Please try again';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                    }, 3000);
+                }
+            }
+
+            const observerOptions = {
+                threshold: 0.15,
+                rootMargin: '0px 0px -80px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.service-card, .benefit-item').forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(40px)';
+                el.style.transition = `all 0.7s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.1}s`;
+                observer.observe(el);
+            });
+        </script>
+    </body>
+
+    </html>
