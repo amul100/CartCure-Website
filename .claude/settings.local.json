@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Edit",
+      "Write",
+      "mcp__*",
+      "Bash(git -C \"c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website\" status)",
+      "Bash(git init:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(del /f /s /q *)",
+      "Bash(format *)",
+      "Bash(rd /s /q *)",
+      "Bash(rmdir /s /q *)",
+      "Bash(shutdown*)",
+      "Bash(reboot*)",
+      "Bash(reg delete*)",
+      "Bash(taskkill /f*)",
+      "Bash(net user*)",
+      "Bash(net localgroup*)",
+      "Bash(diskpart*)"
+    ]
+  }
+}
