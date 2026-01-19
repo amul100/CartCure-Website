@@ -367,9 +367,17 @@
         const adminEmails = ['redacted@example.com', 'redacted@example.com'];
         const isAdmin = adminEmails.includes(emailValue);
 
+        console.log('Rate limit check - Email:', emailValue, 'Is Admin:', isAdmin);
+
         if (!isAdmin && !checkRateLimit()) {
             showError(SecurityConfig.ERRORS.RATE_LIMIT);
             return;
+        }
+
+        // Clear rate limit history for admins (allows unlimited testing)
+        if (isAdmin) {
+            localStorage.removeItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY);
+            console.log('Admin detected - rate limit cleared');
         }
 
         // Get and sanitize inputs
