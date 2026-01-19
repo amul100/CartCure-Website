@@ -41,7 +41,7 @@
     let audioObjectUrl = null; // For cleanup
 
     // Google Apps Script URL (replace with your deployment URL)
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNHgqU8iK1gBic0JwUBcIh2RwgprtvrOyInTI0u3sUcSHpgVh7LKdfxLWesrqZeCMj/exec';
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
 
     // Production mode flag (set to true for production)
     const IS_PRODUCTION = true;
