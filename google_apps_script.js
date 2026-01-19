@@ -107,24 +107,22 @@ function doPost(e) {
 
     Logger.log('Data keys received: ' + Object.keys(data).join(', '));
 
-    const clientIP = e.parameter.userip || 'unknown';
     const origin = e.parameter.origin || '';
 
     // Security validations
     validateOrigin(origin);
-    validateRateLimit(clientIP);
 
     // Input validation and sanitization
     const sanitizedData = validateAndSanitizeInput(data);
 
     // Log submission
-    logSubmission(sanitizedData, clientIP);
+    logSubmission(sanitizedData);
 
     // Store in Google Sheet
-    saveToSheet(sanitizedData, clientIP);
+    saveToSheet(sanitizedData);
 
     // Send email notification
-    sendEmailNotification(sanitizedData, clientIP);
+    sendEmailNotification(sanitizedData);
 
     // Return success response
     return ContentService
@@ -260,6 +258,9 @@ function validateRateLimit(ip) {
 function validateAndSanitizeInput(data) {
   const sanitized = {};
 
+  // Validate submission number (format: CC-YYYYMMDD-XXXXX)
+  sanitized.submissionNumber = validateSubmissionNumber(data.submissionNumber);
+
   // Validate and sanitize name
   sanitized.name = validateAndSanitizeText(
     data.name,
@@ -307,6 +308,29 @@ function validateAndSanitizeInput(data) {
   });
 
   return sanitized;
+}
+
+/**
+ * Validate submission number format
+ */
+function validateSubmissionNumber(submissionNumber) {
+  if (!submissionNumber || submissionNumber.trim() === '') {
+    // Generate one server-side if not provided (fallback)
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    return `CC-${dateStr}-${randomNum}`;
+  }
+
+  // Validate format: CC-YYYYMMDD-XXXXX
+  const regex = /^CC-\d{8}-\d{5}$/;
+  if (!regex.test(submissionNumber)) {
+    const error = new Error('Invalid submission number format');
+    error.userMessage = 'Invalid submission format.';
+    throw error;
+  }
+
+  return submissionNumber;
 }
 
 /**
@@ -472,9 +496,9 @@ function escapeHtml(text) {
 /**
  * Log submission to Apps Script logs
  */
-function logSubmission(data, ip) {
+function logSubmission(data) {
   Logger.log('Form submission received:');
-  Logger.log('- IP: ' + ip);
+  Logger.log('- Submission #: ' + data.submissionNumber);
   Logger.log('- Name: ' + data.name);
   Logger.log('- Email: ' + data.email);
   Logger.log('- Store URL: ' + data.storeUrl);
@@ -485,7 +509,7 @@ function logSubmission(data, ip) {
 /**
  * Save submission to Google Sheet
  */
-function saveToSheet(data, ip) {
+function saveToSheet(data) {
   if (!CONFIG.SHEET_ID) {
     Logger.log('WARNING: SHEET_ID not configured. Skipping sheet save.');
     return;
@@ -497,36 +521,43 @@ function saveToSheet(data, ip) {
     // Check if headers exist, if not create them
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
+        'Submission #',
         'Timestamp',
         'Name',
         'Email',
         'Store URL',
         'Message',
         'Has Voice Note',
-        'Voice Note Link',
-        'IP Address'
+        'Voice Note Link'
       ]);
     }
 
     // Save audio file to Google Drive if present
     let audioFileUrl = '';
     if (data.hasVoiceNote && data.voiceNoteData) {
-      audioFileUrl = saveAudioToDrive(data.voiceNoteData, data.email);
+      audioFileUrl = saveAudioToDrive(data.voiceNoteData, data.submissionNumber);
     }
 
-    // Append row
-    sheet.appendRow([
+    // Find the first empty row (starting from row 2 to skip headers)
+    const targetRow = findFirstEmptyRow(sheet);
+
+    // Prepare the row data
+    const rowData = [
+      data.submissionNumber,
       data.timestamp,
       data.name,
       data.email,
       data.storeUrl,
       data.message,
       data.hasVoiceNote ? 'Yes' : 'No',
-      audioFileUrl,
-      ip
-    ]);
+      audioFileUrl
+    ];
 
-    Logger.log('Data saved to sheet successfully');
+    // Write to the target row
+    const range = sheet.getRange(targetRow, 1, 1, rowData.length);
+    range.setValues([rowData]);
+
+    Logger.log('Data saved to sheet at row ' + targetRow);
   } catch (error) {
     Logger.log('Error saving to sheet: ' + error.message);
     // Don't throw - submission should succeed even if sheet save fails
@@ -534,9 +565,39 @@ function saveToSheet(data, ip) {
 }
 
 /**
+ * Find the first completely empty row in the sheet (skipping header row)
+ */
+function findFirstEmptyRow(sheet) {
+  const lastRow = sheet.getLastRow();
+  const numCols = 8; // Number of data columns
+
+  // If sheet only has headers or is empty, return row 2
+  if (lastRow <= 1) {
+    return 2;
+  }
+
+  // Get all data from row 2 onwards
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, numCols);
+  const values = dataRange.getValues();
+
+  // Find first empty row
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    // Check if entire row is empty (all cells are blank)
+    const isEmpty = row.every(cell => cell === '' || cell === null || cell === undefined);
+    if (isEmpty) {
+      return i + 2; // +2 because we started at row 2 (1-indexed)
+    }
+  }
+
+  // No empty rows found, use the next row after last
+  return lastRow + 1;
+}
+
+/**
  * Save audio file to Google Drive
  */
-function saveAudioToDrive(base64Data, email) {
+function saveAudioToDrive(base64Data, submissionNumber) {
   try {
     // Extract MIME type and base64 data
     const matches = base64Data.match(/^data:(.+);base64,(.+)$/);
@@ -552,11 +613,11 @@ function saveAudioToDrive(base64Data, email) {
     const blob = Utilities.newBlob(
       Utilities.base64Decode(base64),
       mimeType,
-      'voice-note-' + email + '-' + Date.now() + '.webm'
+      submissionNumber + '.webm'
     );
 
-    // Save to Drive
-    const folder = DriveApp.getRootFolder(); // Or create specific folder
+    // Get or create the CartCure Voice Notes folder
+    const folder = getOrCreateVoiceNotesFolder();
     const file = folder.createFile(blob);
 
     // Set sharing permissions to view-only
@@ -569,6 +630,21 @@ function saveAudioToDrive(base64Data, email) {
   }
 }
 
+/**
+ * Get or create the CartCure Voice Notes folder in Google Drive
+ */
+function getOrCreateVoiceNotesFolder() {
+  const folderName = 'CartCure Voice Notes';
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create the folder if it doesn't exist
+  return DriveApp.createFolder(folderName);
+}
+
 // ============================================================================
 // EMAIL NOTIFICATIONS
 // ============================================================================
@@ -576,14 +652,14 @@ function saveAudioToDrive(base64Data, email) {
 /**
  * Send email notification to admin
  */
-function sendEmailNotification(data, ip) {
+function sendEmailNotification(data) {
   if (!CONFIG.ADMIN_EMAIL) {
     Logger.log('WARNING: ADMIN_EMAIL not configured. Skipping email notification.');
     return;
   }
 
   try {
-    const subject = 'New CartCure Form Submission from ' + data.name;
+    const subject = '[' + data.submissionNumber + '] New CartCure Submission from ' + data.name;
 
     // Build HTML email body with escaped data
     const htmlBody = `
@@ -591,6 +667,7 @@ function sendEmailNotification(data, ip) {
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
             <h2 style="color: #2d5d3f;">New Contact Form Submission</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Reference: <strong>${data.submissionNumber}</strong></p>
 
             <table style="width: 100%; border-collapse: collapse; background: white; padding: 20px;">
               <tr>
@@ -616,12 +693,8 @@ function sendEmailNotification(data, ip) {
                 <td style="padding: 10px; border-bottom: 1px solid #ddd;">${data.message || 'Voice note only'}</td>
               </tr>
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Voice Note:</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${data.hasVoiceNote ? 'Yes (check Google Sheet/Drive)' : 'No'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px;"><strong>IP Address:</strong></td>
-                <td style="padding: 10px;">${ip}</td>
+                <td style="padding: 10px;"><strong>Voice Note:</strong></td>
+                <td style="padding: 10px;">${data.hasVoiceNote ? 'Yes (check Google Sheet/Drive)' : 'No'}</td>
               </tr>
             </table>
 
@@ -636,6 +709,7 @@ function sendEmailNotification(data, ip) {
     // Plain text version
     const plainBody = `
 New Contact Form Submission
+Reference: ${data.submissionNumber}
 
 Timestamp: ${data.timestamp}
 Name: ${data.name}
@@ -643,7 +717,6 @@ Email: ${data.email}
 Store URL: ${data.storeUrl || 'Not provided'}
 Message: ${data.message || 'Voice note only'}
 Voice Note: ${data.hasVoiceNote ? 'Yes (check Google Sheet/Drive)' : 'No'}
-IP Address: ${ip}
 
 ---
 This email was automatically generated by the CartCure contact form.

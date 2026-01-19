@@ -1,0 +1,1 @@
+The user is requesting a comprehensive, readable, step by step instruction list in language of a beginner coder on how to go about doing the following task by themselves, make a numbered list. It is ok to explain steps in detail (under each step), but try not to bee too verbose:
