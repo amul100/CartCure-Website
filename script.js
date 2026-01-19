@@ -413,9 +413,16 @@
         button.style.opacity = '0.7';
 
         try {
+            // Generate unique submission number: CC-YYYYMMDD-XXXXX
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const randomNum = Math.floor(10000 + Math.random() * 90000); // 5-digit random number
+            const submissionNumber = `CC-${dateStr}-${randomNum}`;
+
             // Build form data
             const formData = {
-                timestamp: new Date().toLocaleString('en-NZ', {
+                submissionNumber: submissionNumber,
+                timestamp: now.toLocaleString('en-NZ', {
                     timeZone: 'Pacific/Auckland',
                     year: 'numeric',
                     month: '2-digit',
@@ -480,8 +487,8 @@
                 // Record submission for rate limiting
                 recordSubmission();
 
-                // Show success message
-                button.textContent = '✓ ' + SecurityConfig.SUCCESS.FORM_SUBMITTED;
+                // Show success message with submission number
+                button.textContent = '✓ Sent! Ref: ' + formData.submissionNumber;
                 button.style.background = 'var(--accent-green)';
 
                 // Reset form after delay
