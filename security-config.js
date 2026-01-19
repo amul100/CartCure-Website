@@ -115,7 +115,7 @@ const SecurityConfig = {
         FILE_TOO_LARGE: 'Audio file is too large. Maximum size is 10MB.',
         FILE_INVALID_TYPE: 'Invalid audio format. Please try recording again.',
         RECORDING_TOO_LONG: 'Recording is too long. Maximum duration is 3 minutes.',
-        RATE_LIMIT: 'Too many submissions. Please try again later.',
+        RATE_LIMIT: 'Too many requests! You can only submit 5 times per hour. Please try again later.',
         CSRF_INVALID: 'Security validation failed. Please refresh the page and try again.',
         CONSENT_REQUIRED: 'Please accept the privacy policy to record voice notes.'
     },
