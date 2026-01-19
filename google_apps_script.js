@@ -163,39 +163,74 @@ function doGet(e) {
 }
 
 /**
- * Test function to verify script is working
- * Run this in the Apps Script editor to test
+ * Run all tests - use this to verify the script is working correctly
+ * Tests: Drive permissions, debug file creation, and full form submission
  */
-function testHandler() {
-  // Simulate form-encoded data (URLSearchParams format)
-  const testData = {
-    postData: {
-      type: 'application/x-www-form-urlencoded',
-      contents: 'timestamp=' + encodeURIComponent(new Date().toLocaleString()) +
-                '&name=' + encodeURIComponent('Test User') +
-                '&email=' + encodeURIComponent('test@example.com') +
-                '&storeUrl=' + encodeURIComponent('https://example.com') +
-                '&message=' + encodeURIComponent('Test message') +
-                '&hasVoiceNote=No' +
-                '&voiceNoteData='
-    },
-    parameter: {
-      timestamp: new Date().toLocaleString(),
+function runAllTests() {
+  Logger.log('========== CARTCURE SCRIPT TESTS ==========\n');
+
+  const results = { drive: false, debug: false, form: false };
+
+  // Test 1: Drive permissions
+  Logger.log('--- Test 1: Drive Permissions ---');
+  try {
+    const folder = getOrCreateDebugFolder();
+    const testFile = folder.createFile('_test_' + Date.now() + '.txt', 'test');
+    testFile.setTrashed(true);
+    results.drive = true;
+    Logger.log('PASS: Drive permissions OK\n');
+  } catch (e) {
+    Logger.log('FAIL: ' + e.message + '\n');
+  }
+
+  // Test 2: Debug file creation
+  Logger.log('--- Test 2: Debug File Creation ---');
+  try {
+    const debugUrl = saveDebugFileToDrive({
+      submissionNumber: 'CC-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-TEST1',
+      timestamp: new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }),
       name: 'Test User',
       email: 'test@example.com',
       storeUrl: 'https://example.com',
       message: 'Test message',
-      hasVoiceNote: 'No',
-      voiceNoteData: '',
-      userip: '127.0.0.1',
-      origin: 'http://localhost'
-    }
-  };
+      hasVoiceNote: false
+    });
+    results.debug = !!debugUrl;
+    Logger.log(debugUrl ? 'PASS: Debug file created - ' + debugUrl + '\n' : 'FAIL: No URL returned\n');
+  } catch (e) {
+    Logger.log('FAIL: ' + e.message + '\n');
+  }
 
-  Logger.log('Running test...');
-  const result = doPost(testData);
-  Logger.log('Test result: ' + result.getContent());
-  return result.getContent();
+  // Test 3: Full form submission
+  Logger.log('--- Test 3: Form Submission ---');
+  try {
+    const formResult = doPost({
+      postData: { type: 'application/x-www-form-urlencoded', contents: '' },
+      parameter: {
+        name: 'Test User',
+        email: 'test@example.com',
+        storeUrl: 'https://example.com',
+        message: 'Test submission from runAllTests()',
+        hasVoiceNote: 'No',
+        voiceNoteData: '',
+        origin: 'http://localhost'
+      }
+    });
+    const response = JSON.parse(formResult.getContent());
+    results.form = response.success;
+    Logger.log(response.success ? 'PASS: Form submission OK\n' : 'FAIL: ' + response.message + '\n');
+  } catch (e) {
+    Logger.log('FAIL: ' + e.message + '\n');
+  }
+
+  // Summary
+  Logger.log('========== RESULTS ==========');
+  Logger.log('Drive Permissions: ' + (results.drive ? 'PASS' : 'FAIL'));
+  Logger.log('Debug File:        ' + (results.debug ? 'PASS' : 'FAIL'));
+  Logger.log('Form Submission:   ' + (results.form ? 'PASS' : 'FAIL'));
+  Logger.log('=============================');
+
+  return results;
 }
 
 // ============================================================================
@@ -504,6 +539,69 @@ function logSubmission(data) {
   Logger.log('- Store URL: ' + data.storeUrl);
   Logger.log('- Has Voice Note: ' + data.hasVoiceNote);
   Logger.log('- Timestamp: ' + data.timestamp);
+
+  // Save debug file to Google Drive
+  saveDebugFileToDrive(data);
+}
+
+/**
+ * Save a debug text file to Google Drive with submission details
+ * This helps track form submissions for debugging purposes
+ */
+function saveDebugFileToDrive(data) {
+  try {
+    Logger.log('Attempting to save debug file for: ' + data.submissionNumber);
+    const folder = getOrCreateDebugFolder();
+    Logger.log('Debug folder obtained: ' + folder.getName());
+
+    // Create debug content with submission details
+    const debugContent = [
+      '=== CartCure Form Submission Debug Log ===',
+      '',
+      'Submission Number: ' + data.submissionNumber,
+      'Timestamp: ' + data.timestamp,
+      'Server Time: ' + new Date().toISOString(),
+      '',
+      '--- Submission Details ---',
+      'Name: ' + data.name,
+      'Email: ' + data.email,
+      'Store URL: ' + (data.storeUrl || 'Not provided'),
+      'Message: ' + (data.message || 'Voice note only'),
+      'Has Voice Note: ' + (data.hasVoiceNote ? 'Yes' : 'No'),
+      '',
+      '--- Debug Info ---',
+      'Script execution completed successfully',
+      '================================='
+    ].join('\n');
+
+    // Create filename with submission number
+    const fileName = 'debug_' + data.submissionNumber + '.txt';
+
+    // Create the file (plain text)
+    const file = folder.createFile(fileName, debugContent);
+
+    Logger.log('Debug file saved to Drive: ' + file.getUrl());
+    return file.getUrl();
+  } catch (error) {
+    Logger.log('Error saving debug file to Drive: ' + error.message);
+    // Don't throw - this is just for debugging, shouldn't break the submission
+    return '';
+  }
+}
+
+/**
+ * Get or create the CartCure Debug Logs folder in Google Drive
+ */
+function getOrCreateDebugFolder() {
+  const folderName = 'CartCure Debug Logs';
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create the folder if it doesn't exist
+  return DriveApp.createFolder(folderName);
 }
 
 /**
