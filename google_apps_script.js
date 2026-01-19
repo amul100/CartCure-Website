@@ -106,6 +106,7 @@ function doPost(e) {
     }
 
     Logger.log('Data keys received: ' + Object.keys(data).join(', '));
+    Logger.log('submissionNumber received: ' + data.submissionNumber);
 
     const origin = e.parameter.origin || '';
 
@@ -485,8 +486,7 @@ function escapeHtml(text) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/'/g, '&#x27;');
 }
 
 // ============================================================================
