@@ -362,8 +362,12 @@
             return;
         }
 
-        // Check rate limiting
-        if (!checkRateLimit()) {
+        // Check rate limiting (bypass for admin emails)
+        const emailValue = document.getElementById('email').value.trim().toLowerCase();
+        const adminEmails = ['andrew.lee.muller@gmail.com', 'amanda.balsillie@gmail.com'];
+        const isAdmin = adminEmails.includes(emailValue);
+
+        if (!isAdmin && !checkRateLimit()) {
             showError(SecurityConfig.ERRORS.RATE_LIMIT);
             return;
         }
@@ -458,6 +462,7 @@
 
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST',
+                mode: 'cors',
                 cache: 'no-cache',
                 redirect: 'follow',
                 body: formBody
