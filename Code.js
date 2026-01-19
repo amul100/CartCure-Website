@@ -32,13 +32,6 @@
 // CONFIGURATION
 // ============================================================================
 
-// ============================================================================
-// PRODUCTION MODE FLAG
-// ============================================================================
-// Set to false for testing/debugging (disables origin validation, shows detailed errors)
-// IMPORTANT: Set to true before deploying to production!
-const IS_PRODUCTION = true;
-
 // Get configuration from Script Properties
 const CONFIG = {
   SHARED_SECRET: PropertiesService.getScriptProperties().getProperty('SHARED_SECRET'),
@@ -95,51 +88,30 @@ const BLOCKED_PATTERNS = [
  */
 function doPost(e) {
   try {
-    // Log incoming request for debugging (only in development)
-    if (!IS_PRODUCTION) {
-      Logger.log('=== Incoming Request ===');
-      Logger.log('postData.type: ' + (e.postData ? e.postData.type : 'undefined'));
-      Logger.log('postData.contents length: ' + (e.postData ? e.postData.contents.length : 'undefined'));
-      Logger.log('parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'undefined'));
-    }
+    // Log incoming request for debugging
+    Logger.log('=== Incoming Request ===');
+    Logger.log('postData.type: ' + (e.postData ? e.postData.type : 'undefined'));
+    Logger.log('postData.contents length: ' + (e.postData ? e.postData.contents.length : 'undefined'));
+    Logger.log('parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'undefined'));
 
     // Parse request body - handle both JSON and form-encoded data
     let data;
     if (e.postData && e.postData.type === 'application/json') {
       data = JSON.parse(e.postData.contents);
-      if (!IS_PRODUCTION) Logger.log('Parsed as JSON');
+      Logger.log('Parsed as JSON');
     } else {
       // URL-encoded form data comes in e.parameter
       data = e.parameter;
-      if (!IS_PRODUCTION) Logger.log('Using e.parameter (form-encoded)');
+      Logger.log('Using e.parameter (form-encoded)');
     }
 
-    if (!IS_PRODUCTION) {
-      Logger.log('Data keys received: ' + Object.keys(data).join(', '));
-      Logger.log('submissionNumber received: ' + data.submissionNumber);
-    }
+    Logger.log('Data keys received: ' + Object.keys(data).join(', '));
+    Logger.log('submissionNumber received: ' + data.submissionNumber);
 
     const origin = e.parameter.origin || '';
 
     // Security validations
     validateOrigin(origin);
-
-    // =========================================================================
-    // SERVER-SIDE RATE LIMITING
-    // =========================================================================
-    // This checks submissions per email address using Script Properties storage.
-    // Limits: 5 submissions per hour per email address.
-    //
-    // HOW IT WORKS:
-    // - Stores submission timestamps in Script Properties (persists across requests)
-    // - Key format: "ratelimit_<email>" with JSON array of timestamps
-    // - Cleans up old timestamps (>1 hour) on each check
-    // - Returns 429-style error if limit exceeded
-    //
-    // TO DISABLE FOR TESTING: Comment out the checkServerRateLimit() call below
-    // =========================================================================
-    const emailForRateLimit = (data.email || '').trim().toLowerCase();
-    checkServerRateLimit(emailForRateLimit);
 
     // Input validation and sanitization
     const sanitizedData = validateAndSanitizeInput(data);
@@ -156,9 +128,6 @@ function doPost(e) {
     // Send confirmation email to user
     sendUserConfirmationEmail(sanitizedData);
 
-    // Record successful submission for rate limiting
-    recordServerSubmission(emailForRateLimit);
-
     // Return success response
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -169,24 +138,16 @@ function doPost(e) {
 
   } catch (error) {
     Logger.log('Error processing submission: ' + error.message);
-    if (!IS_PRODUCTION) {
-      Logger.log('Error stack: ' + error.stack);
-    }
+    Logger.log('Error stack: ' + error.stack);
 
-    // Build error response - only include technical details in development mode
-    const errorResponse = {
-      success: false,
-      message: error.userMessage || 'An error occurred. Please try again.'
-    };
-
-    // Only expose technical error details when NOT in production
-    if (!IS_PRODUCTION) {
-      errorResponse.error = error.message;
-      errorResponse.errorType = error.name;
-    }
-
+    // Return error with both user message and technical details for debugging
     return ContentService
-      .createTextOutput(JSON.stringify(errorResponse))
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: error.userMessage || 'An error occurred. Please try again.',
+        error: error.message, // Add technical error for debugging
+        errorType: error.name
+      }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -281,150 +242,17 @@ function runAllTests() {
 
 /**
  * Validate request origin
- * In production mode, rejects requests from origins not in ALLOWED_ORIGINS
- * In development mode (IS_PRODUCTION = false), allows all origins
  */
 function validateOrigin(origin) {
-  // Skip origin validation in development mode
-  if (!IS_PRODUCTION) {
-    Logger.log('Development mode: Skipping origin validation');
-    return;
-  }
-
-  // In production, validate against allowed origins
-  // Note: Google Apps Script doesn't always receive origin header reliably
-  // This is a defense-in-depth measure, not the only protection
-  if (origin && !CONFIG.ALLOWED_ORIGINS.includes(origin)) {
-    Logger.log('Rejected request from origin: ' + origin);
-    const error = new Error('Invalid origin: ' + origin);
+  // In development, you might want to skip this check
+  // In production, uncomment and configure ALLOWED_ORIGINS
+  /*
+  if (!CONFIG.ALLOWED_ORIGINS.includes(origin)) {
+    const error = new Error('Invalid origin');
     error.userMessage = 'Request rejected';
     throw error;
   }
-}
-
-// ============================================================================
-// SERVER-SIDE RATE LIMITING
-// ============================================================================
-// Uses Script Properties to persist rate limit data across requests.
-// This cannot be bypassed by clearing browser storage or direct API calls.
-//
-// TO DISABLE FOR TESTING:
-// 1. Set IS_PRODUCTION = false (disables many security features), OR
-// 2. Comment out the checkServerRateLimit() call in doPost()
-// ============================================================================
-
-/**
- * Check if email has exceeded rate limit
- * Throws error if rate limit exceeded
- *
- * @param {string} email - Email address to check
- */
-function checkServerRateLimit(email) {
-  if (!email) return; // Skip if no email provided (will fail validation later anyway)
-
-  const scriptProperties = PropertiesService.getScriptProperties();
-  const key = 'ratelimit_' + email.replace(/[^a-z0-9@._-]/gi, '_'); // Sanitize key
-  const now = Date.now();
-  const windowMs = CONFIG.RATE_LIMIT_WINDOW_MS; // 1 hour
-
-  // Get existing timestamps for this email
-  let timestamps = [];
-  try {
-    const stored = scriptProperties.getProperty(key);
-    if (stored) {
-      timestamps = JSON.parse(stored);
-    }
-  } catch (e) {
-    // If parsing fails, start fresh
-    timestamps = [];
-  }
-
-  // Filter to only recent timestamps (within the rate limit window)
-  const recentTimestamps = timestamps.filter(function(ts) {
-    return (now - ts) < windowMs;
-  });
-
-  // Check if limit exceeded
-  if (recentTimestamps.length >= CONFIG.MAX_SUBMISSIONS_PER_HOUR) {
-    Logger.log('Rate limit exceeded for email: ' + email + ' (' + recentTimestamps.length + ' submissions in last hour)');
-    const error = new Error('Rate limit exceeded');
-    error.userMessage = 'Too many submissions. Please try again in 1 hour.';
-    throw error;
-  }
-
-  if (!IS_PRODUCTION) {
-    Logger.log('Rate limit check passed for ' + email + ': ' + recentTimestamps.length + '/' + CONFIG.MAX_SUBMISSIONS_PER_HOUR + ' submissions');
-  }
-}
-
-/**
- * Record a successful submission for rate limiting
- *
- * @param {string} email - Email address to record
- */
-function recordServerSubmission(email) {
-  if (!email) return;
-
-  const scriptProperties = PropertiesService.getScriptProperties();
-  const key = 'ratelimit_' + email.replace(/[^a-z0-9@._-]/gi, '_');
-  const now = Date.now();
-  const windowMs = CONFIG.RATE_LIMIT_WINDOW_MS;
-
-  // Get existing timestamps
-  let timestamps = [];
-  try {
-    const stored = scriptProperties.getProperty(key);
-    if (stored) {
-      timestamps = JSON.parse(stored);
-    }
-  } catch (e) {
-    timestamps = [];
-  }
-
-  // Filter to recent timestamps and add the new one
-  const recentTimestamps = timestamps.filter(function(ts) {
-    return (now - ts) < windowMs;
-  });
-  recentTimestamps.push(now);
-
-  // Save back to properties
-  scriptProperties.setProperty(key, JSON.stringify(recentTimestamps));
-
-  if (!IS_PRODUCTION) {
-    Logger.log('Recorded submission for ' + email + '. Total in window: ' + recentTimestamps.length);
-  }
-}
-
-/**
- * Utility function to clear rate limit for a specific email (for admin use)
- * Run this from the Apps Script editor to reset rate limit for testing
- *
- * @param {string} email - Email address to clear rate limit for
- */
-function clearRateLimitForEmail(email) {
-  const scriptProperties = PropertiesService.getScriptProperties();
-  const key = 'ratelimit_' + email.replace(/[^a-z0-9@._-]/gi, '_');
-  scriptProperties.deleteProperty(key);
-  Logger.log('Rate limit cleared for: ' + email);
-}
-
-/**
- * Utility function to clear ALL rate limits (for admin use)
- * Run this from the Apps Script editor to reset all rate limits
- */
-function clearAllRateLimits() {
-  const scriptProperties = PropertiesService.getScriptProperties();
-  const allProps = scriptProperties.getProperties();
-  let clearedCount = 0;
-
-  for (const key in allProps) {
-    if (key.startsWith('ratelimit_')) {
-      scriptProperties.deleteProperty(key);
-      clearedCount++;
-    }
-  }
-
-  Logger.log('Cleared ' + clearedCount + ' rate limit entries');
+  */
 }
 
 // ============================================================================
@@ -631,15 +459,7 @@ function validateAudioData(audioData) {
   }
 
   // Estimate file size (base64 is ~33% larger than original)
-  // Add null check for split result to handle malformed data
-  const splitData = audioData.split(',');
-  if (splitData.length < 2 || !splitData[1]) {
-    const error = new Error('Malformed audio data');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
-  }
-
-  const base64Length = splitData[1].length;
+  const base64Length = audioData.split(',')[1].length;
   const estimatedSizeBytes = (base64Length * 3) / 4;
   const estimatedSizeMB = estimatedSizeBytes / (1024 * 1024);
 
@@ -650,14 +470,7 @@ function validateAudioData(audioData) {
   }
 
   // Validate MIME type
-  const semicolonIndex = audioData.indexOf(';');
-  if (semicolonIndex === -1) {
-    const error = new Error('Invalid audio data format');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
-  }
-
-  const mimeType = audioData.substring(5, semicolonIndex);
+  const mimeType = audioData.substring(5, audioData.indexOf(';'));
   const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg'];
   if (!allowedTypes.includes(mimeType)) {
     const error = new Error('Invalid audio MIME type');
@@ -915,249 +728,67 @@ function sendEmailNotification(data) {
   }
 
   try {
-    const subject = '🛒 [' + data.submissionNumber + '] New Submission from ' + data.name;
+    const subject = '[' + data.submissionNumber + '] New CartCure Submission from ' + data.name;
 
-    // Paperlike theme colors (matching user confirmation email)
-    const colors = {
-      brandGreen: '#2d5d3f',
-      brandGreenLight: '#3a7a52',
-      paperWhite: '#f9f7f3',
-      paperCream: '#faf8f4',
-      paperBorder: '#d4cfc3',
-      inkBlack: '#2b2b2b',
-      inkGray: '#5a5a5a',
-      inkLight: '#8a8a8a',
-      alertBg: '#fff8e6',
-      alertBorder: '#f5d76e'
-    };
-
-    // Build professional HTML email body
+    // Build HTML email body with escaped data
     const htmlBody = `
-      <!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
-            <tr>
-              <td align="center" style="padding: 40px 20px;">
-                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: ${colors.paperWhite}; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+            <h2 style="color: #2d5d3f;">New Contact Form Submission</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Reference: <strong>${data.submissionNumber}</strong></p>
 
-                  <!-- Header -->
-                  <tr>
-                    <td style="padding: 25px 40px; background-color: ${colors.brandGreen};">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td>
-                            <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
-                              New Form Submission
-                            </h1>
-                          </td>
-                          <td align="right">
-                            <span style="color: rgba(255,255,255,0.9); font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                              CartCure Admin
-                            </span>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
+            <table style="width: 100%; border-collapse: collapse; background: white; padding: 20px;">
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Timestamp:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${data.timestamp}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Name:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${data.name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Email:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><a href="mailto:${data.email}">${data.email}</a></td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Store URL:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+                  ${data.storeUrl ? `<a href="${data.storeUrl}" target="_blank">${data.storeUrl}</a>` : 'Not provided'}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Message:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${data.message || 'Voice note only'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px;"><strong>Voice Note:</strong></td>
+                <td style="padding: 10px;">${data.hasVoiceNote ? 'Yes (check Google Sheet/Drive)' : 'No'}</td>
+              </tr>
+            </table>
 
-                  <!-- Reference Badge -->
-                  <tr>
-                    <td style="padding: 25px 40px 0 40px;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td style="background-color: ${colors.alertBg}; border: 2px solid ${colors.alertBorder}; border-radius: 6px; padding: 15px 20px;">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td>
-                                  <span style="color: ${colors.inkLight}; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                    Reference
-                                  </span><br>
-                                  <span style="color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                    ${data.submissionNumber}
-                                  </span>
-                                </td>
-                                <td align="right">
-                                  <span style="color: ${colors.inkGray}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                                    ${data.timestamp}
-                                  </span>
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                  <!-- Contact Details -->
-                  <tr>
-                    <td style="padding: 30px 40px;">
-                      <h2 style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: normal; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid ${colors.paperBorder}; padding-bottom: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                        Contact Details
-                      </h2>
-
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream}; border: 1px solid ${colors.paperBorder}; border-radius: 6px;">
-                        <tr>
-                          <td style="padding: 18px 20px; border-bottom: 1px solid ${colors.paperBorder};">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td width="100" style="color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; vertical-align: top;">
-                                  Name
-                                </td>
-                                <td style="color: ${colors.inkBlack}; font-size: 15px; font-weight: bold;">
-                                  ${data.name}
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 18px 20px; border-bottom: 1px solid ${colors.paperBorder};">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td width="100" style="color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; vertical-align: top;">
-                                  Email
-                                </td>
-                                <td>
-                                  <a href="mailto:${data.email}" style="color: ${colors.brandGreen}; font-size: 15px; text-decoration: none; font-weight: bold;">
-                                    ${data.email}
-                                  </a>
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 18px 20px;">
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                              <tr>
-                                <td width="100" style="color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; vertical-align: top;">
-                                  Store URL
-                                </td>
-                                <td>
-                                  ${data.storeUrl
-                                    ? `<a href="${data.storeUrl}" target="_blank" style="color: ${colors.brandGreen}; font-size: 15px; text-decoration: none;">${data.storeUrl}</a>`
-                                    : `<span style="color: ${colors.inkLight}; font-size: 15px; font-style: italic;">Not provided</span>`}
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                  <!-- Message Section -->
-                  <tr>
-                    <td style="padding: 0 40px 30px 40px;">
-                      <h2 style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: normal; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid ${colors.paperBorder}; padding-bottom: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                        Message
-                      </h2>
-
-                      <div style="background-color: #ffffff; border: 1px solid ${colors.paperBorder}; border-left: 4px solid ${colors.brandGreen}; border-radius: 0 6px 6px 0; padding: 20px;">
-                        <p style="margin: 0; color: ${colors.inkBlack}; font-size: 15px; line-height: 1.7; white-space: pre-wrap;">
-                          ${data.message || '<em style="color: ' + colors.inkLight + ';">No written message — voice note attached</em>'}
-                        </p>
-                      </div>
-
-                      ${data.hasVoiceNote ? `
-                      <div style="margin-top: 15px; background-color: ${colors.alertBg}; border: 1px solid ${colors.alertBorder}; border-radius: 6px; padding: 12px 16px;">
-                        <table role="presentation" cellspacing="0" cellpadding="0">
-                          <tr>
-                            <td style="padding-right: 10px; font-size: 18px;">🎤</td>
-                            <td style="color: ${colors.inkGray}; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                              <strong>Voice note attached</strong> — Check Google Sheet or Drive for audio file
-                            </td>
-                          </tr>
-                        </table>
-                      </div>
-                      ` : ''}
-                    </td>
-                  </tr>
-
-                  <!-- Action Button -->
-                  <tr>
-                    <td style="padding: 0 40px 35px 40px;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td align="center">
-                            <a href="https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/edit"
-                               target="_blank"
-                               style="display: inline-block; background-color: ${colors.brandGreen}; color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                              View in Google Sheets →
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                  <!-- Footer -->
-                  <tr>
-                    <td style="padding: 20px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder};">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td>
-                            <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                              CartCure Contact Form · Auto-generated notification
-                            </p>
-                          </td>
-                          <td align="right">
-                            <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen}; font-size: 12px; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                              cartcure.co.nz
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                </table>
-              </td>
-            </tr>
-          </table>
+            <p style="margin-top: 20px; font-size: 12px; color: #666;">
+              This email was automatically generated by the CartCure contact form.
+            </p>
+          </div>
         </body>
       </html>
     `;
 
     // Plain text version
     const plainBody = `
-══════════════════════════════════════════════════════
-   NEW CARTCURE FORM SUBMISSION
-══════════════════════════════════════════════════════
-
+New Contact Form Submission
 Reference: ${data.submissionNumber}
-Submitted: ${data.timestamp}
 
-──────────────────────────────────────────────────────
-CONTACT DETAILS
-──────────────────────────────────────────────────────
-
-Name:      ${data.name}
-Email:     ${data.email}
+Timestamp: ${data.timestamp}
+Name: ${data.name}
+Email: ${data.email}
 Store URL: ${data.storeUrl || 'Not provided'}
+Message: ${data.message || 'Voice note only'}
+Voice Note: ${data.hasVoiceNote ? 'Yes (check Google Sheet/Drive)' : 'No'}
 
-──────────────────────────────────────────────────────
-MESSAGE
-──────────────────────────────────────────────────────
-
-${data.message || '[Voice note only - no written message]'}
-
-${data.hasVoiceNote ? '🎤 Voice note attached - check Google Sheet/Drive for audio file\n' : ''}
-──────────────────────────────────────────────────────
-QUICK ACTIONS
-──────────────────────────────────────────────────────
-
-→ View Google Sheet: https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/edit
-→ Reply to customer: mailto:${data.email}
-
-══════════════════════════════════════════════════════
-CartCure Contact Form · https://cartcure.co.nz
+---
+This email was automatically generated by the CartCure contact form.
     `;
 
     // Send email
@@ -1165,8 +796,7 @@ CartCure Contact Form · https://cartcure.co.nz
       to: CONFIG.ADMIN_EMAIL,
       subject: subject,
       body: plainBody,
-      htmlBody: htmlBody,
-      name: 'CartCure Forms'
+      htmlBody: htmlBody
     });
 
     Logger.log('Email notification sent successfully');
@@ -1313,7 +943,7 @@ function sendUserConfirmationEmail(data) {
                             <table role="presentation" cellspacing="0" cellpadding="0">
                               <tr>
                                 <td style="width: 30px; vertical-align: top; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold;">3.</td>
-                                <td style="color: ${colors.inkBlack}; font-size: 15px; line-height: 1.6;">Once approved, we get to work — most fixes are completed within 7 days</td>
+                                <td style="color: ${colors.inkBlack}; font-size: 15px; line-height: 1.6;">Once approved, we get to work on your store</td>
                               </tr>
                             </table>
                           </td>
@@ -1370,7 +1000,7 @@ WHAT HAPPENS NEXT?
 ------------------
 1. We review your request and assess the work needed
 2. We'll email you a clear quote (no surprises!)
-3. Once approved, we get to work — most fixes are completed within 7 days
+3. Once approved, we get to work on your store
 
 Have questions in the meantime? Just reply to this email — we're happy to help.
 

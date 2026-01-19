@@ -24,7 +24,9 @@
       "Bash(cmd /c \"git status\")",
       "Bash(powershell -Command \"git status\")",
       "Bash(powershell -Command \"git status; git diff --stat; git log --oneline -3\")",
-      "Bash(powershell.exe -NoProfile -Command \"Write-Host ''Test''; git status\")"
+      "Bash(powershell.exe -NoProfile -Command \"Write-Host ''Test''; git status\")",
+      "Bash(clasp login:*)",
+      "Bash(clasp clone:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",

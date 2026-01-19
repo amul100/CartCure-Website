@@ -362,22 +362,11 @@
             return;
         }
 
-        // Check rate limiting (bypass for admin emails)
-        const emailValue = document.getElementById('email').value.trim().toLowerCase();
-        const adminEmails = ['redacted@example.com', 'redacted@example.com'];
-        const isAdmin = adminEmails.includes(emailValue);
-
-        console.log('Rate limit check - Email:', emailValue, 'Is Admin:', isAdmin);
-
-        if (!isAdmin && !checkRateLimit()) {
+        // Check client-side rate limiting
+        // Note: Server-side rate limiting is also enforced in google_apps_script.js
+        if (!checkRateLimit()) {
             showError(SecurityConfig.ERRORS.RATE_LIMIT);
             return;
-        }
-
-        // Clear rate limit history for admins (allows unlimited testing)
-        if (isAdmin) {
-            localStorage.removeItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY);
-            console.log('Admin detected - rate limit cleared');
         }
 
         // Get and sanitize inputs
@@ -496,24 +485,36 @@
                 body: formBody
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            console.log('Response headers:', response.headers);
+            // Debug logging - only in development
+            if (!IS_PRODUCTION) {
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+            }
 
             const responseText = await response.text();
-            console.log('Response text:', responseText);
 
-            const result = JSON.parse(responseText);
-
-            // Debug logging - ALWAYS log the response
-            console.log('=== SERVER RESPONSE ===');
-            console.log('Success:', result.success);
-            console.log('Message:', result.message);
-            if (result.error) {
-                console.log('Error:', result.error);
-                console.log('Error Type:', result.errorType);
+            // Parse response with error handling
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                if (!IS_PRODUCTION) {
+                    console.error('Failed to parse server response:', responseText);
+                }
+                throw new Error('Invalid server response');
             }
-            console.log('Full response:', result);
+
+            // Debug logging - only in development
+            if (!IS_PRODUCTION) {
+                console.log('=== SERVER RESPONSE ===');
+                console.log('Success:', result.success);
+                console.log('Message:', result.message);
+                if (result.error) {
+                    console.log('Error:', result.error);
+                    console.log('Error Type:', result.errorType);
+                }
+                console.log('Full response:', result);
+            }
 
             if (result.success) {
                 // Record submission for rate limiting
