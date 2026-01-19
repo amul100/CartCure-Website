@@ -458,7 +458,6 @@
 
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST',
-                mode: 'cors',
                 cache: 'no-cache',
                 redirect: 'follow',
                 body: formBody
