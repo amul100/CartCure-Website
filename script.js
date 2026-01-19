@@ -410,6 +410,26 @@
             return;
         }
 
+        // If recording is still active, stop it and wait for the blob
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopRecording();
+
+            // Wait for the blob to be created (onstop handler)
+            await new Promise(resolve => {
+                const checkBlob = setInterval(() => {
+                    if (recordedAudioBlob !== null) {
+                        clearInterval(checkBlob);
+                        resolve();
+                    }
+                }, 50);
+                // Timeout after 2 seconds to prevent infinite waiting
+                setTimeout(() => {
+                    clearInterval(checkBlob);
+                    resolve();
+                }, 2000);
+            });
+        }
+
         // Check that either message or voice note is provided
         const hasAudio = recordedAudioBlob !== null;
         if (!message && !hasAudio) {
@@ -499,8 +519,8 @@
                 // Record submission for rate limiting
                 recordSubmission();
 
-                // Show success message with submission number
-                button.textContent = '✓ Sent! Ref: ' + formData.submissionNumber;
+                // Show success message
+                button.textContent = '✓ Submitted Successfully!';
                 button.style.background = 'var(--accent-green)';
 
                 // Reset form after delay
