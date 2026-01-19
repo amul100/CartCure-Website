@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'google_apps_script.js'
+      - 'apps-script/**'
 
 jobs:
   deploy:
