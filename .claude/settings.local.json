@@ -26,7 +26,14 @@
       "Bash(powershell -Command \"git status; git diff --stat; git log --oneline -3\")",
       "Bash(powershell.exe -NoProfile -Command \"Write-Host ''Test''; git status\")",
       "Bash(clasp login:*)",
-      "Bash(clasp clone:*)"
+      "Bash(clasp clone:*)",
+      "Bash(git -C \"c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website\" log --oneline -10)",
+      "Bash(powershell -Command \"git log --oneline -10\")",
+      "Bash(powershell -Command \"cd 'c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website'; git log:*)",
+      "Bash(powershell -Command \"Set-Location ''c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website''; git log --oneline -10 | Out-String\")",
+      "Bash(git fetch:*)",
+      "Bash(gh api:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",
