@@ -1,0 +1,10 @@
+a362046 Restructure Apps Script for clasp deployment
+597971f Add GitHub Action for automatic Apps Script deployment
+93b7b0e Add user confirmation email and improve form UX
+7a50e6f Remove unused functions from google_apps_script.js
+29ce2de Add debug file logging and fix admin rate limit bypass
+344182e Fix URL escaping and add submission number debug logging
+ff53d10 Improve rate limit UX and add admin bypass
+36f691a Fix form submission network error
+184c363 Update website files and add favicon
+55ffcb3 Merge branch 'main' of https://github.com/amul100/CartCure-Website
