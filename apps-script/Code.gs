@@ -2700,7 +2700,6 @@ function showCompleteJobDialog() {
     'markJobComplete'
   );
 }
-}
 
 /**
  * Mark a job as complete
