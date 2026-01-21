@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartCure Job Management System - Deployment & User Guide</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #2b2b2b;
+            background: #ffffff;
+            padding: 20px;
+            max-width: 210mm;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #2d5d3f;
+            font-size: 32px;
+            margin: 40px 0 10px 0;
+            page-break-after: avoid;
+            border-bottom: 3px solid #2d5d3f;
+            padding-bottom: 10px;
+        }
+
+        h1:first-of-type {
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2d5d3f;
+            font-size: 24px;
+            margin: 30px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #3a3a3a;
+            font-size: 18px;
+            margin: 20px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+
+        ul, ol {
+            margin: 10px 0 10px 30px;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            page-break-inside: avoid;
+            background: #f9f7f3;
+            border: 2px solid #d4cfc3;
+        }
+
+        th {
+            background-color: #2d5d3f;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #d4cfc3;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        code {
+            background-color: #ece8df;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        pre {
+            background-color: #2b2b2b;
+            color: #f9f7f3;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        pre code {
+            background: none;
+            color: #f9f7f3;
+            padding: 0;
+        }
+
+        .alert {
+            background-color: #fff8e6;
+            border-left: 4px solid #f5d76e;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        .alert strong {
+            color: #856404;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border-left: 4px solid #2d5d3f;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        .info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 15px;
+            margin: 15px 0;
+            page-break-inside: avoid;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .cover {
+            text-align: center;
+            padding: 100px 0;
+            page-break-after: always;
+        }
+
+        .cover h1 {
+            font-size: 48px;
+            border: none;
+            margin-bottom: 20px;
+        }
+
+        .cover p {
+            font-size: 20px;
+            color: #5a5a5a;
+            margin: 10px 0;
+        }
+
+        .workflow-diagram {
+            background: #faf8f4;
+            border: 2px solid #d4cfc3;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre;
+            page-break-inside: avoid;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #d4cfc3;
+            margin: 30px 0;
+        }
+
+        .toc {
+            background: #faf8f4;
+            border: 2px solid #d4cfc3;
+            padding: 20px;
+            margin: 30px 0;
+            page-break-after: always;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cover">
+    <h1>CartCure Job Management System</h1>
+    <p>Deployment & User Guide</p>
+    <p style="margin-top: 60px; color: #8a8a8a; font-size: 16px;">
+        Complete workflow management with SLA tracking,<br>
+        professional quotes, and payment management
+    </p>
+    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 1.0</p>
+</div>
+
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+        <li><strong>Part 1:</strong> Deployment Instructions</li>
+        <li><strong>Part 2:</strong> Daily Workflow</li>
+        <li><strong>Part 3:</strong> Understanding the Dashboard</li>
+        <li><strong>Part 4:</strong> SLA Tracking</li>
+        <li><strong>Part 5:</strong> Reports</li>
+        <li><strong>Part 6:</strong> GST Handling</li>
+        <li><strong>Part 7:</strong> Quick Reference</li>
+        <li><strong>Part 8:</strong> Troubleshooting</li>
+        <li><strong>Part 9:</strong> Tips for Success</li>
+    </ul>
+</div>
+
+<h1>Part 1: Deployment Instructions</h1>
+
+<div class="info">
+    <strong>Prerequisites:</strong>
+    <ul>
+        <li>Access to your Google Apps Script project</li>
+        <li>The CartCure Google Sheet (already configured)</li>
+        <li>Clasp CLI installed (for deployment)</li>
+    </ul>
+</div>
+
+<h2>Step 1: Deploy the Updated Code</h2>
+
+<p>Open a terminal in the <code>apps-script</code> folder and run:</p>
+
+<pre><code>clasp push</code></pre>
+
+<p>This uploads the new Code.gs to your Google Apps Script project.</p>
+
+<h2>Step 2: Run Initial Setup</h2>
+
+<ol>
+    <li>Open your CartCure Google Sheet</li>
+    <li>Refresh the page (F5 or Ctrl+R)</li>
+    <li>Wait for the custom menu to appear (may take a few seconds)</li>
+    <li>Click: <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong></li>
+    <li>Authorize the script when prompted</li>
+    <li>Wait for "Setup Complete" confirmation</li>
+</ol>
+
+<div class="success">
+    <strong>This creates four new sheets:</strong>
+    <ul>
+        <li><strong>Dashboard</strong> - Your daily workflow view</li>
+        <li><strong>Jobs</strong> - All job tracking data</li>
+        <li><strong>Invoice Log</strong> - Invoice records</li>
+        <li><strong>Settings</strong> - Your business configuration</li>
+    </ul>
+</div>
+
+<h2>Step 3: Configure Your Settings</h2>
+
+<p>Go to the <strong>Settings</strong> sheet and fill in:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Setting</th>
+            <th>What to Enter</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Business Name</td>
+            <td>CartCure (or your business name)</td>
+        </tr>
+        <tr>
+            <td>GST Registered</td>
+            <td>Yes or No</td>
+        </tr>
+        <tr>
+            <td>GST Number</td>
+            <td>Your GST number (if registered)</td>
+        </tr>
+        <tr>
+            <td>Bank Account</td>
+            <td>Your bank account number</td>
+        </tr>
+        <tr>
+            <td>Bank Name</td>
+            <td>Your bank name (ANZ, ASB, etc.)</td>
+        </tr>
+        <tr>
+            <td>Admin Email</td>
+            <td>Your email for notifications</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>Leave the other settings at their defaults unless you want to change them.</p>
+
+<h2>Step 4: Verify Deployment</h2>
+
+<p>Test that everything works:</p>
+
+<ol>
+    <li>Click <strong>🛒 CartCure &gt; 📊 Dashboard &gt; Refresh Dashboard</strong></li>
+    <li>Check that no errors appear</li>
+    <li>The Dashboard should show "Last refreshed: [current time]"</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h1>Part 2: Daily Workflow</h1>
+
+<h2>Your Morning Routine</h2>
+
+<ol>
+    <li><strong>Open the Dashboard sheet</strong>
+        <ul>
+            <li>This is your command center</li>
+            <li>Shows all active jobs sorted by urgency</li>
+        </ul>
+    </li>
+    <li><strong>Check the Summary Metrics</strong>
+        <ul>
+            <li>Jobs OVERDUE (red) - Handle these first!</li>
+            <li>Jobs AT RISK (yellow) - Due within 2 days</li>
+            <li>Jobs In Progress - Currently being worked on</li>
+        </ul>
+    </li>
+    <li><strong>Click "Refresh Dashboard"</strong> to update all calculations</li>
+</ol>
+
+<h2>Processing a New Submission</h2>
+
+<p>When a customer submits a request via your website:</p>
+
+<h3>Step 1: Create a Job</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Create Job from Submission</strong></li>
+    <li>Enter the Submission # (e.g., CC-20260121-12345)</li>
+    <li>Click OK</li>
+</ol>
+
+<h3>Step 2: Prepare the Quote</h3>
+<ol>
+    <li>Go to the <strong>Jobs</strong> sheet</li>
+    <li>Find your new job (JOB-001, JOB-002, etc.)</li>
+    <li>Fill in:
+        <ul>
+            <li><strong>Category</strong>: Design, Content, Bug Fix, Improvement, App Setup, or Other</li>
+            <li><strong>Quote Amount (excl GST)</strong>: Your price (e.g., 100)</li>
+            <li><strong>Job Description</strong>: Refine the description if needed</li>
+            <li><strong>Estimated Turnaround</strong>: Days to complete (default: 7)</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>Step 3: Send the Quote</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 💰 Quotes &gt; Send Quote</strong></li>
+    <li>Enter the Job # (e.g., JOB-001)</li>
+    <li>Click OK</li>
+</ol>
+
+<div class="success">
+    The client receives a professional quote email with:
+    <ul>
+        <li>Scope of work</li>
+        <li>Pricing (with GST breakdown if registered)</li>
+        <li>Turnaround time</li>
+        <li>"Accept Quote" button</li>
+        <li>Your bank details</li>
+    </ul>
+</div>
+
+<h2>When Client Accepts a Quote</h2>
+
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Quote Accepted</strong></li>
+    <li>Enter the Job #</li>
+    <li>Click OK</li>
+</ol>
+
+<div class="alert">
+    <strong>Important:</strong> This starts the 7-day SLA clock!<br><br>
+    The system now tracks:
+    <ul>
+        <li>Days Since Accepted</li>
+        <li>Days Remaining</li>
+        <li>SLA Status (On Track / AT RISK / OVERDUE)</li>
+    </ul>
+</div>
+
+<h2>Working on a Job</h2>
+
+<h3>Start Work</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Start Work on Job</strong></li>
+    <li>Enter the Job #</li>
+    <li>Status changes to "In Progress"</li>
+</ol>
+
+<h3>Complete the Job</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Job Complete</strong></li>
+    <li>Enter the Job #</li>
+    <li>You'll be asked if you want to generate an invoice</li>
+</ol>
+
+<h3>Put on Hold (if needed)</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Put Job On Hold</strong></li>
+    <li>Enter the Job #</li>
+    <li>Use this when waiting for client info</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h2>Invoicing & Payments</h2>
+
+<h3>Generate an Invoice</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Generate Invoice</strong></li>
+    <li>Enter the Job #</li>
+    <li>Invoice number is auto-generated (INV-2026-001)</li>
+</ol>
+
+<h3>Send the Invoice</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Invoice</strong></li>
+    <li>Enter the Invoice # (e.g., INV-2026-001)</li>
+    <li>Client receives professional invoice email</li>
+</ol>
+
+<h3>Record Payment</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Mark as Paid</strong></li>
+    <li>Enter the Invoice #</li>
+    <li>Enter payment method (Bank Transfer, Stripe, etc.)</li>
+    <li>Enter reference number (optional)</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h1>Part 3: Understanding the Dashboard</h1>
+
+<h2>Summary Metrics Section</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Metric</th>
+            <th>What It Means</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Jobs OVERDUE</td>
+            <td>Past their due date - handle immediately</td>
+        </tr>
+        <tr>
+            <td>Jobs AT RISK</td>
+            <td>Due within 2 days - prioritize these</td>
+        </tr>
+        <tr>
+            <td>Jobs In Progress</td>
+            <td>Currently being worked on</td>
+        </tr>
+        <tr>
+            <td>Jobs Awaiting Quote</td>
+            <td>Need quotes prepared</td>
+        </tr>
+        <tr>
+            <td>Pending Quotes (sent)</td>
+            <td>Waiting for client response</td>
+        </tr>
+        <tr>
+            <td>Unpaid Invoices</td>
+            <td>Total $ outstanding</td>
+        </tr>
+        <tr>
+            <td>Revenue This Month</td>
+            <td>Paid invoices this month</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Active Jobs Section</h2>
+
+<p>Shows jobs sorted by urgency:</p>
+<ul>
+    <li><strong>OVERDUE</strong> (red) - Negative days remaining</li>
+    <li><strong>AT RISK</strong> (yellow) - 1-2 days remaining</li>
+    <li><strong>On Track</strong> (green) - 3+ days remaining</li>
+</ul>
+
+<p>Oldest/most urgent jobs appear first.</p>
+
+<h2>Pending Quotes Section</h2>
+
+<p>Shows quotes awaiting client response:</p>
+<ul>
+    <li>Sorted by how long they've been waiting</li>
+    <li>"Follow up!" appears after 5 days</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1>Part 4: SLA Tracking</h1>
+
+<h2>The 7-Day Promise</h2>
+
+<p>Your SLA clock starts when you click "Mark Quote Accepted".</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Days Remaining</th>
+            <th>Status</th>
+            <th>Color</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>3+ days</td>
+            <td>On Track</td>
+            <td>Green</td>
+            <td>Normal priority</td>
+        </tr>
+        <tr>
+            <td>1-2 days</td>
+            <td>AT RISK</td>
+            <td>Yellow</td>
+            <td>Prioritize this job</td>
+        </tr>
+        <tr>
+            <td>0 or less</td>
+            <td>OVERDUE</td>
+            <td>Red</td>
+            <td>Complete immediately</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Keeping on Track</h2>
+
+<ol>
+    <li><strong>Refresh Dashboard daily</strong> - Updates all SLA calculations</li>
+    <li><strong>Work OVERDUE jobs first</strong> - They're past due</li>
+    <li><strong>Then AT RISK jobs</strong> - Due within 2 days</li>
+    <li><strong>Then On Track jobs</strong> - In order of due date</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h1>Part 5: Reports</h1>
+
+<h2>Overdue Jobs Report</h2>
+<p><strong>🛒 CartCure &gt; 📈 Reports &gt; Overdue Jobs</strong></p>
+<p>Lists all jobs that are past their due date.</p>
+
+<h2>Outstanding Payments Report</h2>
+<p><strong>🛒 CartCure &gt; 📈 Reports &gt; Outstanding Payments</strong></p>
+<p>Shows:</p>
+<ul>
+    <li>Total amount outstanding</li>
+    <li>List of unpaid jobs with amounts</li>
+</ul>
+
+<h2>Monthly Summary</h2>
+<p><strong>🛒 CartCure &gt; 📈 Reports &gt; Monthly Summary</strong></p>
+<p>Shows for current month:</p>
+<ul>
+    <li>Jobs Started</li>
+    <li>Jobs Completed</li>
+    <li>Revenue Collected</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1>Part 6: GST Handling</h1>
+
+<h2>If You're GST Registered</h2>
+
+<ol>
+    <li>Go to Settings sheet</li>
+    <li>Set "GST Registered" to "Yes"</li>
+    <li>Enter your GST Number</li>
+</ol>
+
+<p>Quotes and invoices will show:</p>
+<ul>
+    <li>Subtotal (excl GST)</li>
+    <li>GST (15%)</li>
+    <li>Total (incl GST)</li>
+    <li>Your GST number in footer</li>
+</ul>
+
+<h2>If You're NOT GST Registered</h2>
+
+<ol>
+    <li>Go to Settings sheet</li>
+    <li>Set "GST Registered" to "No"</li>
+</ol>
+
+<p>Quotes and invoices will show:</p>
+<ul>
+    <li>Total amount only (no GST breakdown)</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1>Part 7: Quick Reference</h1>
+
+<h2>Menu Locations</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Refresh Dashboard</td>
+            <td>CartCure &gt; Dashboard &gt; Refresh Dashboard</td>
+        </tr>
+        <tr>
+            <td>Create Job</td>
+            <td>CartCure &gt; Jobs &gt; Create Job from Submission</td>
+        </tr>
+        <tr>
+            <td>Accept Quote</td>
+            <td>CartCure &gt; Jobs &gt; Mark Quote Accepted</td>
+        </tr>
+        <tr>
+            <td>Start Work</td>
+            <td>CartCure &gt; Jobs &gt; Start Work on Job</td>
+        </tr>
+        <tr>
+            <td>Complete Job</td>
+            <td>CartCure &gt; Jobs &gt; Mark Job Complete</td>
+        </tr>
+        <tr>
+            <td>Send Quote</td>
+            <td>CartCure &gt; Quotes &gt; Send Quote</td>
+        </tr>
+        <tr>
+            <td>Send Reminder</td>
+            <td>CartCure &gt; Quotes &gt; Send Quote Reminder</td>
+        </tr>
+        <tr>
+            <td>Generate Invoice</td>
+            <td>CartCure &gt; Invoices &gt; Generate Invoice</td>
+        </tr>
+        <tr>
+            <td>Send Invoice</td>
+            <td>CartCure &gt; Invoices &gt; Send Invoice</td>
+        </tr>
+        <tr>
+            <td>Mark Paid</td>
+            <td>CartCure &gt; Invoices &gt; Mark as Paid</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Job Status Flow</h2>
+
+<div class="workflow-diagram">
+Pending Quote → Quoted → Accepted → In Progress → Completed
+                  ↓                      ↓
+              Declined              On Hold
+</div>
+
+<h2>Payment Status Flow</h2>
+
+<div class="workflow-diagram">
+Unpaid → Invoiced → Paid
+</div>
+
+<div class="page-break"></div>
+
+<h1>Part 8: Troubleshooting</h1>
+
+<h2>Menu Not Appearing</h2>
+<ul>
+    <li>Refresh the page</li>
+    <li>Wait 5-10 seconds for scripts to load</li>
+    <li>Try closing and reopening the spreadsheet</li>
+</ul>
+
+<h2>"Sheet Not Found" Error</h2>
+<ul>
+    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong> again</li>
+    <li>Check that all sheets exist (Dashboard, Jobs, Invoice Log, Settings)</li>
+</ul>
+
+<h2>Quote Email Not Sending</h2>
+<ul>
+    <li>Check that Quote Amount is filled in</li>
+    <li>Verify client email is correct in Jobs sheet</li>
+    <li>Check Apps Script execution log for errors</li>
+</ul>
+
+<h2>SLA Not Calculating</h2>
+<ul>
+    <li>Click <strong>Refresh Dashboard</strong> to update calculations</li>
+    <li>Ensure "Quote Accepted Date" is set</li>
+    <li>Check that status is "Accepted" or "In Progress"</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1>Part 9: Tips for Success</h1>
+
+<ol>
+    <li><strong>Start each day with Dashboard</strong> - Know your priorities</li>
+    <li><strong>Refresh Dashboard often</strong> - Keeps SLA calculations current</li>
+    <li><strong>Update status promptly</strong> - Keeps tracking accurate</li>
+    <li><strong>Send quotes same day</strong> - Fast response wins jobs</li>
+    <li><strong>Follow up on old quotes</strong> - Dashboard highlights 5+ day old quotes</li>
+    <li><strong>Complete jobs before OVERDUE</strong> - Maintain your reputation</li>
+    <li><strong>Invoice immediately after completion</strong> - Faster payment</li>
+    <li><strong>Record payments when received</strong> - Accurate financial tracking</li>
+</ol>
+
+<hr>
+
+<div style="text-align: center; margin-top: 60px; color: #8a8a8a;">
+    <p><strong>CartCure Job Management System v1.0</strong></p>
+    <p>Built for CartCure - Quick Shopify Fixes for NZ Businesses</p>
+    <p style="margin-top: 20px;">For support, review the troubleshooting section or contact your developer.</p>
+</div>
+
+<div class="no-print" style="margin-top: 40px; padding: 20px; background: #d4edda; border: 2px solid #2d5d3f; text-align: center;">
+    <h2 style="margin-top: 0;">How to Save as PDF</h2>
+    <p><strong>Chrome/Edge:</strong> Press Ctrl+P → Select "Save as PDF" → Click Save</p>
+    <p><strong>Firefox:</strong> Press Ctrl+P → Select "Microsoft Print to PDF" → Click Print</p>
+</div>
+
+</body>
+</html>
