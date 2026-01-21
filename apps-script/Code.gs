@@ -1827,40 +1827,13 @@ function createDashboardSheet(ss) {
 }
 
 /**
- * Update Submissions sheet with Status and Job # columns
+ * Update Submissions sheet - no longer adds tracking columns
+ * Tracking is now done via the Jobs sheet lookup
  */
 function updateSubmissionsSheet(ss) {
-  const sheet = ss.getSheetByName(SHEETS.SUBMISSIONS) || ss.getActiveSheet();
-
-  // Check if Status column exists
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
-  if (!headers.includes('Status')) {
-    const nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue('Status');
-    sheet.getRange(1, nextCol).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
-
-    // Add data validation
-    const statusRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(['New', 'Quoted', 'Accepted', 'In Progress', 'Completed', 'Declined'], true)
-      .setAllowInvalid(false)
-      .build();
-    sheet.getRange(2, nextCol, 500, 1).setDataValidation(statusRule);
-
-    // Set all existing rows to 'New'
-    const lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-      sheet.getRange(2, nextCol, lastRow - 1, 1).setValue('New');
-    }
-  }
-
-  if (!headers.includes('Job #')) {
-    const nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue('Job #');
-    sheet.getRange(1, nextCol).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
-  }
-
-  Logger.log('Submissions sheet updated successfully');
+  // This function now does nothing - keeping it for backward compatibility
+  // All submission tracking is done via Dashboard showing unprocessed submissions
+  Logger.log('Submissions sheet - no changes needed (tracking via Dashboard)');
 }
 
 // ============================================================================
@@ -2097,17 +2070,6 @@ function createJobFromSubmission(submissionNumber) {
   }
 
   jobsSheet.appendRow(jobRow);
-
-  // Update submission with job number and status
-  const statusCol = headers.indexOf('Status');
-  const jobCol = headers.indexOf('Job #');
-
-  if (statusCol >= 0) {
-    submissionsSheet.getRange(submissionRowIndex, statusCol + 1).setValue('Quoted');
-  }
-  if (jobCol >= 0) {
-    submissionsSheet.getRange(submissionRowIndex, jobCol + 1).setValue(jobNumber);
-  }
 
   ui.alert('Job Created',
     'Job ' + jobNumber + ' created successfully!\n\n' +
