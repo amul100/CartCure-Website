@@ -287,6 +287,8 @@ Quotes and invoices will show:
 | Generate Invoice | CartCure > Invoices > Generate Invoice |
 | Send Invoice | CartCure > Invoices > Send Invoice |
 | Mark Paid | CartCure > Invoices > Mark as Paid |
+| Setup Sheets | CartCure > ⚙️ Setup Sheets |
+| Hard Reset | CartCure > ⚠️ Hard Reset (Delete All Data) |
 
 ## Job Status Flow
 
@@ -344,6 +346,86 @@ Unpaid → Invoiced → Paid
 7. **Invoice immediately after completion** - Faster payment
 
 8. **Record payments when received** - Accurate financial tracking
+
+---
+
+# Part 10: Hard Reset - Fresh Start
+
+⚠️ **Warning:** The Hard Reset feature permanently deletes all data. Use only when you need to start completely fresh (e.g., during initial testing or when transitioning to production).
+
+## What is Hard Reset?
+
+Hard Reset is a powerful feature that allows you to completely wipe all job, invoice, and submission data from your system, returning it to a fresh state as if you just ran Setup for the first time.
+
+## What Gets Deleted
+
+- **All Jobs** - Every job record will be permanently removed
+- **All Invoices** - Complete invoice history will be deleted
+- **All Submissions** - All enquiry/submission records will be cleared
+- **Dashboard Data** - All displayed data will be reset
+- **Job & Invoice Counters** - Reset back to 1 (next job will be JOB-001)
+
+## What Gets Preserved
+
+- **Settings Sheet** - Your business details, GST configuration, bank details
+- **Sheet Structures** - All sheets, headers, and formatting remain intact
+- **Menu System** - All functionality remains available
+
+## How to Perform a Hard Reset
+
+**Two-Stage Safety System:** The Hard Reset requires two separate confirmations to prevent accidental data loss.
+
+1. **Navigate to the Menu**
+   - Click **🛒 CartCure > ⚠️ Hard Reset (Delete All Data)**
+
+2. **First Confirmation Dialog**
+   - Read the warning about what will be deleted
+   - Click **YES** to continue, or **NO** to cancel
+
+3. **Second Confirmation - Type RESET**
+   - A text prompt will appear
+   - You must type exactly: `RESET` (all capitals)
+   - Typing anything else will cancel the operation
+   - Click **OK** to proceed, or **Cancel** to abort
+
+4. **Automatic Reconfiguration**
+   - After deletion, the system automatically runs Setup Sheets
+   - All sheets are reconfigured with proper formatting
+   - System is ready to use immediately
+
+5. **Confirmation Message**
+   - A success message confirms all data has been deleted
+   - Your system is now in a fresh state
+
+## When to Use Hard Reset
+
+**Good Use Cases:**
+- **Initial Testing** - Clear test data before going live
+- **Training Period** - Reset after practice runs
+- **Development to Production** - Clean slate when starting real work
+- **Major Mistakes** - Start over after significant data entry errors
+
+**Think Twice:**
+- ❌ **Never use during active operations** - You'll lose all business records
+- ❌ **Not for minor corrections** - Use job edit functions instead
+- ❌ **No undo** - Data cannot be recovered after Hard Reset
+
+## Alternative: Manual Data Cleanup
+
+If you only need to remove specific jobs or invoices:
+
+1. Go to the **Jobs** or **Invoice Log** sheet
+2. Select the row(s) you want to delete
+3. Right-click → Delete row
+4. Refresh the Dashboard to update calculations
+
+## Post-Reset Steps
+
+After a Hard Reset, you're ready to start fresh:
+
+1. **Verify Settings** - Check your Settings sheet is still configured correctly
+2. **Refresh Dashboard** - Run **CartCure > Dashboard > Refresh Dashboard**
+3. **Ready to Use** - Create your first job from a submission
 
 ---
 
