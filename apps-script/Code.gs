@@ -3605,14 +3605,20 @@ function showHardResetDialog() {
   // Execute the hard reset
   try {
     performHardReset();
+
+    // Run Setup Sheets to ensure everything is properly configured
+    Logger.log('Running Setup Sheets after hard reset...');
+    setupJobManagementSheets();
+
     ui.alert(
       '✅ Hard Reset Complete',
-      'All data has been deleted:\n\n' +
+      'All data has been deleted and sheets have been reset:\n\n' +
       '• Jobs sheet cleared\n' +
       '• Invoices cleared\n' +
       '• Submissions cleared\n' +
       '• Dashboard cleared\n' +
-      '• Job and Invoice counters reset to 1\n\n' +
+      '• Job and Invoice counters reset to 1\n' +
+      '• All sheets reconfigured\n\n' +
       'Your system is now in a fresh state.',
       ui.ButtonSet.OK
     );
