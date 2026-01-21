@@ -246,6 +246,7 @@
         <li><a href="#part7"><strong>Part 7:</strong> Quick Reference</a></li>
         <li><a href="#part8"><strong>Part 8:</strong> Troubleshooting</a></li>
         <li><a href="#part9"><strong>Part 9:</strong> Tips for Success</a></li>
+        <li><a href="#part10"><strong>Part 10:</strong> Hard Reset - Fresh Start</a></li>
     </ul>
 </div>
 
@@ -696,6 +697,14 @@
             <td>Mark Paid</td>
             <td>CartCure &gt; Invoices &gt; Mark as Paid</td>
         </tr>
+        <tr>
+            <td>Setup Sheets</td>
+            <td>CartCure &gt; ⚙️ Setup Sheets</td>
+        </tr>
+        <tr>
+            <td>Hard Reset</td>
+            <td>CartCure &gt; ⚠️ Hard Reset (Delete All Data)</td>
+        </tr>
     </tbody>
 </table>
 
@@ -757,6 +766,119 @@ Unpaid → Invoiced → Paid
     <li><strong>Complete jobs before OVERDUE</strong> - Maintain your reputation</li>
     <li><strong>Invoice immediately after completion</strong> - Faster payment</li>
     <li><strong>Record payments when received</strong> - Accurate financial tracking</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h1 id="part10">Part 10: Hard Reset - Fresh Start</h1>
+
+<div class="alert">
+    <strong>⚠️ Warning:</strong> The Hard Reset feature permanently deletes all data. Use only when you need to start completely fresh (e.g., during initial testing or when transitioning to production).
+</div>
+
+<h2>What is Hard Reset?</h2>
+
+<p>Hard Reset is a powerful feature that allows you to completely wipe all job, invoice, and submission data from your system, returning it to a fresh state as if you just ran Setup for the first time.</p>
+
+<h2>What Gets Deleted</h2>
+
+<ul>
+    <li><strong>All Jobs</strong> - Every job record will be permanently removed</li>
+    <li><strong>All Invoices</strong> - Complete invoice history will be deleted</li>
+    <li><strong>All Submissions</strong> - All enquiry/submission records will be cleared</li>
+    <li><strong>Dashboard Data</strong> - All displayed data will be reset</li>
+    <li><strong>Job & Invoice Counters</strong> - Reset back to 1 (next job will be JOB-001)</li>
+</ul>
+
+<h2>What Gets Preserved</h2>
+
+<ul>
+    <li><strong>Settings Sheet</strong> - Your business details, GST configuration, bank details</li>
+    <li><strong>Sheet Structures</strong> - All sheets, headers, and formatting remain intact</li>
+    <li><strong>Menu System</strong> - All functionality remains available</li>
+</ul>
+
+<h2>How to Perform a Hard Reset</h2>
+
+<div class="info">
+    <strong>Two-Stage Safety System:</strong> The Hard Reset requires two separate confirmations to prevent accidental data loss.
+</div>
+
+<ol>
+    <li><strong>Navigate to the Menu</strong>
+        <ul>
+            <li>Click <strong>🛒 CartCure &gt; ⚠️ Hard Reset (Delete All Data)</strong></li>
+        </ul>
+    </li>
+    <li><strong>First Confirmation Dialog</strong>
+        <ul>
+            <li>Read the warning about what will be deleted</li>
+            <li>Click <strong>YES</strong> to continue, or <strong>NO</strong> to cancel</li>
+        </ul>
+    </li>
+    <li><strong>Second Confirmation - Type RESET</strong>
+        <ul>
+            <li>A text prompt will appear</li>
+            <li>You must type exactly: <code>RESET</code> (all capitals)</li>
+            <li>Typing anything else will cancel the operation</li>
+            <li>Click <strong>OK</strong> to proceed, or <strong>Cancel</strong> to abort</li>
+        </ul>
+    </li>
+    <li><strong>Automatic Reconfiguration</strong>
+        <ul>
+            <li>After deletion, the system automatically runs Setup Sheets</li>
+            <li>All sheets are reconfigured with proper formatting</li>
+            <li>System is ready to use immediately</li>
+        </ul>
+    </li>
+    <li><strong>Confirmation Message</strong>
+        <ul>
+            <li>A success message confirms all data has been deleted</li>
+            <li>Your system is now in a fresh state</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>When to Use Hard Reset</h2>
+
+<div class="success">
+    <strong>Good Use Cases:</strong>
+    <ul>
+        <li><strong>Initial Testing</strong> - Clear test data before going live</li>
+        <li><strong>Training Period</strong> - Reset after practice runs</li>
+        <li><strong>Development to Production</strong> - Clean slate when starting real work</li>
+        <li><strong>Major Mistakes</strong> - Start over after significant data entry errors</li>
+    </ul>
+</div>
+
+<div class="alert">
+    <strong>Think Twice:</strong>
+    <ul>
+        <li><strong>❌ Never use during active operations</strong> - You'll lose all business records</li>
+        <li><strong>❌ Not for minor corrections</strong> - Use job edit functions instead</li>
+        <li><strong>❌ No undo</strong> - Data cannot be recovered after Hard Reset</li>
+    </ul>
+</div>
+
+<h2>Alternative: Manual Data Cleanup</h2>
+
+<p>If you only need to remove specific jobs or invoices:</p>
+
+<ol>
+    <li>Go to the <strong>Jobs</strong> or <strong>Invoice Log</strong> sheet</li>
+    <li>Select the row(s) you want to delete</li>
+    <li>Right-click → Delete row</li>
+    <li>Refresh the Dashboard to update calculations</li>
+</ol>
+
+<h2>Post-Reset Steps</h2>
+
+<p>After a Hard Reset, you're ready to start fresh:</p>
+
+<ol>
+    <li><strong>Verify Settings</strong> - Check your Settings sheet is still configured correctly</li>
+    <li><strong>Refresh Dashboard</strong> - Run <strong>CartCure &gt; Dashboard &gt; Refresh Dashboard</strong></li>
+    <li><strong>Ready to Use</strong> - Create your first job from a submission</li>
 </ol>
 
 <hr>
