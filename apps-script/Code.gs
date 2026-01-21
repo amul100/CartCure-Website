@@ -1485,6 +1485,7 @@ function onOpen() {
       .addItem('Monthly Summary', 'showMonthlySummary'))
     .addSeparator()
     .addItem('⚙️ Setup Sheets', 'setupJobManagementSheets')
+    .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
     .addToUi();
 }
 
@@ -3543,4 +3544,154 @@ function showMonthlySummary() {
     'Revenue Collected: ' + formatCurrency(revenue),
     ui.ButtonSet.OK
   );
+}
+
+// ============================================================================
+// HARD RESET FUNCTIONS
+// ============================================================================
+
+/**
+ * Show hard reset confirmation dialog
+ */
+function showHardResetDialog() {
+  const ui = SpreadsheetApp.getUi();
+
+  // First warning dialog
+  const firstWarning = ui.alert(
+    '⚠️ HARD RESET - PERMANENT DATA DELETION',
+    '⚠️ WARNING: This will PERMANENTLY DELETE ALL:\n\n' +
+    '• All Jobs\n' +
+    '• All Invoices\n' +
+    '• All Submissions/Enquiries\n' +
+    '• Dashboard data\n\n' +
+    '❌ THIS CANNOT BE UNDONE!\n\n' +
+    'Are you absolutely sure you want to continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (firstWarning === ui.Button.NO) {
+    ui.alert('Hard Reset Cancelled', 'No data was deleted.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Second confirmation - must type RESET
+  const confirmText = ui.prompt(
+    '⚠️ FINAL CONFIRMATION REQUIRED',
+    '⚠️ THIS IS YOUR LAST CHANCE TO CANCEL!\n\n' +
+    'All jobs, invoices, and enquiries will be PERMANENTLY DELETED.\n\n' +
+    'To proceed, type exactly: RESET\n\n' +
+    '(Type anything else to cancel)',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (confirmText.getSelectedButton() === ui.Button.CANCEL) {
+    ui.alert('Hard Reset Cancelled', 'No data was deleted.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const userInput = confirmText.getResponseText().trim();
+
+  if (userInput !== 'RESET') {
+    ui.alert(
+      'Hard Reset Cancelled',
+      'You typed: "' + userInput + '"\n\n' +
+      'Expected: "RESET"\n\n' +
+      'No data was deleted.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Execute the hard reset
+  try {
+    performHardReset();
+    ui.alert(
+      '✅ Hard Reset Complete',
+      'All data has been deleted:\n\n' +
+      '• Jobs sheet cleared\n' +
+      '• Invoices cleared\n' +
+      '• Submissions cleared\n' +
+      '• Dashboard cleared\n' +
+      '• Job and Invoice counters reset to 1\n\n' +
+      'Your system is now in a fresh state.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    ui.alert('Error During Hard Reset', 'An error occurred: ' + error.toString(), ui.ButtonSet.OK);
+    Logger.log('Hard Reset Error: ' + error);
+  }
+}
+
+/**
+ * Perform the actual hard reset - delete all data
+ */
+function performHardReset() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+
+  Logger.log('Starting hard reset...');
+
+  // Clear Jobs sheet (keep header row)
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  if (jobsSheet) {
+    const lastRow = jobsSheet.getLastRow();
+    if (lastRow > 1) {
+      jobsSheet.deleteRows(2, lastRow - 1);
+    }
+    Logger.log('Jobs sheet cleared');
+  }
+
+  // Clear Invoice Log sheet (keep header row)
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+  if (invoiceSheet) {
+    const lastRow = invoiceSheet.getLastRow();
+    if (lastRow > 1) {
+      invoiceSheet.deleteRows(2, lastRow - 1);
+    }
+    Logger.log('Invoice Log cleared');
+  }
+
+  // Clear Submissions sheet (keep header row)
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  if (submissionsSheet) {
+    const lastRow = submissionsSheet.getLastRow();
+    if (lastRow > 1) {
+      submissionsSheet.deleteRows(2, lastRow - 1);
+    }
+    Logger.log('Submissions cleared');
+  }
+
+  // Clear Dashboard data areas (keep structure/headers)
+  const dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+  if (dashboardSheet) {
+    // Clear summary metrics (rows 3-9, column B)
+    dashboardSheet.getRange('B3:B9').clearContent();
+
+    // Clear active jobs section (rows 13-32)
+    dashboardSheet.getRange('A13:G32').clearContent();
+
+    // Clear pending quotes section (rows 36-45)
+    dashboardSheet.getRange('A36:F45').clearContent();
+
+    // Update last refreshed timestamp
+    dashboardSheet.getRange('A1').setValue('Last refreshed: ' + formatNZDate(new Date()));
+
+    Logger.log('Dashboard cleared');
+  }
+
+  // Reset counters in Settings sheet
+  const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+  if (settingsSheet) {
+    const data = settingsSheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === 'Next Job Number') {
+        settingsSheet.getRange(i + 1, 2).setValue(1);
+      }
+      if (data[i][0] === 'Next Invoice Number') {
+        settingsSheet.getRange(i + 1, 2).setValue(1);
+      }
+    }
+    Logger.log('Settings counters reset');
+  }
+
+  Logger.log('Hard reset completed successfully');
 }
