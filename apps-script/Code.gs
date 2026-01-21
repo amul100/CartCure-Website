@@ -784,7 +784,8 @@ function saveToSheet(data) {
         'Store URL',
         'Message',
         'Has Voice Note',
-        'Voice Note Link'
+        'Voice Note Link',
+        'Status'
       ]);
     }
 
@@ -797,7 +798,7 @@ function saveToSheet(data) {
     // Find the first empty row (starting from row 2 to skip headers)
     const targetRow = findFirstEmptyRow(sheet);
 
-    // Prepare the row data
+    // Prepare the row data with Status set to 'New'
     const rowData = [
       data.submissionNumber,
       data.timestamp,
@@ -806,7 +807,8 @@ function saveToSheet(data) {
       data.storeUrl,
       data.message,
       data.hasVoiceNote ? 'Yes' : 'No',
-      audioFileUrl
+      audioFileUrl,
+      'New'
     ];
 
     // Write to the target row
@@ -825,7 +827,7 @@ function saveToSheet(data) {
  */
 function findFirstEmptyRow(sheet) {
   const lastRow = sheet.getLastRow();
-  const numCols = 8; // Number of data columns
+  const numCols = 9; // Number of data columns (including Status)
 
   // If sheet only has headers or is empty, return row 2
   if (lastRow <= 1) {
@@ -1827,13 +1829,163 @@ function createDashboardSheet(ss) {
 }
 
 /**
- * Update Submissions sheet - no longer adds tracking columns
- * Tracking is now done via the Jobs sheet lookup
+ * Setup the Submissions sheet with professional formatting and status tracking
+ */
+function setupSubmissionsSheet(ss) {
+  let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
+    Logger.log('Created new Submissions sheet');
+  } else {
+    // Clear formatting but keep data
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      Logger.log('Submissions sheet exists with ' + (lastRow - 1) + ' submissions - preserving data');
+    }
+  }
+
+  // Define headers with Status column
+  const headers = [
+    'Submission #',
+    'Timestamp',
+    'Name',
+    'Email',
+    'Store URL',
+    'Message',
+    'Has Voice Note',
+    'Voice Note Link',
+    'Status'
+  ];
+
+  // Check if we need to add the Status column to existing data
+  const currentHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+  const needsStatusColumn = !currentHeaders.includes('Status');
+
+  if (needsStatusColumn && sheet.getLastRow() > 0) {
+    Logger.log('Adding Status column to existing Submissions sheet');
+    // Add Status header
+    sheet.getRange(1, 9).setValue('Status');
+    // Set all existing submissions to 'New' status
+    if (sheet.getLastRow() > 1) {
+      sheet.getRange(2, 9, sheet.getLastRow() - 1, 1).setValue('New');
+    }
+  } else if (sheet.getLastRow() === 0) {
+    // New sheet - set headers
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  // Format header row with CartCure green
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setBackground('#2d5d3f');
+  headerRange.setFontColor('#ffffff');
+  headerRange.setFontWeight('bold');
+  headerRange.setHorizontalAlignment('center');
+  headerRange.setVerticalAlignment('middle');
+
+  // Freeze header row
+  sheet.setFrozenRows(1);
+
+  // Set column widths for better readability
+  sheet.setColumnWidth(1, 120);  // Submission #
+  sheet.setColumnWidth(2, 160);  // Timestamp
+  sheet.setColumnWidth(3, 150);  // Name
+  sheet.setColumnWidth(4, 200);  // Email
+  sheet.setColumnWidth(5, 250);  // Store URL
+  sheet.setColumnWidth(6, 350);  // Message
+  sheet.setColumnWidth(7, 120);  // Has Voice Note
+  sheet.setColumnWidth(8, 250);  // Voice Note Link
+  sheet.setColumnWidth(9, 130);  // Status
+
+  // Add data validation for Status column (column 9)
+  const statusValues = ['New', 'In Review', 'Job Created', 'Declined', 'Spam'];
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(statusValues, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 9, 1000, 1).setDataValidation(statusRule);
+
+  // Add conditional formatting for Status column
+  addSubmissionStatusFormatting(sheet);
+
+  // Enable filtering for all columns
+  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+  dataRange.createFilter();
+
+  // Protect the header row from accidental edits
+  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
+  protection.setDescription('Protected header row');
+  protection.setWarningOnly(true);
+
+  Logger.log('Submissions sheet setup completed successfully');
+}
+
+/**
+ * Add conditional formatting for Submission Status column
+ */
+function addSubmissionStatusFormatting(sheet) {
+  const statusColumn = 9; // Status column
+  const range = sheet.getRange(2, statusColumn, 1000, 1);
+
+  // Clear existing conditional formatting rules for this column
+  const rules = sheet.getConditionalFormatRules();
+  const newRules = rules.filter(rule => {
+    const ranges = rule.getRanges();
+    return !ranges.some(r => r.getColumn() === statusColumn);
+  });
+
+  // New - Blue (needs attention)
+  const newRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('New')
+    .setBackground('#cfe2ff')
+    .setFontColor('#084298')
+    .setBold(true)
+    .setRanges([range])
+    .build();
+
+  // In Review - Yellow (being processed)
+  const reviewRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('In Review')
+    .setBackground('#fff3cd')
+    .setFontColor('#856404')
+    .setBold(true)
+    .setRanges([range])
+    .build();
+
+  // Job Created - Green (success)
+  const jobCreatedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Job Created')
+    .setBackground('#d4edda')
+    .setFontColor('#155724')
+    .setRanges([range])
+    .build();
+
+  // Declined - Gray (closed)
+  const declinedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Declined')
+    .setBackground('#e9ecef')
+    .setFontColor('#6c757d')
+    .setRanges([range])
+    .build();
+
+  // Spam - Red (rejected)
+  const spamRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Spam')
+    .setBackground('#ffcccc')
+    .setFontColor('#cc0000')
+    .setRanges([range])
+    .build();
+
+  newRules.push(newRule, reviewRule, jobCreatedRule, declinedRule, spamRule);
+  sheet.setConditionalFormatRules(newRules);
+}
+
+/**
+ * Update Submissions sheet - kept for backward compatibility
+ * Now calls the new setupSubmissionsSheet function
  */
 function updateSubmissionsSheet(ss) {
-  // This function now does nothing - keeping it for backward compatibility
-  // All submission tracking is done via Dashboard showing unprocessed submissions
-  Logger.log('Submissions sheet - no changes needed (tracking via Dashboard)');
+  setupSubmissionsSheet(ss);
 }
 
 // ============================================================================
@@ -2070,6 +2222,13 @@ function createJobFromSubmission(submissionNumber) {
   }
 
   jobsSheet.appendRow(jobRow);
+
+  // Update the submission status to "Job Created"
+  const statusColumnIndex = headers.indexOf('Status');
+  if (statusColumnIndex !== -1) {
+    submissionsSheet.getRange(submissionRowIndex, statusColumnIndex + 1).setValue('Job Created');
+    Logger.log('Updated submission ' + submissionNumber + ' status to "Job Created"');
+  }
 
   ui.alert('Job Created',
     'Job ' + jobNumber + ' created successfully!\n\n' +

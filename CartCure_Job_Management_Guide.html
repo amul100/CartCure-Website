@@ -247,6 +247,7 @@
         <li><a href="#part8"><strong>Part 8:</strong> Troubleshooting</a></li>
         <li><a href="#part9"><strong>Part 9:</strong> Tips for Success</a></li>
         <li><a href="#part10"><strong>Part 10:</strong> Hard Reset - Fresh Start</a></li>
+        <li><a href="#part11"><strong>Part 11:</strong> Submissions Sheet - Status Tracking</a></li>
     </ul>
 </div>
 
@@ -281,12 +282,13 @@
 </ol>
 
 <div class="success">
-    <strong>This creates four new sheets:</strong>
+    <strong>This creates/updates five sheets:</strong>
     <ul>
         <li><strong>Dashboard</strong> - Your daily workflow view</li>
         <li><strong>Jobs</strong> - All job tracking data</li>
         <li><strong>Invoice Log</strong> - Invoice records</li>
         <li><strong>Settings</strong> - Your business configuration</li>
+        <li><strong>Submissions</strong> - Form submissions with status tracking</li>
     </ul>
 </div>
 
@@ -880,6 +882,236 @@ Unpaid → Invoiced → Paid
     <li><strong>Refresh Dashboard</strong> - Run <strong>CartCure &gt; Dashboard &gt; Refresh Dashboard</strong></li>
     <li><strong>Ready to Use</strong> - Create your first job from a submission</li>
 </ol>
+
+<div class="page-break"></div>
+
+<h1 id="part11">Part 11: Submissions Sheet - Status Tracking</h1>
+
+<div class="info">
+    <strong>New Feature:</strong> The Submissions sheet now includes professional formatting, status tracking, and seamless integration with the job management workflow.
+</div>
+
+<h2>Overview</h2>
+
+<p>Every form submission from your website is automatically saved to the <strong>Submissions</strong> sheet. This sheet now features:</p>
+
+<ul>
+    <li>Professional CartCure green header styling</li>
+    <li>Status tracking with color-coded indicators</li>
+    <li>Automatic status updates when jobs are created</li>
+    <li>Sortable and filterable columns</li>
+    <li>Protected headers to prevent accidental edits</li>
+</ul>
+
+<h2>Submission Columns</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Column</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Submission #</td>
+            <td>Unique ID (CC-YYYYMMDD-XXXXX)</td>
+        </tr>
+        <tr>
+            <td>Timestamp</td>
+            <td>When the form was submitted</td>
+        </tr>
+        <tr>
+            <td>Name</td>
+            <td>Client name</td>
+        </tr>
+        <tr>
+            <td>Email</td>
+            <td>Client email address</td>
+        </tr>
+        <tr>
+            <td>Store URL</td>
+            <td>Shopify store URL</td>
+        </tr>
+        <tr>
+            <td>Message</td>
+            <td>Text message from client</td>
+        </tr>
+        <tr>
+            <td>Has Voice Note</td>
+            <td>Yes/No indicator</td>
+        </tr>
+        <tr>
+            <td>Voice Note Link</td>
+            <td>Link to audio file in Google Drive</td>
+        </tr>
+        <tr>
+            <td><strong>Status</strong></td>
+            <td><strong>Current submission status (see below)</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Status Values & Colors</h2>
+
+<p>Every submission has one of five status values:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Color</th>
+            <th>When to Use</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>New</strong></td>
+            <td>Blue</td>
+            <td>Automatically set when form is submitted. Needs review.</td>
+        </tr>
+        <tr>
+            <td><strong>In Review</strong></td>
+            <td>Yellow</td>
+            <td>You're evaluating the request or preparing a quote.</td>
+        </tr>
+        <tr>
+            <td><strong>Job Created</strong></td>
+            <td>Green</td>
+            <td>Automatically set when you create a job from this submission.</td>
+        </tr>
+        <tr>
+            <td><strong>Declined</strong></td>
+            <td>Gray</td>
+            <td>Quote was declined or you're not pursuing this request.</td>
+        </tr>
+        <tr>
+            <td><strong>Spam</strong></td>
+            <td>Red</td>
+            <td>Invalid or spam submission.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Automatic Status Updates</h2>
+
+<p>The system automatically updates submission statuses:</p>
+
+<ul>
+    <li><strong>New submissions</strong> → Status set to "New"</li>
+    <li><strong>Job creation</strong> → Status automatically changes to "Job Created"</li>
+</ul>
+
+<div class="success">
+    <strong>No manual tracking needed!</strong> When you use <strong>CartCure &gt; Jobs &gt; Create Job from Submission</strong>, the submission status is automatically updated.
+</div>
+
+<h2>Daily Workflow with Submissions</h2>
+
+<h3>Step 1: Review New Submissions</h3>
+<ol>
+    <li>Open the <strong>Submissions</strong> sheet</li>
+    <li>Click the filter icon in the Status column</li>
+    <li>Filter to show only "New" submissions</li>
+    <li>Review each new request</li>
+</ol>
+
+<h3>Step 2: Update Status as You Work</h3>
+<ol>
+    <li><strong>Evaluating?</strong> Change status to "In Review"</li>
+    <li><strong>Ready to quote?</strong> Create job (status auto-updates to "Job Created")</li>
+    <li><strong>Not pursuing?</strong> Change status to "Declined"</li>
+    <li><strong>Spam?</strong> Change status to "Spam"</li>
+</ol>
+
+<h3>Changing Status Manually</h3>
+<ol>
+    <li>Click any cell in the Status column</li>
+    <li>A dropdown arrow will appear</li>
+    <li>Select the new status from the dropdown</li>
+    <li>The cell color updates automatically</li>
+</ol>
+
+<h2>Using Filters Effectively</h2>
+
+<h3>Show Only New Submissions</h3>
+<ul>
+    <li>Click filter icon in Status header</li>
+    <li>Uncheck all except "New"</li>
+    <li>Click OK</li>
+</ul>
+
+<h3>Show Submissions Needing Action</h3>
+<ul>
+    <li>Filter Status = "New" OR "In Review"</li>
+    <li>These need your attention</li>
+</ul>
+
+<h3>Track Conversion Rate</h3>
+<ul>
+    <li>Filter Status = "Job Created" to see successful conversions</li>
+    <li>Filter Status = "Declined" to analyze rejection rate</li>
+</ul>
+
+<h2>Sheet Formatting Features</h2>
+
+<ul>
+    <li><strong>Frozen Header Row</strong> - Headers stay visible when scrolling</li>
+    <li><strong>Optimized Column Widths</strong> - All columns sized for readability</li>
+    <li><strong>Protected Headers</strong> - Warning appears if you try to edit headers</li>
+    <li><strong>Conditional Formatting</strong> - Status colors update automatically</li>
+    <li><strong>Data Validation</strong> - Status dropdown prevents typos</li>
+</ul>
+
+<h2>Tips for Managing Submissions</h2>
+
+<ol>
+    <li><strong>Daily Review</strong> - Check "New" submissions every morning</li>
+    <li><strong>Quick Triage</strong> - Set to "In Review" when you start evaluating</li>
+    <li><strong>Mark Spam Quickly</strong> - Helps identify patterns in invalid submissions</li>
+    <li><strong>Use Filters</strong> - Focus on what needs attention</li>
+    <li><strong>Let Automation Work</strong> - Status auto-updates when creating jobs</li>
+</ol>
+
+<h2>Integration with Jobs Sheet</h2>
+
+<p>When you create a job from a submission:</p>
+
+<ol>
+    <li>New job is created in Jobs sheet with submission data</li>
+    <li>Submission # is linked to the job</li>
+    <li>Submission status automatically changes to "Job Created"</li>
+    <li>You can always trace back to the original submission</li>
+</ol>
+
+<h2>Troubleshooting</h2>
+
+<h3>Status Column Missing</h3>
+<ul>
+    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong></li>
+    <li>The Status column will be added automatically</li>
+    <li>Existing submissions will be set to "New"</li>
+</ul>
+
+<h3>Status Not Updating When Creating Job</h3>
+<ul>
+    <li>Make sure you use <strong>CartCure &gt; Jobs &gt; Create Job from Submission</strong></li>
+    <li>Don't manually copy data between sheets</li>
+    <li>The menu function includes the auto-update logic</li>
+</ul>
+
+<h3>Colors Not Showing</h3>
+<ul>
+    <li>Refresh the page</li>
+    <li>Re-run <strong>Setup Sheets</strong> to reapply formatting</li>
+</ul>
+
+<h3>Can't Change Status</h3>
+<ul>
+    <li>Click directly on a cell in the Status column</li>
+    <li>Wait for the dropdown arrow to appear</li>
+    <li>Select from the dropdown (don't type manually)</li>
+</ul>
 
 <hr>
 
