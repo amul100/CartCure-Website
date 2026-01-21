@@ -2384,7 +2384,13 @@ function createJobFromSubmission(submissionNumber) {
   const ui = SpreadsheetApp.getUi();
 
   // Find the submission
-  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS) || ss.getActiveSheet();
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+  if (!submissionsSheet) {
+    ui.alert('Error', 'Submissions sheet not found. Please run Setup first.', ui.ButtonSet.OK);
+    return;
+  }
+
   const submissionsData = submissionsSheet.getDataRange().getValues();
   const headers = submissionsData[0];
 
@@ -2605,7 +2611,13 @@ function updateSubmissionStatus(submissionNumber, status) {
   if (!submissionNumber) return;
 
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const sheet = ss.getSheetByName(SHEETS.SUBMISSIONS) || ss.getActiveSheet();
+  const sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+  if (!sheet) {
+    Logger.log('ERROR: Submissions sheet not found. Cannot update status for ' + submissionNumber);
+    return;
+  }
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const statusCol = headers.indexOf('Status');

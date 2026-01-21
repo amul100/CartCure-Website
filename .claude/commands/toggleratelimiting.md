@@ -1,6 +1,5 @@
-# Toggle Rate Limiting
+The user is requesting to toggle rate limiting, if off, turn on, if on turn off.
 
-Quick reference for enabling/disabling rate limiting in the CartCure form submission system.
 
 ## Overview
 
@@ -45,34 +44,16 @@ Comment out the recording around line 160:
 // recordServerSubmission(emailForRateLimit);
 ```
 
-### 3. Clear Browser Cache
 
-After disabling client-side checks, users need to clear localStorage:
+## Enable/disable Rate Limiting
 
-```javascript
-// In browser console (F12):
-localStorage.clear();
-```
+### 1. Uncomment/comment All Four Sections
 
-## Enable Rate Limiting (restore protection)
-
-### 1. Uncomment All Four Sections
-
-Remove the `//` comment markers from all four locations above:
+Add/remove the `//` comment markers from all four locations above:
 - script.js: checkRateLimit() call
 - script.js: recordSubmission() call
 - Code.gs: checkServerRateLimit() call
 - Code.gs: recordServerSubmission() call
-
-### 2. Deploy Changes
-
-```bash
-git add .
-git commit -m "Re-enable rate limiting"
-git push origin main
-```
-
-Clasp will auto-deploy the server-side changes.
 
 ## Files Affected
 
@@ -80,15 +61,6 @@ Clasp will auto-deploy the server-side changes.
 - **Server-side**: `/apps-script/Code.gs` (lines ~142, ~160)
 - **Config**: `/security-config.js` (defines limits, don't modify)
 
-## Rate Limit Settings
+Push changes to git (code.gs will be automatically updated after git push)
 
-Current limits (defined in security-config.js and Code.gs):
-- **Max submissions**: 5 per hour
-- **Window**: 3,600,000 ms (1 hour)
-- **Tracking**: Per email address
-
-## Notes
-
-- Always re-enable rate limiting before production deployment
-- Client-side checks can be bypassed, server-side is the real protection
-- Users who hit the limit see: "Too many requests! You can only submit 5 times per hour. Please try again later."
+After disabling client-side checks, users need to clear localStorage
