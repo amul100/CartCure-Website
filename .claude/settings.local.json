@@ -50,7 +50,10 @@
       "Bash(cmd /c \"dir C:\\\\Users\\\\andre\\\\.claude 2>&1\")",
       "Bash(cmd /c \"dir C:\\\\Users\\\\andre /AH\")",
       "Bash(winget install:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(npm install:*)",
+      "Bash(cmd /c \"npm install -g md-to-pdf\")",
+      "Bash(cmd /c \"npm install -g md-to-pdf 2>&1\")"
     ],
     "deny": [
       "Bash(rm -rf /*)",
