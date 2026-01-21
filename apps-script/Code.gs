@@ -773,7 +773,13 @@ function saveToSheet(data) {
 
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-    const sheet = ss.getSheetByName('Submissions') || ss.getActiveSheet();
+    let sheet = ss.getSheetByName('Submissions');
+
+    // If Submissions sheet doesn't exist, create it
+    if (!sheet) {
+      Logger.log('Submissions sheet not found. Creating it...');
+      sheet = ss.insertSheet('Submissions');
+    }
 
     // Check if headers exist, if not create them
     if (sheet.getLastRow() === 0) {
