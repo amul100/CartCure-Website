@@ -364,10 +364,11 @@
 
         // Check client-side rate limiting
         // Note: Server-side rate limiting is also enforced in google_apps_script.js
-        if (!checkRateLimit()) {
-            showError(SecurityConfig.ERRORS.RATE_LIMIT);
-            return;
-        }
+        // TEMPORARILY DISABLED FOR TESTING
+        // if (!checkRateLimit()) {
+        //     showError(SecurityConfig.ERRORS.RATE_LIMIT);
+        //     return;
+        // }
 
         // Get and sanitize inputs
         const name = sanitizeInput(document.getElementById('name').value);
@@ -518,7 +519,8 @@
 
             if (result.success) {
                 // Record submission for rate limiting
-                recordSubmission();
+                // TEMPORARILY DISABLED FOR TESTING
+                // recordSubmission();
 
                 // Show success message
                 button.textContent = '✓ Submitted Successfully!';
