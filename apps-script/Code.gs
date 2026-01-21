@@ -775,12 +775,23 @@ function saveToSheet(data) {
 
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-    let sheet = ss.getSheetByName('Submissions');
+
+    // DEBUG: Log all sheet names in the spreadsheet
+    const allSheets = ss.getSheets();
+    Logger.log('=== DEBUG: All sheets in spreadsheet ===');
+    allSheets.forEach((s, index) => {
+      Logger.log('Sheet ' + index + ': "' + s.getName() + '"');
+    });
+
+    let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+    Logger.log('Looking for sheet: "' + SHEETS.SUBMISSIONS + '"');
+    Logger.log('Sheet found: ' + (sheet ? sheet.getName() : 'NULL'));
 
     // If Submissions sheet doesn't exist, create it
     if (!sheet) {
       Logger.log('Submissions sheet not found. Creating it...');
-      sheet = ss.insertSheet('Submissions');
+      sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
+      Logger.log('Created sheet: "' + sheet.getName() + '" at index: ' + sheet.getIndex());
     }
 
     // Check if headers exist, if not create them
@@ -821,10 +832,12 @@ function saveToSheet(data) {
     ];
 
     // Write to the target row
+    Logger.log('Writing to sheet: "' + sheet.getName() + '" at row: ' + targetRow);
+    Logger.log('Sheet index: ' + sheet.getIndex());
     const range = sheet.getRange(targetRow, 1, 1, rowData.length);
     range.setValues([rowData]);
 
-    Logger.log('Data saved to sheet at row ' + targetRow);
+    Logger.log('Data saved successfully to sheet "' + sheet.getName() + '" at row ' + targetRow);
   } catch (error) {
     Logger.log('Error saving to sheet: ' + error.message);
     // Don't throw - submission should succeed even if sheet save fails
