@@ -139,7 +139,8 @@ function doPost(e) {
     // TO DISABLE FOR TESTING: Comment out the checkServerRateLimit() call below
     // =========================================================================
     const emailForRateLimit = (data.email || '').trim().toLowerCase();
-    checkServerRateLimit(emailForRateLimit);
+    // TEMPORARILY DISABLED FOR TESTING
+    // checkServerRateLimit(emailForRateLimit);
 
     // Input validation and sanitization
     const sanitizedData = validateAndSanitizeInput(data);
@@ -157,7 +158,8 @@ function doPost(e) {
     sendUserConfirmationEmail(sanitizedData);
 
     // Record successful submission for rate limiting
-    recordServerSubmission(emailForRateLimit);
+    // TEMPORARILY DISABLED FOR TESTING
+    // recordServerSubmission(emailForRateLimit);
 
     // Return success response
     return ContentService
