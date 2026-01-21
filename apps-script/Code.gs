@@ -768,34 +768,67 @@ function getOrCreateDebugFolder() {
  * Save submission to Google Sheet
  */
 function saveToSheet(data) {
+  const debugLog = []; // Capture all debug output
+
   if (!CONFIG.SHEET_ID) {
-    Logger.log('WARNING: SHEET_ID not configured. Skipping sheet save.');
+    const msg = 'WARNING: SHEET_ID not configured. Skipping sheet save.';
+    Logger.log(msg);
+    debugLog.push(msg);
     return;
   }
 
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    debugLog.push('=== SAVE TO SHEET DEBUG LOG ===');
+    debugLog.push('Submission Number: ' + data.submissionNumber);
+    debugLog.push('Timestamp: ' + new Date().toISOString());
+    debugLog.push('');
 
     // DEBUG: Log all sheet names in the spreadsheet
     const allSheets = ss.getSheets();
+    debugLog.push('=== ALL SHEETS IN SPREADSHEET ===');
     Logger.log('=== DEBUG: All sheets in spreadsheet ===');
     allSheets.forEach((s, index) => {
-      Logger.log('Sheet ' + index + ': "' + s.getName() + '"');
+      const msg = 'Sheet ' + index + ': "' + s.getName() + '" (Index: ' + s.getIndex() + ')';
+      Logger.log(msg);
+      debugLog.push(msg);
     });
+    debugLog.push('');
+
+    debugLog.push('=== LOOKING FOR SUBMISSIONS SHEET ===');
+    debugLog.push('Constant SHEETS.SUBMISSIONS = "' + SHEETS.SUBMISSIONS + '"');
 
     let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
     Logger.log('Looking for sheet: "' + SHEETS.SUBMISSIONS + '"');
     Logger.log('Sheet found: ' + (sheet ? sheet.getName() : 'NULL'));
 
+    if (sheet) {
+      debugLog.push('✓ Sheet FOUND: "' + sheet.getName() + '"');
+      debugLog.push('  Sheet Index: ' + sheet.getIndex());
+      debugLog.push('  Sheet ID: ' + sheet.getSheetId());
+    } else {
+      debugLog.push('✗ Sheet NOT FOUND - will create it');
+    }
+    debugLog.push('');
+
     // If Submissions sheet doesn't exist, create it
     if (!sheet) {
+      debugLog.push('=== CREATING NEW SHEET ===');
       Logger.log('Submissions sheet not found. Creating it...');
       sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
-      Logger.log('Created sheet: "' + sheet.getName() + '" at index: ' + sheet.getIndex());
+      const msg = 'Created sheet: "' + sheet.getName() + '" at index: ' + sheet.getIndex();
+      Logger.log(msg);
+      debugLog.push(msg);
+      debugLog.push('');
     }
 
     // Check if headers exist, if not create them
-    if (sheet.getLastRow() === 0) {
+    const lastRow = sheet.getLastRow();
+    debugLog.push('=== SHEET STATUS ===');
+    debugLog.push('Last row in sheet: ' + lastRow);
+
+    if (lastRow === 0) {
+      debugLog.push('No headers found - creating headers');
       sheet.appendRow([
         'Submission #',
         'Timestamp',
@@ -807,16 +840,24 @@ function saveToSheet(data) {
         'Voice Note Link',
         'Status'
       ]);
+    } else {
+      debugLog.push('Headers already exist');
     }
+    debugLog.push('');
 
     // Save audio file to Google Drive if present
     let audioFileUrl = '';
     if (data.hasVoiceNote && data.voiceNoteData) {
       audioFileUrl = saveAudioToDrive(data.voiceNoteData, data.submissionNumber);
+      debugLog.push('Audio file saved: ' + audioFileUrl);
     }
 
     // Find the first empty row (starting from row 2 to skip headers)
     const targetRow = findFirstEmptyRow(sheet);
+    debugLog.push('=== WRITING DATA ===');
+    debugLog.push('Target row: ' + targetRow);
+    debugLog.push('Writing to sheet: "' + sheet.getName() + '"');
+    debugLog.push('Sheet index: ' + sheet.getIndex());
 
     // Prepare the row data with Status set to 'New'
     const rowData = [
@@ -837,10 +878,52 @@ function saveToSheet(data) {
     const range = sheet.getRange(targetRow, 1, 1, rowData.length);
     range.setValues([rowData]);
 
-    Logger.log('Data saved successfully to sheet "' + sheet.getName() + '" at row ' + targetRow);
+    debugLog.push('✓ Data written successfully!');
+    debugLog.push('');
+    debugLog.push('=== VERIFICATION ===');
+    debugLog.push('Final sheet name: "' + sheet.getName() + '"');
+    debugLog.push('Final sheet index: ' + sheet.getIndex());
+    debugLog.push('Row written: ' + targetRow);
+
+    const msg = 'Data saved successfully to sheet "' + sheet.getName() + '" at row ' + targetRow;
+    Logger.log(msg);
+    debugLog.push('');
+    debugLog.push('✓ SUCCESS: ' + msg);
+
+    // Save debug log to file
+    saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
+
   } catch (error) {
-    Logger.log('Error saving to sheet: ' + error.message);
+    const errorMsg = 'Error saving to sheet: ' + error.message;
+    Logger.log(errorMsg);
+    debugLog.push('');
+    debugLog.push('✗ ERROR: ' + errorMsg);
+    debugLog.push('Stack trace: ' + error.stack);
+
+    // Save debug log even on error
+    try {
+      saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
+    } catch (e) {
+      Logger.log('Failed to save debug log: ' + e.message);
+    }
+
     // Don't throw - submission should succeed even if sheet save fails
+  }
+}
+
+/**
+ * Save detailed debug log to a file
+ */
+function saveDetailedDebugLog(submissionNumber, logContent) {
+  try {
+    const folder = getOrCreateDebugFolder();
+    const fileName = 'SHEET_DEBUG_' + submissionNumber + '.txt';
+    const file = folder.createFile(fileName, logContent);
+    Logger.log('Detailed debug log saved: ' + file.getUrl());
+    return file.getUrl();
+  } catch (error) {
+    Logger.log('Error saving detailed debug log: ' + error.message);
+    return '';
   }
 }
 
