@@ -347,6 +347,97 @@
 
 <h1>Part 2: Daily Workflow</h1>
 
+<h2>Smart Dropdown Interface</h2>
+
+<div class="success">
+    <strong>New Feature:</strong> All menu actions now use smart dropdown selection instead of manual number entry!
+</div>
+
+<p>The system has been upgraded with an intelligent dropdown interface that makes job management faster and error-free. Instead of manually typing submission numbers, job numbers, or invoice numbers, you now select from pre-filtered dropdown lists.</p>
+
+<h3>How It Works</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Menu Action</th>
+            <th>What You See</th>
+            <th>Smart Filtering</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Create Job from Submission</td>
+            <td>Dropdown of available submissions</td>
+            <td>Only shows submissions without existing jobs</td>
+        </tr>
+        <tr>
+            <td>Mark Quote Accepted</td>
+            <td>Dropdown of quoted jobs</td>
+            <td>Only shows jobs with "Quoted" status</td>
+        </tr>
+        <tr>
+            <td>Start Work on Job</td>
+            <td>Dropdown of accepted/on-hold jobs</td>
+            <td>Only shows "Accepted" or "On Hold" jobs</td>
+        </tr>
+        <tr>
+            <td>Mark Job Complete</td>
+            <td>Dropdown of in-progress jobs</td>
+            <td>Only shows "In Progress" jobs</td>
+        </tr>
+        <tr>
+            <td>Put Job On Hold</td>
+            <td>Dropdown of active jobs</td>
+            <td>Shows "In Progress" or "Accepted" jobs</td>
+        </tr>
+        <tr>
+            <td>Send Quote</td>
+            <td>Dropdown of jobs pending quote</td>
+            <td>Only shows "Pending Quote" jobs</td>
+        </tr>
+        <tr>
+            <td>Send Quote Reminder</td>
+            <td>Dropdown of quoted jobs</td>
+            <td>Only shows "Quoted" jobs</td>
+        </tr>
+        <tr>
+            <td>Mark Quote Declined</td>
+            <td>Dropdown of quoted/pending jobs</td>
+            <td>Shows "Quoted" or "Pending Quote" jobs</td>
+        </tr>
+        <tr>
+            <td>Generate Invoice</td>
+            <td>Dropdown of completed jobs</td>
+            <td>Only shows "Completed" jobs without invoices</td>
+        </tr>
+        <tr>
+            <td>Send Invoice</td>
+            <td>Dropdown of draft invoices</td>
+            <td>Only shows "Draft" invoices</td>
+        </tr>
+        <tr>
+            <td>Mark as Paid</td>
+            <td>Dropdown with payment fields</td>
+            <td>Shows "Sent" or "Overdue" invoices, plus payment method and reference fields</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Benefits</h3>
+
+<ul>
+    <li><strong>No More Typos:</strong> Select from a list instead of typing numbers manually</li>
+    <li><strong>Smart Filtering:</strong> Only see relevant items based on their current status</li>
+    <li><strong>Faster Workflow:</strong> Find what you need quickly with descriptive dropdown options</li>
+    <li><strong>Visual Context:</strong> Each dropdown shows the item number, client name, and current status</li>
+    <li><strong>Error Prevention:</strong> Can't accidentally select the wrong status or invalid item</li>
+</ul>
+
+<div class="info">
+    <strong>Example:</strong> When you click "Mark Quote Accepted", you'll only see jobs that are currently in "Quoted" status - no need to remember which job number was which!
+</div>
+
 <h2>Your Morning Routine</h2>
 
 <ol>
@@ -373,9 +464,13 @@
 <h3>Step 1: Create a Job</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Create Job from Submission</strong></li>
-    <li>Enter the Submission # (e.g., CC-20260121-12345)</li>
+    <li>Select a submission from the dropdown list (shows available submissions that don't have jobs yet)</li>
     <li>Click OK</li>
 </ol>
+
+<div class="info">
+    <strong>Dropdown Selection:</strong> The system now shows a dropdown list of all available submissions, automatically excluding those that already have jobs. You no longer need to manually type submission numbers!
+</div>
 
 <h3>Step 2: Prepare the Quote</h3>
 <ol>
@@ -394,7 +489,7 @@
 <h3>Step 3: Send the Quote</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 💰 Quotes &gt; Send Quote</strong></li>
-    <li>Enter the Job # (e.g., JOB-001)</li>
+    <li>Select a job from the dropdown list</li>
     <li>Click OK</li>
 </ol>
 
@@ -413,7 +508,7 @@
 
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Quote Accepted</strong></li>
-    <li>Enter the Job #</li>
+    <li>Select a job from the dropdown list</li>
     <li>Click OK</li>
 </ol>
 
@@ -432,21 +527,21 @@
 <h3>Start Work</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Start Work on Job</strong></li>
-    <li>Enter the Job #</li>
+    <li>Select a job from the dropdown list</li>
     <li>Status changes to "In Progress"</li>
 </ol>
 
 <h3>Complete the Job</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Job Complete</strong></li>
-    <li>Enter the Job #</li>
+    <li>Select a job from the dropdown list</li>
     <li>You'll be asked if you want to generate an invoice</li>
 </ol>
 
 <h3>Put on Hold (if needed)</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Put Job On Hold</strong></li>
-    <li>Enter the Job #</li>
+    <li>Select a job from the dropdown list</li>
     <li>Use this when waiting for client info</li>
 </ol>
 
@@ -457,7 +552,7 @@
 <h3>Generate an Invoice</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Generate Invoice</strong></li>
-    <li>Enter the Job #</li>
+    <li>Select a job from the dropdown list</li>
     <li>Invoice number is auto-generated (INV-2026-001)</li>
 </ol>
 

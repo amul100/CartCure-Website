@@ -2110,6 +2110,247 @@ function calculateSLAStatus(acceptedDate, turnaroundDays) {
 }
 
 // ============================================================================
+// DROPDOWN HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all available submissions that can be converted to jobs
+ * Returns array of objects with submission number and details
+ */
+function getAvailableSubmissions() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+
+  if (!submissionsSheet) return [];
+
+  const submissionsData = submissionsSheet.getDataRange().getValues();
+  const headers = submissionsData[0];
+
+  // Get existing job submission numbers to exclude
+  const existingJobSubmissions = new Set();
+  if (jobsSheet) {
+    const jobsData = jobsSheet.getDataRange().getValues();
+    for (let i = 1; i < jobsData.length; i++) {
+      if (jobsData[i][1]) { // Submission # column
+        existingJobSubmissions.add(jobsData[i][1]);
+      }
+    }
+  }
+
+  const submissions = [];
+  for (let i = 1; i < submissionsData.length; i++) {
+    const row = submissionsData[i];
+    const submissionNum = row[0];
+    const status = row[headers.indexOf('Status')] || row[8];
+
+    // Only include submissions that don't have jobs yet
+    if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
+      const name = row[headers.indexOf('Name')] || row[2];
+      const email = row[headers.indexOf('Email')] || row[3];
+      const timestamp = row[1];
+
+      submissions.push({
+        number: submissionNum,
+        name: name || 'Unknown',
+        email: email || '',
+        timestamp: timestamp,
+        status: status || 'New',
+        display: submissionNum + ' - ' + (name || 'Unknown') + ' (' + (status || 'New') + ')'
+      });
+    }
+  }
+
+  return submissions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
+
+/**
+ * Get all jobs with specified statuses
+ * Returns array of objects with job details
+ */
+function getJobsByStatus(statusFilter = []) {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+
+  if (!jobsSheet) return [];
+
+  const data = jobsSheet.getDataRange().getValues();
+  const headers = data[0];
+  const jobs = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const jobNum = row[0];
+    const status = row[headers.indexOf('Status')] || row[8];
+
+    if (jobNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
+      const clientName = row[headers.indexOf('Client Name')] || row[3];
+      const storeUrl = row[headers.indexOf('Store URL')] || row[5];
+
+      jobs.push({
+        number: jobNum,
+        clientName: clientName || 'Unknown',
+        status: status,
+        storeUrl: storeUrl || '',
+        display: jobNum + ' - ' + (clientName || 'Unknown') + ' (' + status + ')'
+      });
+    }
+  }
+
+  return jobs;
+}
+
+/**
+ * Get all invoices with specified statuses
+ * Returns array of objects with invoice details
+ */
+function getInvoicesByStatus(statusFilter = []) {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICE_LOG);
+
+  if (!invoiceSheet) return [];
+
+  const data = invoiceSheet.getDataRange().getValues();
+  const headers = data[0];
+  const invoices = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const invoiceNum = row[0];
+    const status = row[headers.indexOf('Status')] || row[10];
+
+    if (invoiceNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
+      const jobNum = row[1];
+      const clientName = row[2];
+      const total = row[9];
+
+      invoices.push({
+        number: invoiceNum,
+        jobNumber: jobNum,
+        clientName: clientName || 'Unknown',
+        status: status,
+        total: total || 0,
+        display: invoiceNum + ' - ' + (clientName || 'Unknown') + ' - ' + formatCurrency(total || 0) + ' (' + status + ')'
+      });
+    }
+  }
+
+  return invoices;
+}
+
+/**
+ * Show HTML dialog with dropdown selection
+ */
+function showDropdownDialog(title, items, itemType, callback) {
+  if (!items || items.length === 0) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('No Items Available', 'No ' + itemType + ' available for selection.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+          }
+          .container {
+            max-width: 500px;
+          }
+          label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+          }
+          select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+          }
+          .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+          }
+          button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          .btn-primary {
+            background-color: #4285f4;
+            color: white;
+          }
+          .btn-primary:hover {
+            background-color: #357ae8;
+          }
+          .btn-secondary {
+            background-color: #f1f1f1;
+            color: #333;
+          }
+          .btn-secondary:hover {
+            background-color: #e1e1e1;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <label for="itemSelect">Select ${itemType}:</label>
+          <select id="itemSelect">
+            <option value="">-- Select ${itemType} --</option>
+            ${items.map(item => `<option value="${item.number}">${item.display}</option>`).join('')}
+          </select>
+
+          <div class="button-container">
+            <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button class="btn-primary" onclick="submitSelection()">OK</button>
+          </div>
+        </div>
+
+        <script>
+          function submitSelection() {
+            const select = document.getElementById('itemSelect');
+            const value = select.value;
+
+            if (!value) {
+              alert('Please select a ${itemType}');
+              return;
+            }
+
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                alert('Error: ' + error);
+              })
+              .${callback}(value);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(550)
+    .setHeight(200);
+
+  SpreadsheetApp.getUi().showModalDialog(html, title);
+}
+
+// ============================================================================
 // JOB MANAGEMENT FUNCTIONS
 // ============================================================================
 
@@ -2117,19 +2358,13 @@ function calculateSLAStatus(acceptedDate, turnaroundDays) {
  * Show dialog to create job from submission
  */
 function showCreateJobDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const submissions = getAvailableSubmissions();
+  showDropdownDialog(
     'Create Job from Submission',
-    'Enter the Submission # (e.g., CC-20260120-12345):',
-    ui.ButtonSet.OK_CANCEL
+    submissions,
+    'Submission',
+    'createJobFromSubmission'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const submissionNumber = response.getResponseText().trim();
-    if (submissionNumber) {
-      createJobFromSubmission(submissionNumber);
-    }
-  }
 }
 
 /**
@@ -2300,19 +2535,13 @@ function updateJobField(jobNumber, fieldName, value) {
  * Show dialog to mark quote as accepted
  */
 function showAcceptQuoteDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
+  showDropdownDialog(
     'Mark Quote Accepted',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'markQuoteAccepted'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      markQuoteAccepted(jobNumber);
-    }
-  }
 }
 
 /**
@@ -2386,19 +2615,13 @@ function updateSubmissionStatus(submissionNumber, status) {
  * Show dialog to start work on a job
  */
 function showStartWorkDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.ON_HOLD]);
+  showDropdownDialog(
     'Start Work on Job',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'startWorkOnJob'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      startWorkOnJob(jobNumber);
-    }
-  }
 }
 
 /**
@@ -2435,19 +2658,14 @@ function startWorkOnJob(jobNumber) {
  * Show dialog to mark job complete
  */
 function showCompleteJobDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS]);
+  showDropdownDialog(
     'Mark Job Complete',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'markJobComplete'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      markJobComplete(jobNumber);
-    }
-  }
+}
 }
 
 /**
@@ -2494,19 +2712,13 @@ function markJobComplete(jobNumber) {
  * Show dialog to put job on hold
  */
 function showOnHoldDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS, JOB_STATUS.ACCEPTED]);
+  showDropdownDialog(
     'Put Job On Hold',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'putJobOnHold'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      putJobOnHold(jobNumber);
-    }
-  }
 }
 
 /**
@@ -2536,19 +2748,13 @@ function putJobOnHold(jobNumber) {
  * Show dialog to send quote
  */
 function showSendQuoteDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.PENDING_QUOTE]);
+  showDropdownDialog(
     'Send Quote',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'sendQuoteEmail'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      sendQuoteEmail(jobNumber);
-    }
-  }
 }
 
 /**
@@ -2934,19 +3140,13 @@ https://cartcure.co.nz
  * Show dialog to send quote reminder
  */
 function showQuoteReminderDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
+  showDropdownDialog(
     'Send Quote Reminder',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'sendQuoteReminder'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      sendQuoteReminder(jobNumber);
-    }
-  }
 }
 
 /**
@@ -3007,19 +3207,13 @@ function sendQuoteReminder(jobNumber) {
  * Show dialog to decline quote
  */
 function showDeclineQuoteDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.PENDING_QUOTE]);
+  showDropdownDialog(
     'Mark Quote Declined',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'markQuoteDeclined'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      markQuoteDeclined(jobNumber);
-    }
-  }
 }
 
 /**
@@ -3049,19 +3243,13 @@ function markQuoteDeclined(jobNumber) {
  * Show dialog to generate invoice
  */
 function showGenerateInvoiceDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const jobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
+  showDropdownDialog(
     'Generate Invoice',
-    'Enter the Job # (e.g., JOB-001):',
-    ui.ButtonSet.OK_CANCEL
+    jobs,
+    'Job',
+    'generateInvoiceForJob'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const jobNumber = response.getResponseText().trim().toUpperCase();
-    if (jobNumber) {
-      generateInvoiceForJob(jobNumber);
-    }
-  }
 }
 
 /**
@@ -3136,19 +3324,13 @@ function generateInvoiceForJob(jobNumber) {
  * Show dialog to send invoice
  */
 function showSendInvoiceDialog() {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt(
+  const invoices = getInvoicesByStatus(['Draft']);
+  showDropdownDialog(
     'Send Invoice',
-    'Enter the Invoice # (e.g., INV-2026-001):',
-    ui.ButtonSet.OK_CANCEL
+    invoices,
+    'Invoice',
+    'sendInvoiceEmail'
   );
-
-  if (response.getSelectedButton() === ui.Button.OK) {
-    const invoiceNumber = response.getResponseText().trim().toUpperCase();
-    if (invoiceNumber) {
-      sendInvoiceEmail(invoiceNumber);
-    }
-  }
 }
 
 /**
@@ -3313,38 +3495,135 @@ function sendInvoiceEmail(invoiceNumber) {
  * Show dialog to mark invoice as paid
  */
 function showMarkPaidDialog() {
-  const ui = SpreadsheetApp.getUi();
+  const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
 
-  const invoiceResponse = ui.prompt(
-    'Mark Invoice as Paid',
-    'Enter the Invoice # (e.g., INV-2026-001):',
-    ui.ButtonSet.OK_CANCEL
-  );
+  if (!invoices || invoices.length === 0) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('No Invoices Available', 'No sent or overdue invoices available to mark as paid.', ui.ButtonSet.OK);
+    return;
+  }
 
-  if (invoiceResponse.getSelectedButton() !== ui.Button.OK) return;
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+          }
+          .container {
+            max-width: 500px;
+          }
+          label {
+            display: block;
+            margin-bottom: 8px;
+            margin-top: 12px;
+            font-weight: bold;
+            color: #333;
+          }
+          select, input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+          }
+          .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+          }
+          button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          .btn-primary {
+            background-color: #4285f4;
+            color: white;
+          }
+          .btn-primary:hover {
+            background-color: #357ae8;
+          }
+          .btn-secondary {
+            background-color: #f1f1f1;
+            color: #333;
+          }
+          .btn-secondary:hover {
+            background-color: #e1e1e1;
+          }
+          .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <label for="invoiceSelect">Select Invoice:</label>
+          <select id="invoiceSelect">
+            <option value="">-- Select Invoice --</option>
+            ${invoices.map(inv => `<option value="${inv.number}">${inv.display}</option>`).join('')}
+          </select>
 
-  const invoiceNumber = invoiceResponse.getResponseText().trim().toUpperCase();
-  if (!invoiceNumber) return;
+          <label for="paymentMethod">Payment Method:</label>
+          <select id="paymentMethod">
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Stripe">Stripe</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Cash">Cash</option>
+            <option value="Other">Other</option>
+          </select>
 
-  const methodResponse = ui.prompt(
-    'Payment Method',
-    'Enter payment method (e.g., Bank Transfer, Stripe):',
-    ui.ButtonSet.OK_CANCEL
-  );
+          <label for="paymentRef">Payment Reference:</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID or reference (optional)">
+          <div class="note">Optional: Enter transaction ID or payment reference</div>
 
-  if (methodResponse.getSelectedButton() !== ui.Button.OK) return;
+          <div class="button-container">
+            <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button class="btn-primary" onclick="submitPayment()">Mark as Paid</button>
+          </div>
+        </div>
 
-  const method = methodResponse.getResponseText().trim() || 'Bank Transfer';
+        <script>
+          function submitPayment() {
+            const invoiceNumber = document.getElementById('invoiceSelect').value;
+            const method = document.getElementById('paymentMethod').value;
+            const reference = document.getElementById('paymentRef').value;
 
-  const refResponse = ui.prompt(
-    'Payment Reference',
-    'Enter payment reference/transaction ID (optional):',
-    ui.ButtonSet.OK_CANCEL
-  );
+            if (!invoiceNumber) {
+              alert('Please select an invoice');
+              return;
+            }
 
-  const reference = refResponse.getSelectedButton() === ui.Button.OK ? refResponse.getResponseText().trim() : '';
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                alert('Error: ' + error);
+              })
+              .markInvoicePaid(invoiceNumber, method, reference);
+          }
+        </script>
+      </body>
+    </html>
+  `;
 
-  markInvoicePaid(invoiceNumber, method, reference);
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(550)
+    .setHeight(400);
+
+  SpreadsheetApp.getUi().showModalDialog(html, 'Mark Invoice as Paid');
 }
 
 /**
