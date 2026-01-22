@@ -2274,9 +2274,9 @@ function calculateSLAStatus(acceptedDate, turnaroundDays) {
  * NEW APPROACH: Load only Submission # column from Jobs, and only needed columns from Submissions
  *
  * OPTIMIZATION BENEFIT:
- * - Jobs sheet: Load 1 column instead of 20+ columns (95% reduction)
- * - Submissions sheet: Load 4 columns instead of 10+ columns (60% reduction)
- * - For 50 submissions + 100 jobs: Load ~250 cells instead of ~2,500 cells (90% reduction)
+ * - Reduced from 7 getRange() calls to 2 (one per sheet)
+ * - Single batch read per sheet is faster than multiple column reads
+ * - Network round-trips are the main bottleneck in Apps Script
  *
  * @returns {Array<Object>} Array of submission objects for dropdown display (sorted by timestamp)
  */
@@ -2292,69 +2292,55 @@ function getAvailableSubmissions() {
     return [];
   }
 
-  // OPTIMIZATION 1: Load only Submission # column from Jobs sheet (column B)
-  // This builds the exclusion set much faster than loading all job data
+  // OPTIMIZATION: Single batch read from Jobs sheet to build exclusion set
   const existingJobSubmissions = new Set();
-  if (jobsSheet) {
-    const jobsLastRow = jobsSheet.getLastRow();
-    if (jobsLastRow > 1) {
-      // Load only column B (Submission #) from Jobs sheet
-      const jobSubmissionNumbers = jobsSheet.getRange(2, 2, jobsLastRow - 1, 1).getValues();
-      for (let i = 0; i < jobSubmissionNumbers.length; i++) {
-        if (jobSubmissionNumbers[i][0]) {
-          existingJobSubmissions.add(jobSubmissionNumbers[i][0]);
-        }
+  if (jobsSheet && jobsSheet.getLastRow() > 1) {
+    const jobsData = jobsSheet.getDataRange().getValues();
+    // Column B (index 1) is Submission #
+    for (let i = 1; i < jobsData.length; i++) {
+      if (jobsData[i][1]) {
+        existingJobSubmissions.add(jobsData[i][1]);
       }
     }
-  }
-
-  // OPTIMIZATION 2: Load only needed columns from Submissions sheet
-  const submissionsLastCol = submissionsSheet.getLastColumn();
-  const submissionsHeaders = submissionsSheet.getRange(1, 1, 1, submissionsLastCol).getValues()[0];
-
-  // Find column indices (only 5 columns needed)
-  const submissionNumCol = 1; // Column A
-  const timestampCol = 2; // Column B
-  const nameColIndex = submissionsHeaders.indexOf('Name') + 1;
-  const emailColIndex = submissionsHeaders.indexOf('Email') + 1;
-  const statusColIndex = submissionsHeaders.indexOf('Status') + 1;
-
-  // Fallback if columns not found
-  if (nameColIndex === 0 || statusColIndex === 0) {
-    Logger.log('[PERF] getAvailableSubmissions() - Required columns not found, using fallback');
-    return getAvailableSubmissionsFallback(existingJobSubmissions);
   }
 
   const submissionsLastRow = submissionsSheet.getLastRow();
   if (submissionsLastRow <= 1) return []; // No data rows
 
-  // Load only the 5 columns we need
-  const submissionNumbers = submissionsSheet.getRange(2, submissionNumCol, submissionsLastRow - 1, 1).getValues();
-  const timestamps = submissionsSheet.getRange(2, timestampCol, submissionsLastRow - 1, 1).getValues();
-  const names = submissionsSheet.getRange(2, nameColIndex, submissionsLastRow - 1, 1).getValues();
-  const emails = submissionsSheet.getRange(2, emailColIndex, submissionsLastRow - 1, 1).getValues();
-  const statuses = submissionsSheet.getRange(2, statusColIndex, submissionsLastRow - 1, 1).getValues();
+  // OPTIMIZATION: Single batch read from Submissions sheet
+  const allData = submissionsSheet.getDataRange().getValues();
+  const headers = allData[0];
+
+  // Find column indices
+  const submissionNumCol = 0; // Column A
+  const timestampCol = 1; // Column B
+  const nameColIndex = headers.indexOf('Name');
+  const emailColIndex = headers.indexOf('Email');
+  const statusColIndex = headers.indexOf('Status');
+
+  // Fallback if columns not found
+  if (nameColIndex === -1 || statusColIndex === -1) {
+    Logger.log('[PERF] getAvailableSubmissions() - Required columns not found, using fallback');
+    return getAvailableSubmissionsFallback(existingJobSubmissions);
+  }
 
   const submissions = [];
 
-  // Build submission objects from column data
-  for (let i = 0; i < submissionNumbers.length; i++) {
-    const submissionNum = submissionNumbers[i][0];
-    const status = statuses[i][0];
+  // Build submission objects from data (start from row 1, skip header)
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const submissionNum = row[submissionNumCol];
+    const status = row[statusColIndex];
 
     // Only include submissions that don't have jobs yet
     if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
-      const name = names[i][0];
-      const email = emails[i][0];
-      const timestamp = timestamps[i][0];
-
       submissions.push({
         number: submissionNum,
-        name: name || 'Unknown',
-        email: email || '',
-        timestamp: timestamp,
+        name: row[nameColIndex] || 'Unknown',
+        email: row[emailColIndex] || '',
+        timestamp: row[timestampCol],
         status: status || 'New',
-        display: submissionNum + ' - ' + (name || 'Unknown') + ' (' + (status || 'New') + ')'
+        display: submissionNum + ' - ' + (row[nameColIndex] || 'Unknown') + ' (' + (status || 'New') + ')'
       });
     }
   }
@@ -2365,7 +2351,7 @@ function getAvailableSubmissions() {
   // Performance logging
   const endTime = new Date().getTime();
   const executionTime = endTime - startTime;
-  Logger.log('[PERF] getAvailableSubmissions() - Loaded ' + sorted.length + ' submissions in ' + executionTime + 'ms (column-specific optimization)');
+  Logger.log('[PERF] getAvailableSubmissions() - Loaded ' + sorted.length + ' submissions in ' + executionTime + 'ms (single batch read)');
 
   return sorted;
 }
@@ -2413,15 +2399,15 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
  * Returns array of objects with job details
  */
 /**
- * PERFORMANCE OPTIMIZED: Get jobs by status with column-specific loading
+ * PERFORMANCE OPTIMIZED: Get jobs by status with SINGLE batch read
  *
- * OLD APPROACH: Load ALL columns (20+) via getDataRange().getValues()
- * NEW APPROACH: Load only the 4 columns needed for dropdown display
+ * PREVIOUS APPROACH: 5 separate getRange() calls (1 header + 4 data columns)
+ * NEW APPROACH: 1 getRange() call loading all data at once
  *
  * OPTIMIZATION BENEFIT:
- * - For 100 jobs with 20 columns: Load 400 cells instead of 2,000 cells (80% reduction)
- * - Faster data transfer from Google Sheets
- * - Less memory usage in Apps Script
+ * - Reduces network round-trips from 5 to 1 (80% reduction in API calls)
+ * - Google Sheets API calls are the slowest operation - minimizing them is key
+ * - Single batch read is faster even if loading slightly more data
  *
  * @param {Array<string>} statusFilter - Array of statuses to filter by (e.g., ['Quoted', 'Accepted'])
  * @returns {Array<Object>} Array of job objects for dropdown display
@@ -2437,42 +2423,38 @@ function getJobsByStatus(statusFilter = []) {
     return [];
   }
 
-  // First, load just the header row to find column indices
-  const lastCol = jobsSheet.getLastColumn();
-  const headers = jobsSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const lastRow = jobsSheet.getLastRow();
+  if (lastRow <= 1) return []; // No data rows
 
-  // Find the column indices we need (only 4 columns for dropdown display)
-  const jobNumCol = 1; // Column A (Job #) - always column 1
-  const statusColIndex = headers.indexOf('Status') + 1;
-  const clientNameColIndex = headers.indexOf('Client Name') + 1;
-  const storeUrlColIndex = headers.indexOf('Store URL') + 1;
+  // OPTIMIZATION: Single getRange call to load all data at once
+  // This is faster than multiple getRange calls even if we load extra columns
+  const allData = jobsSheet.getDataRange().getValues();
+  const headers = allData[0];
+
+  // Find the column indices we need
+  const jobNumCol = 0; // Column A (Job #) - always column 0 in array
+  const statusColIndex = headers.indexOf('Status');
+  const clientNameColIndex = headers.indexOf('Client Name');
+  const storeUrlColIndex = headers.indexOf('Store URL');
 
   // Fallback: if critical columns not found, use original implementation
-  if (statusColIndex === 0 || clientNameColIndex === 0) {
+  if (statusColIndex === -1 || clientNameColIndex === -1) {
     Logger.log('[PERF] getJobsByStatus() - Required columns not found, using fallback');
     return getJobsByStatusFallback(statusFilter);
   }
 
-  const lastRow = jobsSheet.getLastRow();
-  if (lastRow <= 1) return []; // No data rows
-
-  // OPTIMIZATION: Load only the specific columns we need (4 columns instead of 20+)
-  const jobNumbers = jobsSheet.getRange(2, jobNumCol, lastRow - 1, 1).getValues();
-  const statuses = jobsSheet.getRange(2, statusColIndex, lastRow - 1, 1).getValues();
-  const clientNames = jobsSheet.getRange(2, clientNameColIndex, lastRow - 1, 1).getValues();
-  const storeUrls = jobsSheet.getRange(2, storeUrlColIndex, lastRow - 1, 1).getValues();
-
   const jobs = [];
 
-  // Build job objects from column data
-  for (let i = 0; i < jobNumbers.length; i++) {
-    const jobNum = jobNumbers[i][0];
-    const status = statuses[i][0];
+  // Build job objects from data (start from row 1, skip header)
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const jobNum = row[jobNumCol];
+    const status = row[statusColIndex];
 
     // Filter by status if provided
     if (jobNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
-      const clientName = clientNames[i][0];
-      const storeUrl = storeUrls[i][0];
+      const clientName = row[clientNameColIndex];
+      const storeUrl = storeUrlColIndex !== -1 ? row[storeUrlColIndex] : '';
 
       jobs.push({
         number: jobNum,
@@ -2487,7 +2469,7 @@ function getJobsByStatus(statusFilter = []) {
   // Performance logging
   const endTime = new Date().getTime();
   const executionTime = endTime - startTime;
-  Logger.log('[PERF] getJobsByStatus() - Loaded ' + jobs.length + ' jobs in ' + executionTime + 'ms (column-specific optimization)');
+  Logger.log('[PERF] getJobsByStatus() - Loaded ' + jobs.length + ' jobs in ' + executionTime + 'ms (single batch read)');
 
   return jobs;
 }
@@ -2533,14 +2515,14 @@ function getJobsByStatusFallback(statusFilter = []) {
  * Returns array of objects with invoice details
  */
 /**
- * PERFORMANCE OPTIMIZED: Get invoices by status with column-specific loading
+ * PERFORMANCE OPTIMIZED: Get invoices by status with SINGLE batch read
  *
- * OLD APPROACH: Load ALL columns via getDataRange().getValues()
- * NEW APPROACH: Load only the 5 columns needed for dropdown display
+ * PREVIOUS APPROACH: 6 separate getRange() calls (1 header + 5 data columns)
+ * NEW APPROACH: 1 getRange() call loading all data at once
  *
  * OPTIMIZATION BENEFIT:
- * - For 50 invoices with 12 columns: Load 250 cells instead of 600 cells (58% reduction)
- * - Faster data transfer and less memory usage
+ * - Reduces network round-trips from 6 to 1 (83% reduction in API calls)
+ * - Single batch read is faster even if loading slightly more data
  *
  * @param {Array<string>} statusFilter - Array of statuses to filter by (e.g., ['Draft', 'Sent'])
  * @returns {Array<Object>} Array of invoice objects for dropdown display
@@ -2556,45 +2538,39 @@ function getInvoicesByStatus(statusFilter = []) {
     return [];
   }
 
-  // Load header row to find column indices
-  const lastCol = invoiceSheet.getLastColumn();
-  const headers = invoiceSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const lastRow = invoiceSheet.getLastRow();
+  if (lastRow <= 1) return []; // No data rows
 
-  // Find the column indices we need (5 columns for dropdown display)
-  const invoiceNumCol = 1; // Column A (Invoice #) - always column 1
-  const jobNumColIndex = 2; // Column B (Job #) - based on typical structure
-  const clientNameColIndex = 3; // Column C (Client Name)
-  const totalColIndex = headers.indexOf('Total') + 1;
-  const statusColIndex = headers.indexOf('Status') + 1;
+  // OPTIMIZATION: Single getRange call to load all data at once
+  const allData = invoiceSheet.getDataRange().getValues();
+  const headers = allData[0];
+
+  // Find the column indices we need
+  const invoiceNumCol = 0; // Column A (Invoice #) - always column 0 in array
+  const jobNumColIndex = 1; // Column B (Job #)
+  const clientNameColIndex = 2; // Column C (Client Name)
+  const totalColIndex = headers.indexOf('Total');
+  const statusColIndex = headers.indexOf('Status');
 
   // Fallback: if critical columns not found, use original implementation
-  if (statusColIndex === 0 || totalColIndex === 0) {
+  if (statusColIndex === -1 || totalColIndex === -1) {
     Logger.log('[PERF] getInvoicesByStatus() - Required columns not found, using fallback');
     return getInvoicesByStatusFallback(statusFilter);
   }
 
-  const lastRow = invoiceSheet.getLastRow();
-  if (lastRow <= 1) return []; // No data rows
-
-  // OPTIMIZATION: Load only the specific columns we need (5 columns instead of 12+)
-  const invoiceNumbers = invoiceSheet.getRange(2, invoiceNumCol, lastRow - 1, 1).getValues();
-  const jobNumbers = invoiceSheet.getRange(2, jobNumColIndex, lastRow - 1, 1).getValues();
-  const clientNames = invoiceSheet.getRange(2, clientNameColIndex, lastRow - 1, 1).getValues();
-  const totals = invoiceSheet.getRange(2, totalColIndex, lastRow - 1, 1).getValues();
-  const statuses = invoiceSheet.getRange(2, statusColIndex, lastRow - 1, 1).getValues();
-
   const invoices = [];
 
-  // Build invoice objects from column data
-  for (let i = 0; i < invoiceNumbers.length; i++) {
-    const invoiceNum = invoiceNumbers[i][0];
-    const status = statuses[i][0];
+  // Build invoice objects from data (start from row 1, skip header)
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const invoiceNum = row[invoiceNumCol];
+    const status = row[statusColIndex];
 
     // Filter by status if provided
     if (invoiceNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
-      const jobNum = jobNumbers[i][0];
-      const clientName = clientNames[i][0];
-      const total = totals[i][0];
+      const jobNum = row[jobNumColIndex];
+      const clientName = row[clientNameColIndex];
+      const total = row[totalColIndex];
 
       invoices.push({
         number: invoiceNum,
@@ -2610,7 +2586,7 @@ function getInvoicesByStatus(statusFilter = []) {
   // Performance logging
   const endTime = new Date().getTime();
   const executionTime = endTime - startTime;
-  Logger.log('[PERF] getInvoicesByStatus() - Loaded ' + invoices.length + ' invoices in ' + executionTime + 'ms (column-specific optimization)');
+  Logger.log('[PERF] getInvoicesByStatus() - Loaded ' + invoices.length + ' invoices in ' + executionTime + 'ms (single batch read)');
 
   return invoices;
 }
@@ -2655,6 +2631,7 @@ function getInvoicesByStatusFallback(statusFilter = []) {
 
 /**
  * Show HTML dialog with dropdown selection
+ * OPTIMIZED: Added loading state and button disabling to prevent duplicate submissions
  */
 function showDropdownDialog(title, items, itemType, callback) {
   if (!items || items.length === 0) {
@@ -2703,20 +2680,43 @@ function showDropdownDialog(title, items, itemType, callback) {
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            transition: opacity 0.2s;
           }
           .btn-primary {
             background-color: #4285f4;
             color: white;
           }
-          .btn-primary:hover {
+          .btn-primary:hover:not(:disabled) {
             background-color: #357ae8;
+          }
+          .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
           }
           .btn-secondary {
             background-color: #f1f1f1;
             color: #333;
           }
-          .btn-secondary:hover {
+          .btn-secondary:hover:not(:disabled) {
             background-color: #e1e1e1;
+          }
+          .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
           }
         </style>
       </head>
@@ -2729,13 +2729,17 @@ function showDropdownDialog(title, items, itemType, callback) {
           </select>
 
           <div class="button-container">
-            <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
-            <button class="btn-primary" onclick="submitSelection()">OK</button>
+            <button id="cancelBtn" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button id="submitBtn" class="btn-primary" onclick="submitSelection()">OK</button>
           </div>
         </div>
 
         <script>
+          var isSubmitting = false;
+
           function submitSelection() {
+            if (isSubmitting) return;
+
             const select = document.getElementById('itemSelect');
             const value = select.value;
 
@@ -2744,11 +2748,26 @@ function showDropdownDialog(title, items, itemType, callback) {
               return;
             }
 
+            // Disable buttons and show loading state
+            isSubmitting = true;
+            const submitBtn = document.getElementById('submitBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading-spinner"></span>Processing...';
+            select.disabled = true;
+
             google.script.run
               .withSuccessHandler(function() {
                 google.script.host.close();
               })
               .withFailureHandler(function(error) {
+                // Re-enable on error
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
+                submitBtn.innerHTML = 'OK';
+                select.disabled = false;
                 alert('Error: ' + error);
               })
               .${callback}(value);
@@ -4237,6 +4256,7 @@ function sendInvoiceEmail(invoiceNumber) {
 
 /**
  * Show dialog to mark invoice as paid
+ * OPTIMIZED: Added loading state and button disabling to prevent duplicate submissions
  */
 function showMarkPaidDialog() {
   const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
@@ -4277,6 +4297,10 @@ function showMarkPaidDialog() {
             font-size: 14px;
             box-sizing: border-box;
           }
+          select:disabled, input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+          }
           .button-container {
             display: flex;
             gap: 10px;
@@ -4289,25 +4313,48 @@ function showMarkPaidDialog() {
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
+            transition: opacity 0.2s;
           }
           .btn-primary {
             background-color: #4285f4;
             color: white;
           }
-          .btn-primary:hover {
+          .btn-primary:hover:not(:disabled) {
             background-color: #357ae8;
+          }
+          .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
           }
           .btn-secondary {
             background-color: #f1f1f1;
             color: #333;
           }
-          .btn-secondary:hover {
+          .btn-secondary:hover:not(:disabled) {
             background-color: #e1e1e1;
+          }
+          .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
           }
           .note {
             font-size: 12px;
             color: #666;
             margin-top: 4px;
+          }
+          .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
           }
         </style>
       </head>
@@ -4333,13 +4380,17 @@ function showMarkPaidDialog() {
           <div class="note">Optional: Enter transaction ID or payment reference</div>
 
           <div class="button-container">
-            <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
-            <button class="btn-primary" onclick="submitPayment()">Mark as Paid</button>
+            <button id="cancelBtn" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button id="submitBtn" class="btn-primary" onclick="submitPayment()">Mark as Paid</button>
           </div>
         </div>
 
         <script>
+          var isSubmitting = false;
+
           function submitPayment() {
+            if (isSubmitting) return;
+
             const invoiceNumber = document.getElementById('invoiceSelect').value;
             const method = document.getElementById('paymentMethod').value;
             const reference = document.getElementById('paymentRef').value;
@@ -4349,11 +4400,30 @@ function showMarkPaidDialog() {
               return;
             }
 
+            // Disable buttons and show loading state
+            isSubmitting = true;
+            const submitBtn = document.getElementById('submitBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading-spinner"></span>Processing...';
+            document.getElementById('invoiceSelect').disabled = true;
+            document.getElementById('paymentMethod').disabled = true;
+            document.getElementById('paymentRef').disabled = true;
+
             google.script.run
               .withSuccessHandler(function() {
                 google.script.host.close();
               })
               .withFailureHandler(function(error) {
+                // Re-enable on error
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
+                submitBtn.innerHTML = 'Mark as Paid';
+                document.getElementById('invoiceSelect').disabled = false;
+                document.getElementById('paymentMethod').disabled = false;
+                document.getElementById('paymentRef').disabled = false;
                 alert('Error: ' + error);
               })
               .markInvoicePaid(invoiceNumber, method, reference);
