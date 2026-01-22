@@ -1617,7 +1617,10 @@ function onOpen() {
   ui.createMenu('🛒 CartCure')
     .addSubMenu(ui.createMenu('📊 Dashboard')
       .addItem('Refresh Dashboard', 'refreshDashboard')
-      .addItem('Refresh Analytics', 'refreshAnalytics'))
+      .addItem('Refresh Analytics', 'refreshAnalytics')
+      .addSeparator()
+      .addItem('Enable Auto-Refresh (2 min)', 'enableAutoRefresh')
+      .addItem('Disable Auto-Refresh', 'disableAutoRefresh'))
     .addSeparator()
     .addSubMenu(ui.createMenu('📋 Jobs')
       .addItem('Create Job from Submission', 'showCreateJobDialog')
@@ -1639,6 +1642,84 @@ function onOpen() {
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog'))
     .addToUi();
+}
+
+/**
+ * Handle edit events - used for dashboard refresh checkbox
+ */
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  const range = e.range;
+
+  // Check if edit was on Dashboard sheet, cell H1 (refresh checkbox)
+  if (sheet.getName() === SHEETS.DASHBOARD && range.getA1Notation() === 'H1') {
+    if (e.value === 'TRUE') {
+      // Uncheck the box first, then refresh
+      range.setValue(false);
+      refreshDashboard();
+    }
+  }
+
+  // Check if edit was on Analytics sheet, cell H1 (refresh checkbox)
+  if (sheet.getName() === SHEETS.ANALYTICS && range.getA1Notation() === 'H1') {
+    if (e.value === 'TRUE') {
+      range.setValue(false);
+      refreshAnalytics();
+    }
+  }
+}
+
+/**
+ * Enable auto-refresh trigger (every 2 minutes)
+ */
+function enableAutoRefresh() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Remove any existing triggers first
+  disableAutoRefreshSilent();
+
+  // Create new time-driven trigger
+  ScriptApp.newTrigger('autoRefreshDashboard')
+    .timeBased()
+    .everyMinutes(2)
+    .create();
+
+  ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 2 minutes.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
+  Logger.log('Auto-refresh enabled');
+}
+
+/**
+ * Disable auto-refresh trigger
+ */
+function disableAutoRefresh() {
+  const ui = SpreadsheetApp.getUi();
+  disableAutoRefreshSilent();
+  ui.alert('Auto-Refresh Disabled', 'Automatic dashboard refresh has been turned off.', ui.ButtonSet.OK);
+}
+
+/**
+ * Disable auto-refresh without showing alert
+ */
+function disableAutoRefreshSilent() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'autoRefreshDashboard') {
+      ScriptApp.deleteTrigger(trigger);
+      Logger.log('Auto-refresh trigger removed');
+    }
+  });
+}
+
+/**
+ * Auto-refresh function called by time trigger
+ */
+function autoRefreshDashboard() {
+  try {
+    refreshDashboard();
+    Logger.log('Auto-refresh completed at ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
+  } catch (error) {
+    Logger.log('Auto-refresh error: ' + error);
+  }
 }
 
 // ============================================================================
@@ -2052,6 +2133,20 @@ function createDashboardSheet(ss) {
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
 
+  // Refresh checkbox (triggers refresh when checked)
+  sheet.getRange('G1').setValue('🔄 Refresh →');
+  sheet.getRange('G1')
+    .setFontWeight('bold')
+    .setFontSize(10)
+    .setHorizontalAlignment('right')
+    .setVerticalAlignment('middle');
+
+  // Checkbox that triggers refresh
+  sheet.getRange('H1').insertCheckboxes();
+  sheet.getRange('H1').setValue(false);
+  sheet.getRange('H1').setNote('Check this box to refresh the dashboard');
+  sheet.setColumnWidth(8, 30);
+
   // === LEFT COLUMN: Metrics + New Submissions ===
 
   // Summary Metrics Section (compact horizontal layout)
@@ -2142,6 +2237,13 @@ function createAnalyticsSheet(ss) {
   sheet.getRange('A1').setFontSize(18).setFontWeight('bold').setFontColor('#2d5d3f');
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
+
+  // Refresh checkbox
+  sheet.getRange('G1').setValue('🔄 Refresh →');
+  sheet.getRange('G1').setFontWeight('bold').setFontSize(10).setHorizontalAlignment('right');
+  sheet.getRange('H1').insertCheckboxes();
+  sheet.getRange('H1').setValue(false);
+  sheet.getRange('H1').setNote('Check this box to refresh analytics');
 
   // === SECTION 1: KEY METRICS (Row 4-7) ===
   sheet.getRange('A4').setValue('📊 Key Metrics');
@@ -3391,6 +3493,9 @@ function createJobFromSubmission(submissionNumber) {
   );
 
   Logger.log('Job ' + jobNumber + ' created from submission ' + submissionNumber);
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 /**
@@ -3661,6 +3766,9 @@ function markQuoteAccepted(jobNumber) {
   );
 
   Logger.log('Quote accepted for ' + jobNumber);
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 /**
@@ -3740,6 +3848,9 @@ function startWorkOnJob(jobNumber) {
   ui.alert('Work Started', 'Job ' + jobNumber + ' is now In Progress.', ui.ButtonSet.OK);
 
   Logger.log('Work started on ' + jobNumber);
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 /**
@@ -3801,6 +3912,9 @@ function markJobComplete(jobNumber) {
   }
 
   Logger.log('Job ' + jobNumber + ' completed');
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 /**
@@ -3938,6 +4052,9 @@ function showCancelJobConfirmation(jobNumber) {
   ui.alert('Job Cancelled', message, ui.ButtonSet.OK);
 
   Logger.log('Job ' + jobNumber + ' cancelled. Reason: ' + (reason || 'None provided'));
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 // ============================================================================
@@ -4061,6 +4178,9 @@ function sendQuoteEmail(jobNumber) {
     );
 
     Logger.log('Quote sent for ' + jobNumber + ' to ' + clientEmail);
+
+    // Refresh dashboard to show updated data
+    refreshDashboard();
   } catch (error) {
     Logger.log('Error sending quote: ' + error.message);
     ui.alert('Error', 'Failed to send quote: ' + error.message, ui.ButtonSet.OK);
@@ -4435,6 +4555,9 @@ function markQuoteDeclined(jobNumber) {
 
   ui.alert('Quote Declined', 'Job ' + jobNumber + ' marked as Declined.', ui.ButtonSet.OK);
   Logger.log('Quote declined for ' + jobNumber);
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 // ============================================================================
@@ -5064,6 +5187,9 @@ function markInvoicePaid(invoiceNumber, method, reference) {
   );
 
   Logger.log('Invoice ' + invoiceNumber + ' marked as paid');
+
+  // Refresh dashboard to show updated data
+  refreshDashboard();
 }
 
 // ============================================================================
