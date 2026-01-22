@@ -1577,7 +1577,8 @@ const SHEETS = {
   JOBS: 'Jobs',
   INVOICES: 'Invoice Log',
   SETTINGS: 'Settings',
-  DASHBOARD: 'Dashboard'
+  DASHBOARD: 'Dashboard',
+  ANALYTICS: 'Analytics'
 };
 
 // Job Status Constants
@@ -1615,7 +1616,8 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🛒 CartCure')
     .addSubMenu(ui.createMenu('📊 Dashboard')
-      .addItem('Refresh Dashboard', 'refreshDashboard'))
+      .addItem('Refresh Dashboard', 'refreshDashboard')
+      .addItem('Refresh Analytics', 'refreshAnalytics'))
     .addSeparator()
     .addSubMenu(ui.createMenu('📋 Jobs')
       .addItem('Create Job from Submission', 'showCreateJobDialog')
@@ -1631,10 +1633,6 @@ function onOpen() {
       .addItem('Generate Invoice', 'showGenerateInvoiceDialog')
       .addItem('Send Invoice', 'showSendInvoiceDialog')
       .addItem('Mark as Paid', 'showMarkPaidDialog'))
-    .addSubMenu(ui.createMenu('📈 Reports')
-      .addItem('Overdue Jobs', 'showOverdueJobs')
-      .addItem('Outstanding Payments', 'showOutstandingPayments')
-      .addItem('Monthly Summary', 'showMonthlySummary'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
@@ -1694,6 +1692,9 @@ function setupSheets(clearData) {
 
     // Create/update Dashboard sheet (always recreate structure)
     createDashboardSheet(ss);
+
+    // Create/update Analytics sheet
+    createAnalyticsSheet(ss);
 
     // Update Submissions sheet with new columns
     setupSubmissionsSheet(ss);
@@ -2110,6 +2111,349 @@ function createDashboardSheet(ss) {
   sheet.setRowHeight(1, 28); // Title row slightly taller
 
   Logger.log('Dashboard sheet created successfully');
+}
+
+/**
+ * Create the Analytics sheet with visual data displays
+ */
+function createAnalyticsSheet(ss) {
+  let sheet = ss.getSheetByName(SHEETS.ANALYTICS);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.ANALYTICS);
+    // Move analytics to be after dashboard
+    ss.setActiveSheet(sheet);
+    ss.moveActiveSheet(2);
+  } else {
+    sheet.clear();
+  }
+
+  // Set up the sheet structure
+  // Title
+  sheet.getRange('A1').setValue('📈 CartCure Analytics');
+  sheet.getRange('A1').setFontSize(18).setFontWeight('bold').setFontColor('#2d5d3f');
+  sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
+  sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
+
+  // === SECTION 1: KEY METRICS (Row 4-7) ===
+  sheet.getRange('A4').setValue('📊 Key Metrics');
+  sheet.getRange('A4').setFontSize(12).setFontWeight('bold');
+
+  const metricsHeaders = ['Total Jobs', 'Total Revenue', 'Avg Job Value', 'Conversion Rate', 'Completion Rate', 'On-Time Rate'];
+  sheet.getRange(5, 1, 1, 6).setValues([metricsHeaders]);
+  sheet.getRange(5, 1, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9).setHorizontalAlignment('center');
+  // Data row 6 will be populated by refresh
+
+  // === SECTION 2: JOB STATUS BREAKDOWN (Row 9-18, Left) ===
+  sheet.getRange('A9').setValue('📋 Jobs by Status');
+  sheet.getRange('A9').setFontSize(12).setFontWeight('bold');
+
+  const statusHeaders = ['Status', 'Count', '%'];
+  sheet.getRange(10, 1, 1, 3).setValues([statusHeaders]);
+  sheet.getRange(10, 1, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === SECTION 3: PAYMENT STATUS (Row 9-18, Right) ===
+  sheet.getRange('E9').setValue('💰 Payment Status');
+  sheet.getRange('E9').setFontSize(12).setFontWeight('bold');
+
+  const paymentHeaders = ['Status', 'Count', 'Amount'];
+  sheet.getRange(10, 5, 1, 3).setValues([paymentHeaders]);
+  sheet.getRange(10, 5, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === SECTION 4: SLA PERFORMANCE (Row 9-18, Far Right) ===
+  sheet.getRange('I9').setValue('⏱️ SLA Performance');
+  sheet.getRange('I9').setFontSize(12).setFontWeight('bold');
+
+  const slaHeaders = ['Status', 'Count', '%'];
+  sheet.getRange(10, 9, 1, 3).setValues([slaHeaders]);
+  sheet.getRange(10, 9, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === SECTION 5: MONTHLY REVENUE (Row 20-32) ===
+  sheet.getRange('A20').setValue('📅 Monthly Performance (Last 6 Months)');
+  sheet.getRange('A20').setFontSize(12).setFontWeight('bold');
+
+  const monthlyHeaders = ['Month', 'Jobs Created', 'Jobs Completed', 'Revenue', 'Avg Value'];
+  sheet.getRange(21, 1, 1, 5).setValues([monthlyHeaders]);
+  sheet.getRange(21, 1, 1, 5).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === SECTION 6: TOP CATEGORIES (Row 20-32, Right) ===
+  sheet.getRange('G20').setValue('🏷️ Jobs by Category');
+  sheet.getRange('G20').setFontSize(12).setFontWeight('bold');
+
+  const categoryHeaders = ['Category', 'Count', 'Revenue'];
+  sheet.getRange(21, 7, 1, 3).setValues([categoryHeaders]);
+  sheet.getRange(21, 7, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === SECTION 7: OVERDUE & AT RISK (Row 20, Far Right) ===
+  sheet.getRange('K20').setValue('⚠️ Attention Required');
+  sheet.getRange('K20').setFontSize(12).setFontWeight('bold');
+
+  const attentionHeaders = ['Job #', 'Client', 'Status', 'Days'];
+  sheet.getRange(21, 11, 1, 4).setValues([attentionHeaders]);
+  sheet.getRange(21, 11, 1, 4).setBackground('#cc0000').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // Set column widths
+  sheet.setColumnWidth(1, 120);  // Status/Month
+  sheet.setColumnWidth(2, 80);   // Count
+  sheet.setColumnWidth(3, 80);   // %/Completed
+  sheet.setColumnWidth(4, 20);   // Spacer
+  sheet.setColumnWidth(5, 100);  // Payment Status
+  sheet.setColumnWidth(6, 80);   // Count
+  sheet.setColumnWidth(7, 100);  // Amount/Category
+  sheet.setColumnWidth(8, 20);   // Spacer
+  sheet.setColumnWidth(9, 100);  // SLA Status
+  sheet.setColumnWidth(10, 70);  // Count
+  sheet.setColumnWidth(11, 130); // Job #
+  sheet.setColumnWidth(12, 100); // Client
+  sheet.setColumnWidth(13, 80);  // Status
+  sheet.setColumnWidth(14, 60);  // Days
+
+  // Set row heights
+  for (let i = 1; i <= 32; i++) {
+    sheet.setRowHeight(i, 20);
+  }
+  sheet.setRowHeight(1, 28);
+
+  Logger.log('Analytics sheet created successfully');
+}
+
+/**
+ * Refresh the Analytics sheet with current data
+ */
+function refreshAnalytics() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const analytics = ss.getSheetByName(SHEETS.ANALYTICS);
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+  if (!analytics) {
+    SpreadsheetApp.getUi().alert('Error', 'Analytics sheet not found. Please run Setup first.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  // Update timestamp
+  analytics.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
+
+  // Get jobs data
+  const jobsData = jobsSheet ? jobsSheet.getDataRange().getValues() : [[]];
+  const jobHeaders = jobsData[0] || [];
+  const jobs = jobsData.slice(1).filter(row => row[0]); // Filter out empty rows
+
+  // Get submissions data
+  const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
+  const submissions = subData.slice(1).filter(row => row[0]);
+
+  // === CALCULATE KEY METRICS ===
+  const totalJobs = jobs.length;
+  const totalRevenue = jobs.reduce((sum, row) => {
+    const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
+    if (paymentStatus === PAYMENT_STATUS.PAID) {
+      return sum + (parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0);
+    }
+    return sum;
+  }, 0);
+  const avgJobValue = totalJobs > 0 ? totalRevenue / jobs.filter(row => row[jobHeaders.indexOf('Payment Status')] === PAYMENT_STATUS.PAID).length : 0;
+
+  // Conversion rate: jobs created / submissions
+  const conversionRate = submissions.length > 0 ? (totalJobs / submissions.length * 100) : 0;
+
+  // Completion rate: completed jobs / total jobs
+  const completedJobs = jobs.filter(row => row[jobHeaders.indexOf('Status')] === JOB_STATUS.COMPLETED).length;
+  const completionRate = totalJobs > 0 ? (completedJobs / totalJobs * 100) : 0;
+
+  // On-time rate: jobs completed on time / completed jobs
+  const onTimeJobs = jobs.filter(row => {
+    const status = row[jobHeaders.indexOf('Status')];
+    const slaStatus = row[jobHeaders.indexOf('SLA Status')];
+    return status === JOB_STATUS.COMPLETED && slaStatus !== 'OVERDUE';
+  }).length;
+  const onTimeRate = completedJobs > 0 ? (onTimeJobs / completedJobs * 100) : 0;
+
+  // Populate key metrics row
+  analytics.getRange(6, 1, 1, 6).setValues([[
+    totalJobs,
+    formatCurrency(totalRevenue),
+    isNaN(avgJobValue) || !isFinite(avgJobValue) ? formatCurrency(0) : formatCurrency(avgJobValue),
+    conversionRate.toFixed(1) + '%',
+    completionRate.toFixed(1) + '%',
+    onTimeRate.toFixed(1) + '%'
+  ]]);
+  analytics.getRange(6, 1, 1, 6).setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
+
+  // === JOB STATUS BREAKDOWN ===
+  const statusCounts = {};
+  Object.values(JOB_STATUS).forEach(status => statusCounts[status] = 0);
+  jobs.forEach(row => {
+    const status = row[jobHeaders.indexOf('Status')];
+    if (status && statusCounts.hasOwnProperty(status)) {
+      statusCounts[status]++;
+    }
+  });
+
+  analytics.getRange(11, 1, 8, 3).clearContent();
+  let statusRow = 11;
+  Object.entries(statusCounts).forEach(([status, count]) => {
+    const pct = totalJobs > 0 ? (count / totalJobs * 100).toFixed(1) + '%' : '0%';
+    analytics.getRange(statusRow, 1, 1, 3).setValues([[status, count, pct]]);
+    statusRow++;
+  });
+
+  // === PAYMENT STATUS ===
+  const paymentCounts = {};
+  const paymentAmounts = {};
+  Object.values(PAYMENT_STATUS).forEach(status => {
+    paymentCounts[status] = 0;
+    paymentAmounts[status] = 0;
+  });
+  jobs.forEach(row => {
+    const status = row[jobHeaders.indexOf('Payment Status')];
+    const amount = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
+    if (status && paymentCounts.hasOwnProperty(status)) {
+      paymentCounts[status]++;
+      paymentAmounts[status] += amount;
+    }
+  });
+
+  analytics.getRange(11, 5, 4, 3).clearContent();
+  let paymentRow = 11;
+  Object.entries(paymentCounts).forEach(([status, count]) => {
+    analytics.getRange(paymentRow, 5, 1, 3).setValues([[status, count, formatCurrency(paymentAmounts[status])]]);
+    // Color code
+    if (status === PAYMENT_STATUS.PAID) {
+      analytics.getRange(paymentRow, 5).setBackground('#d4edda');
+    } else if (status === PAYMENT_STATUS.UNPAID || status === PAYMENT_STATUS.INVOICED) {
+      analytics.getRange(paymentRow, 5).setBackground('#fff3cd');
+    }
+    paymentRow++;
+  });
+
+  // === SLA PERFORMANCE ===
+  const slaCounts = { 'On Track': 0, 'AT RISK': 0, 'OVERDUE': 0 };
+  jobs.forEach(row => {
+    const status = row[jobHeaders.indexOf('Status')];
+    const sla = row[jobHeaders.indexOf('SLA Status')];
+    // Only count active jobs
+    if (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) {
+      if (sla === 'OVERDUE') slaCounts['OVERDUE']++;
+      else if (sla === 'AT RISK') slaCounts['AT RISK']++;
+      else slaCounts['On Track']++;
+    }
+  });
+  const activeSlaTotal = slaCounts['On Track'] + slaCounts['AT RISK'] + slaCounts['OVERDUE'];
+
+  analytics.getRange(11, 9, 3, 3).clearContent();
+  let slaRow = 11;
+  [['On Track', '#d4edda'], ['AT RISK', '#fff3cd'], ['OVERDUE', '#ffcccc']].forEach(([status, color]) => {
+    const count = slaCounts[status];
+    const pct = activeSlaTotal > 0 ? (count / activeSlaTotal * 100).toFixed(1) + '%' : '0%';
+    analytics.getRange(slaRow, 9, 1, 3).setValues([[status, count, pct]]);
+    analytics.getRange(slaRow, 9).setBackground(color);
+    if (status === 'OVERDUE') analytics.getRange(slaRow, 9).setFontColor('#cc0000').setFontWeight('bold');
+    if (status === 'AT RISK') analytics.getRange(slaRow, 9).setFontColor('#856404').setFontWeight('bold');
+    slaRow++;
+  });
+
+  // === MONTHLY PERFORMANCE (Last 6 months) ===
+  const now = new Date();
+  const monthlyData = [];
+  for (let i = 5; i >= 0; i--) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+    const monthName = monthDate.toLocaleString('en-NZ', { month: 'short', year: '2-digit' });
+
+    let created = 0, completed = 0, revenue = 0;
+    jobs.forEach(row => {
+      const createdDate = row[jobHeaders.indexOf('Created Date')];
+      const completionDate = row[jobHeaders.indexOf('Actual Completion Date')];
+      const paymentDate = row[jobHeaders.indexOf('Payment Date')];
+      const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
+      const total = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
+
+      if (createdDate) {
+        const cd = new Date(createdDate);
+        if (cd >= monthDate && cd <= monthEnd) created++;
+      }
+      if (completionDate) {
+        const compd = new Date(completionDate);
+        if (compd >= monthDate && compd <= monthEnd) completed++;
+      }
+      if (paymentStatus === PAYMENT_STATUS.PAID && paymentDate) {
+        const pd = new Date(paymentDate);
+        if (pd >= monthDate && pd <= monthEnd) revenue += total;
+      }
+    });
+
+    const avgValue = completed > 0 ? revenue / completed : 0;
+    monthlyData.push([monthName, created, completed, formatCurrency(revenue), isNaN(avgValue) ? formatCurrency(0) : formatCurrency(avgValue)]);
+  }
+
+  analytics.getRange(22, 1, 6, 5).clearContent();
+  analytics.getRange(22, 1, 6, 5).setValues(monthlyData);
+
+  // === CATEGORY BREAKDOWN ===
+  const categoryCounts = {};
+  const categoryRevenue = {};
+  jobs.forEach(row => {
+    const category = row[jobHeaders.indexOf('Category')] || 'Uncategorized';
+    const total = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
+    const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
+
+    if (!categoryCounts[category]) {
+      categoryCounts[category] = 0;
+      categoryRevenue[category] = 0;
+    }
+    categoryCounts[category]++;
+    if (paymentStatus === PAYMENT_STATUS.PAID) {
+      categoryRevenue[category] += total;
+    }
+  });
+
+  // Sort by count descending
+  const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+
+  analytics.getRange(22, 7, 10, 3).clearContent();
+  let catRow = 22;
+  sortedCategories.slice(0, 10).forEach(([category, count]) => {
+    analytics.getRange(catRow, 7, 1, 3).setValues([[category, count, formatCurrency(categoryRevenue[category])]]);
+    catRow++;
+  });
+
+  // === ATTENTION REQUIRED (Overdue & At Risk jobs) ===
+  const attentionJobs = jobs.filter(row => {
+    const status = row[jobHeaders.indexOf('Status')];
+    const sla = row[jobHeaders.indexOf('SLA Status')];
+    return (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) &&
+           (sla === 'OVERDUE' || sla === 'AT RISK');
+  }).map(row => ({
+    jobNum: row[0],
+    client: row[jobHeaders.indexOf('Client Name')],
+    sla: row[jobHeaders.indexOf('SLA Status')],
+    daysRemaining: row[jobHeaders.indexOf('Days Remaining')]
+  })).sort((a, b) => {
+    // OVERDUE first, then by days remaining
+    if (a.sla === 'OVERDUE' && b.sla !== 'OVERDUE') return -1;
+    if (b.sla === 'OVERDUE' && a.sla !== 'OVERDUE') return 1;
+    return (a.daysRemaining || 0) - (b.daysRemaining || 0);
+  });
+
+  analytics.getRange(22, 11, 10, 4).clearContent().setBackground(null).setFontColor(null);
+  let attRow = 22;
+  attentionJobs.slice(0, 10).forEach(job => {
+    analytics.getRange(attRow, 11, 1, 4).setValues([[job.jobNum, job.client, job.sla, job.daysRemaining]]);
+    if (job.sla === 'OVERDUE') {
+      analytics.getRange(attRow, 11, 1, 4).setBackground('#ffcccc').setFontColor('#cc0000');
+    } else {
+      analytics.getRange(attRow, 11, 1, 4).setBackground('#fff3cd').setFontColor('#856404');
+    }
+    attRow++;
+  });
+
+  if (attentionJobs.length === 0) {
+    analytics.getRange(22, 11).setValue('✅ No urgent items');
+    analytics.getRange(22, 11).setFontColor('#155724').setBackground('#d4edda');
+  }
+
+  Logger.log('Analytics refreshed');
 }
 
 /**
