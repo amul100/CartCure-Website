@@ -2019,6 +2019,13 @@ function setupSettingsSheet(ss, clearData) {
 
   sheet.setFrozenRows(1);
 
+  // Add dropdown validation for GST Registered (row 3, column 2)
+  const gstRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Yes', 'No'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(3, 2).setDataValidation(gstRule);
+
   Logger.log('Settings sheet ' + (isNew ? 'created' : (clearData ? 'reset' : 'updated')));
 }
 
