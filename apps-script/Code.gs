@@ -1636,8 +1636,9 @@ function onOpen() {
       .addItem('Outstanding Payments', 'showOutstandingPayments')
       .addItem('Monthly Summary', 'showMonthlySummary'))
     .addSeparator()
-    .addItem('⚙️ Setup Sheets', 'setupJobManagementSheets')
-    .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
+    .addSubMenu(ui.createMenu('⚙️ Setup')
+      .addItem('Setup/Repair Sheets', 'showSetupDialog')
+      .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog'))
     .addToUi();
 }
 
@@ -1646,49 +1647,136 @@ function onOpen() {
 // ============================================================================
 
 /**
- * Setup all required sheets for job management
- * Run this once to create the sheets structure
+ * Show setup dialog with options
  */
-function setupJobManagementSheets() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+function showSetupDialog() {
   const ui = SpreadsheetApp.getUi();
 
-  try {
-    // Create Jobs sheet
-    createJobsSheet(ss);
+  const response = ui.alert(
+    '⚙️ Setup/Repair Sheets',
+    'This will set up or repair your CartCure sheets.\n\n' +
+    '• Creates any missing sheets (Jobs, Invoices, Settings, Dashboard)\n' +
+    '• Repairs formatting and headers\n' +
+    '• Preserves existing data in Jobs, Invoices, and Submissions\n\n' +
+    'Continue?',
+    ui.ButtonSet.YES_NO
+  );
 
-    // Create Invoice Log sheet
-    createInvoiceLogSheet(ss);
-
-    // Create Settings sheet
-    createSettingsSheet(ss);
-
-    // Create Dashboard sheet
-    createDashboardSheet(ss);
-
-    // Update Submissions sheet with new columns
-    updateSubmissionsSheet(ss);
-
-    ui.alert('Setup Complete', 'All job management sheets have been created successfully!\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs', ui.ButtonSet.OK);
-
-    Logger.log('Job management sheets setup completed successfully');
-  } catch (error) {
-    Logger.log('Error setting up sheets: ' + error.message);
-    ui.alert('Setup Error', 'There was an error setting up the sheets: ' + error.message, ui.ButtonSet.OK);
+  if (response === ui.Button.YES) {
+    setupSheets(false); // false = preserve data
   }
 }
 
 /**
- * Create the Jobs sheet with all required columns
+ * Setup all required sheets for job management
+ * @param {boolean} clearData - If true, deletes all data (hard reset mode)
  */
-function createJobsSheet(ss) {
+function setupSheets(clearData) {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ui = SpreadsheetApp.getUi();
+
+  try {
+    Logger.log('Starting setup (clearData=' + clearData + ')...');
+
+    // If clearing data, delete data rows first (before recreating structure)
+    if (clearData) {
+      clearAllSheetData(ss);
+    }
+
+    // Create/update Jobs sheet
+    setupJobsSheet(ss, clearData);
+
+    // Create/update Invoice Log sheet
+    setupInvoiceLogSheet(ss, clearData);
+
+    // Create/update Settings sheet (always preserve settings unless hard reset)
+    setupSettingsSheet(ss, clearData);
+
+    // Create/update Dashboard sheet (always recreate structure)
+    createDashboardSheet(ss);
+
+    // Update Submissions sheet with new columns
+    setupSubmissionsSheet(ss);
+
+    // Reset invoice counter if clearing data
+    if (clearData) {
+      resetInvoiceCounter(ss);
+    }
+
+    const message = clearData
+      ? 'Hard reset complete! All data has been deleted and sheets have been reset.'
+      : 'Setup complete! All sheets have been created/repaired.\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
+
+    ui.alert(clearData ? '✅ Hard Reset Complete' : '✅ Setup Complete', message, ui.ButtonSet.OK);
+
+    Logger.log('Setup completed successfully (clearData=' + clearData + ')');
+  } catch (error) {
+    Logger.log('Error during setup: ' + error.message);
+    ui.alert('Setup Error', 'There was an error: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Legacy function name for backwards compatibility
+ */
+function setupJobManagementSheets() {
+  setupSheets(false);
+}
+
+/**
+ * Clear all data from sheets (keeps headers)
+ */
+function clearAllSheetData(ss) {
+  // Clear Jobs sheet data
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  if (jobsSheet && jobsSheet.getLastRow() > 1) {
+    jobsSheet.deleteRows(2, jobsSheet.getLastRow() - 1);
+    Logger.log('Jobs data cleared');
+  }
+
+  // Clear Invoice Log sheet data
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+  if (invoiceSheet && invoiceSheet.getLastRow() > 1) {
+    invoiceSheet.deleteRows(2, invoiceSheet.getLastRow() - 1);
+    Logger.log('Invoices data cleared');
+  }
+
+  // Clear Submissions sheet data
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  if (submissionsSheet && submissionsSheet.getLastRow() > 1) {
+    submissionsSheet.deleteRows(2, submissionsSheet.getLastRow() - 1);
+    Logger.log('Submissions data cleared');
+  }
+}
+
+/**
+ * Reset invoice counter to 1
+ */
+function resetInvoiceCounter(ss) {
+  const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+  if (settingsSheet) {
+    const data = settingsSheet.getDataRange().getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === 'Next Invoice Number') {
+        settingsSheet.getRange(i + 1, 2).setValue(1);
+        Logger.log('Invoice counter reset to 1');
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Setup the Jobs sheet - creates if missing, repairs formatting, preserves data
+ * @param {Spreadsheet} ss - The spreadsheet
+ * @param {boolean} clearData - If true, clears all data (already done by clearAllSheetData)
+ */
+function setupJobsSheet(ss, clearData) {
   let sheet = ss.getSheetByName(SHEETS.JOBS);
+  const isNew = !sheet;
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.JOBS);
-  } else {
-    // Clear existing content if sheet exists
-    sheet.clear();
   }
 
   // Define headers
@@ -1724,7 +1812,7 @@ function createJobsSheet(ss) {
     'Last Updated'
   ];
 
-  // Set headers
+  // Set headers (overwrites row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   // Format header row
@@ -1766,7 +1854,7 @@ function createJobsSheet(ss) {
   // Add conditional formatting for SLA Status
   addSLAConditionalFormatting(sheet);
 
-  Logger.log('Jobs sheet created successfully');
+  Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
 }
 
 /**
@@ -1816,13 +1904,15 @@ function addSLAConditionalFormatting(sheet) {
 /**
  * Create the Invoice Log sheet
  */
-function createInvoiceLogSheet(ss) {
+/**
+ * Setup the Invoice Log sheet - creates if missing, repairs formatting, preserves data
+ */
+function setupInvoiceLogSheet(ss, clearData) {
   let sheet = ss.getSheetByName(SHEETS.INVOICES);
+  const isNew = !sheet;
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.INVOICES);
-  } else {
-    sheet.clear();
   }
 
   const headers = [
@@ -1842,6 +1932,7 @@ function createInvoiceLogSheet(ss) {
     'Notes'
   ];
 
+  // Set headers (row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   // Format header
@@ -1859,22 +1950,18 @@ function createInvoiceLogSheet(ss) {
     .build();
   sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
 
-  Logger.log('Invoice Log sheet created successfully');
+  Logger.log('Invoice Log sheet ' + (isNew ? 'created' : 'updated'));
 }
 
 /**
- * Create the Settings sheet
+ * Setup the Settings sheet - creates if missing, preserves existing values on repair
  */
-function createSettingsSheet(ss) {
+function setupSettingsSheet(ss, clearData) {
   let sheet = ss.getSheetByName(SHEETS.SETTINGS);
+  const isNew = !sheet;
 
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEETS.SETTINGS);
-  } else {
-    sheet.clear();
-  }
-
-  const settings = [
+  // Default settings
+  const defaultSettings = [
     ['Setting', 'Value', 'Description'],
     ['Business Name', 'CartCure', 'Your business name for invoices'],
     ['GST Registered', 'No', 'Yes or No - controls GST display on quotes/invoices'],
@@ -1888,13 +1975,41 @@ function createSettingsSheet(ss) {
     ['Next Invoice Number', '1', 'Auto-incremented invoice number counter']
   ];
 
-  sheet.getRange(1, 1, settings.length, 3).setValues(settings);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.SETTINGS);
+    // New sheet - use all defaults
+    sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+  } else if (clearData) {
+    // Hard reset - clear and use defaults
+    sheet.clear();
+    sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+  } else {
+    // Repair mode - preserve existing values, only add missing settings
+    const existingData = sheet.getDataRange().getValues();
+    const existingSettings = {};
+    for (let i = 1; i < existingData.length; i++) {
+      existingSettings[existingData[i][0]] = existingData[i][1];
+    }
+
+    // Merge: keep existing values, use defaults for missing
+    const mergedSettings = defaultSettings.map((row, index) => {
+      if (index === 0) return row; // Header row
+      const settingName = row[0];
+      if (existingSettings.hasOwnProperty(settingName)) {
+        return [settingName, existingSettings[settingName], row[2]];
+      }
+      return row;
+    });
+
+    sheet.clear();
+    sheet.getRange(1, 1, mergedSettings.length, 3).setValues(mergedSettings);
+  }
 
   // Format header
   sheet.getRange(1, 1, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
 
   // Format setting names
-  sheet.getRange(2, 1, settings.length - 1, 1).setFontWeight('bold');
+  sheet.getRange(2, 1, defaultSettings.length - 1, 1).setFontWeight('bold');
 
   // Set column widths
   sheet.setColumnWidth(1, 180);
@@ -1903,7 +2018,7 @@ function createSettingsSheet(ss) {
 
   sheet.setFrozenRows(1);
 
-  Logger.log('Settings sheet created successfully');
+  Logger.log('Settings sheet ' + (isNew ? 'created' : (clearData ? 'reset' : 'updated')));
 }
 
 /**
@@ -4850,7 +4965,8 @@ function showHardResetDialog() {
     '• All Jobs\n' +
     '• All Invoices\n' +
     '• All Submissions/Enquiries\n' +
-    '• Dashboard data\n\n' +
+    '• Dashboard data\n' +
+    '• Settings (reset to defaults)\n\n' +
     '❌ THIS CANNOT BE UNDONE!\n\n' +
     'Are you absolutely sure you want to continue?',
     ui.ButtonSet.YES_NO
@@ -4889,99 +5005,11 @@ function showHardResetDialog() {
     return;
   }
 
-  // Execute the hard reset
+  // Execute the hard reset using combined setup function
   try {
-    performHardReset();
-
-    // Run Setup Sheets to ensure everything is properly configured
-    Logger.log('Running Setup Sheets after hard reset...');
-    setupJobManagementSheets();
-
-    ui.alert(
-      '✅ Hard Reset Complete',
-      'All data has been deleted and sheets have been reset:\n\n' +
-      '• Jobs sheet cleared\n' +
-      '• Invoices cleared\n' +
-      '• Submissions cleared\n' +
-      '• Dashboard cleared\n' +
-      '• Invoice counter reset to 1\n' +
-      '• All sheets reconfigured\n\n' +
-      'Your system is now in a fresh state.',
-      ui.ButtonSet.OK
-    );
+    setupSheets(true); // true = clear all data
   } catch (error) {
     ui.alert('Error During Hard Reset', 'An error occurred: ' + error.toString(), ui.ButtonSet.OK);
     Logger.log('Hard Reset Error: ' + error);
   }
-}
-
-/**
- * Perform the actual hard reset - delete all data
- */
-function performHardReset() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-
-  Logger.log('Starting hard reset...');
-
-  // Clear Jobs sheet (keep header row)
-  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
-  if (jobsSheet) {
-    const lastRow = jobsSheet.getLastRow();
-    if (lastRow > 1) {
-      jobsSheet.deleteRows(2, lastRow - 1);
-    }
-    Logger.log('Jobs sheet cleared');
-  }
-
-  // Clear Invoice Log sheet (keep header row)
-  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
-  if (invoiceSheet) {
-    const lastRow = invoiceSheet.getLastRow();
-    if (lastRow > 1) {
-      invoiceSheet.deleteRows(2, lastRow - 1);
-    }
-    Logger.log('Invoice Log cleared');
-  }
-
-  // Clear Submissions sheet (keep header row)
-  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
-  if (submissionsSheet) {
-    const lastRow = submissionsSheet.getLastRow();
-    if (lastRow > 1) {
-      submissionsSheet.deleteRows(2, lastRow - 1);
-    }
-    Logger.log('Submissions cleared');
-  }
-
-  // Clear Dashboard data areas (keep structure/headers)
-  const dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
-  if (dashboardSheet) {
-    // Clear new submissions section (rows 10-23, columns A-E)
-    dashboardSheet.getRange('A10:E23').clearContent();
-
-    // Clear active jobs section (rows 6-15, columns I-N)
-    dashboardSheet.getRange('I6:N15').clearContent();
-
-    // Clear pending quotes section (rows 19-26, columns I-N)
-    dashboardSheet.getRange('I19:N26').clearContent();
-
-    // Update last refreshed timestamp
-    dashboardSheet.getRange('A2').setValue('Last refreshed: ' + formatNZDate(new Date()));
-
-    Logger.log('Dashboard cleared');
-  }
-
-  // Reset invoice counter in Settings sheet
-  const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
-  if (settingsSheet) {
-    const data = settingsSheet.getDataRange().getValues();
-    for (let i = 0; i < data.length; i++) {
-      if (data[i][0] === 'Next Invoice Number') {
-        settingsSheet.getRange(i + 1, 2).setValue(1);
-      }
-    }
-    Logger.log('Invoice counter reset');
-  }
-
-  Logger.log('Hard reset completed successfully');
 }
