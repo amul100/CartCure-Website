@@ -1885,7 +1885,6 @@ function createSettingsSheet(ss) {
     ['Default Payment Terms', '7', 'Days to pay after invoice'],
     ['Default SLA Days', '7', 'Your turnaround promise in days'],
     ['Admin Email', CONFIG.ADMIN_EMAIL || '', 'Email for notifications'],
-    ['Next Job Number', '1', 'Auto-incremented job number counter'],
     ['Next Invoice Number', '1', 'Auto-incremented invoice number counter']
   ];
 
@@ -1924,56 +1923,76 @@ function createDashboardSheet(ss) {
 
   // Dashboard header
   sheet.getRange('A1').setValue('📊 CartCure Dashboard');
-  sheet.getRange('A1').setFontSize(20).setFontWeight('bold').setFontColor('#2d5d3f');
+  sheet.getRange('A1').setFontSize(18).setFontWeight('bold').setFontColor('#2d5d3f');
 
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
-  sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic');
+  sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
 
-  // Summary Metrics Section
-  sheet.getRange('A4').setValue('📈 Summary Metrics');
-  sheet.getRange('A4').setFontSize(14).setFontWeight('bold');
+  // === LEFT COLUMN: Metrics + New Submissions ===
+
+  // Summary Metrics Section (compact horizontal layout)
+  sheet.getRange('A4').setValue('📈 Metrics');
+  sheet.getRange('A4').setFontSize(12).setFontWeight('bold');
 
   const metricsLabels = [
-    ['Metric', 'Value'],
-    ['Jobs OVERDUE', '=COUNTIF(Jobs!R:R,"OVERDUE")'],
-    ['Jobs AT RISK', '=COUNTIF(Jobs!R:R,"AT RISK")'],
-    ['Jobs In Progress', '=COUNTIF(Jobs!I:I,"In Progress")'],
-    ['Jobs Awaiting Quote', '=COUNTIF(Jobs!I:I,"Pending Quote")'],
-    ['Pending Quotes (sent)', '=COUNTIF(Jobs!I:I,"Quoted")'],
-    ['Unpaid Invoices', '=SUMIF(Jobs!W:W,"Unpaid",Jobs!L:L)+SUMIF(Jobs!W:W,"Invoiced",Jobs!L:L)'],
-    ['Revenue This Month', '=SUMIFS(Jobs!L:L,Jobs!W:W,"Paid",Jobs!X:X,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))']
+    ['OVERDUE', 'AT RISK', 'In Progress', 'Pending Quote', 'Quoted', 'Unpaid $', 'Revenue MTD'],
+    ['=COUNTIF(Jobs!R:R,"OVERDUE")', '=COUNTIF(Jobs!R:R,"AT RISK")', '=COUNTIF(Jobs!I:I,"In Progress")', '=COUNTIF(Jobs!I:I,"Pending Quote")', '=COUNTIF(Jobs!I:I,"Quoted")', '=SUMIF(Jobs!W:W,"Unpaid",Jobs!L:L)+SUMIF(Jobs!W:W,"Invoiced",Jobs!L:L)', '=SUMIFS(Jobs!L:L,Jobs!W:W,"Paid",Jobs!X:X,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))']
   ];
 
-  sheet.getRange(5, 1, metricsLabels.length, 2).setValues(metricsLabels);
-  sheet.getRange(5, 1, 1, 2).setBackground('#f0f0f0').setFontWeight('bold');
+  sheet.getRange(5, 1, 2, 7).setValues(metricsLabels);
+  sheet.getRange(5, 1, 1, 7).setBackground('#f0f0f0').setFontWeight('bold').setFontSize(9).setHorizontalAlignment('center');
+  sheet.getRange(6, 1, 1, 7).setHorizontalAlignment('center').setFontSize(11).setFontWeight('bold');
+  // Color code OVERDUE and AT RISK
+  sheet.getRange(6, 1).setFontColor('#cc0000'); // OVERDUE count in red
+  sheet.getRange(6, 2).setFontColor('#856404'); // AT RISK count in amber
+
+  // New Submissions Section
+  sheet.getRange('A8').setValue('📥 New Submissions (not actioned)');
+  sheet.getRange('A8').setFontSize(12).setFontWeight('bold');
+
+  const newSubmissionsHeaders = ['Submission #', 'Date', 'Name', 'Email', 'Message'];
+  sheet.getRange(9, 1, 1, 5).setValues([newSubmissionsHeaders]);
+  sheet.getRange(9, 1, 1, 5).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+
+  // === RIGHT COLUMN: Active Jobs + Pending Quotes ===
 
   // Active Jobs Section
-  sheet.getRange('A15').setValue('🔥 Active Jobs (sorted by urgency)');
-  sheet.getRange('A15').setFontSize(14).setFontWeight('bold');
+  sheet.getRange('I4').setValue('🔥 Active Jobs (by urgency)');
+  sheet.getRange('I4').setFontSize(12).setFontWeight('bold');
 
-  sheet.getRange('A16').setValue('Click "Refresh Dashboard" from the CartCure menu to update this view');
-  sheet.getRange('A16').setFontColor('#8a8a8a').setFontStyle('italic');
-
-  const activeJobsHeaders = ['Job #', 'Client', 'Description', 'Days Remaining', 'SLA Status', 'Status', 'Due Date'];
-  sheet.getRange(18, 1, 1, activeJobsHeaders.length).setValues([activeJobsHeaders]);
-  sheet.getRange(18, 1, 1, activeJobsHeaders.length).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
+  const activeJobsHeaders = ['Job #', 'Client', 'Description', 'Days Left', 'SLA', 'Status'];
+  sheet.getRange(5, 9, 1, 6).setValues([activeJobsHeaders]);
+  sheet.getRange(5, 9, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
 
   // Pending Quotes Section
-  sheet.getRange('A30').setValue('⏳ Pending Quotes (sorted by age)');
-  sheet.getRange('A30').setFontSize(14).setFontWeight('bold');
+  sheet.getRange('I17').setValue('⏳ Pending Quotes');
+  sheet.getRange('I17').setFontSize(12).setFontWeight('bold');
 
-  const pendingQuotesHeaders = ['Job #', 'Client', 'Quote Amount', 'Days Waiting', 'Quote Valid Until', 'Action'];
-  sheet.getRange(32, 1, 1, pendingQuotesHeaders.length).setValues([pendingQuotesHeaders]);
-  sheet.getRange(32, 1, 1, pendingQuotesHeaders.length).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
+  const pendingQuotesHeaders = ['Job #', 'Client', 'Amount', 'Waiting', 'Valid Until', 'Action'];
+  sheet.getRange(18, 9, 1, 6).setValues([pendingQuotesHeaders]);
+  sheet.getRange(18, 9, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
 
-  // Set column widths
-  sheet.setColumnWidth(1, 100);
-  sheet.setColumnWidth(2, 150);
-  sheet.setColumnWidth(3, 250);
-  sheet.setColumnWidth(4, 120);
-  sheet.setColumnWidth(5, 100);
-  sheet.setColumnWidth(6, 100);
-  sheet.setColumnWidth(7, 100);
+  // Set column widths for compact layout
+  sheet.setColumnWidth(1, 130);  // Submission # / Metric
+  sheet.setColumnWidth(2, 85);   // Date / Metric
+  sheet.setColumnWidth(3, 100);  // Name / Metric
+  sheet.setColumnWidth(4, 150);  // Email / Metric
+  sheet.setColumnWidth(5, 180);  // Message / Metric
+  sheet.setColumnWidth(6, 70);   // Metric
+  sheet.setColumnWidth(7, 80);   // Metric
+  sheet.setColumnWidth(8, 15);   // Spacer
+  sheet.setColumnWidth(9, 130);  // Job #
+  sheet.setColumnWidth(10, 100); // Client
+  sheet.setColumnWidth(11, 150); // Description
+  sheet.setColumnWidth(12, 65);  // Days Left / Waiting
+  sheet.setColumnWidth(13, 70);  // SLA / Valid Until
+  sheet.setColumnWidth(14, 80);  // Status / Action
+
+  // Set row heights for compactness
+  for (let i = 1; i <= 30; i++) {
+    sheet.setRowHeight(i, 20);
+  }
+  sheet.setRowHeight(1, 28); // Title row slightly taller
 
   Logger.log('Dashboard sheet created successfully');
 }
@@ -2183,16 +2202,6 @@ function updateSetting(settingName, value) {
     }
   }
   return false;
-}
-
-/**
- * Get the next job number and increment the counter
- */
-function getNextJobNumber() {
-  const currentNum = parseInt(getSetting('Next Job Number')) || 1;
-  const jobNumber = 'JOB-' + String(currentNum).padStart(3, '0');
-  updateSetting('Next Job Number', currentNum + 1);
-  return jobNumber;
 }
 
 /**
@@ -2847,8 +2856,8 @@ function createJobFromSubmission(submissionNumber) {
     }
   }
 
-  // Get job number
-  const jobNumber = getNextJobNumber();
+  // Use submission number as job number, replacing CC prefix with J
+  const jobNumber = submissionNumber.replace(/^CC-/, 'J-');
 
   // Extract submission data
   const name = submissionRow[headers.indexOf('Name')] || submissionRow[2];
@@ -4496,6 +4505,7 @@ function refreshDashboard() {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const dashboard = ss.getSheetByName(SHEETS.DASHBOARD);
   const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
 
   if (!dashboard || !jobsSheet) {
     SpreadsheetApp.getUi().alert('Error', 'Dashboard or Jobs sheet not found. Please run Setup first.', SpreadsheetApp.getUi().ButtonSet.OK);
@@ -4527,11 +4537,10 @@ function refreshDashboard() {
       activeJobs.push({
         jobNumber: jobNum,
         client: row[headers.indexOf('Client Name')],
-        description: (row[headers.indexOf('Job Description')] || '').substring(0, 50) + '...',
+        description: (row[headers.indexOf('Job Description')] || '').substring(0, 30),
         daysRemaining: row[headers.indexOf('Days Remaining')],
         slaStatus: row[headers.indexOf('SLA Status')],
-        status: status,
-        dueDate: row[headers.indexOf('Due Date')]
+        status: status
       });
     } else if (status === JOB_STATUS.QUOTED) {
       const quoteSentDate = row[headers.indexOf('Quote Sent Date')];
@@ -4560,22 +4569,70 @@ function refreshDashboard() {
   // Sort pending quotes: oldest first
   pendingQuotes.sort((a, b) => b.daysWaiting - a.daysWaiting);
 
-  // Clear and populate active jobs section (rows 19-28)
-  dashboard.getRange(19, 1, 10, 7).clearContent();
+  // === POPULATE NEW SUBMISSIONS (Left side, rows 10-22) ===
+  dashboard.getRange(10, 1, 13, 5).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+
+  if (submissionsSheet) {
+    const subData = submissionsSheet.getDataRange().getValues();
+    const subHeaders = subData[0];
+    const statusCol = subHeaders.indexOf('Status');
+
+    // Get new/unactioned submissions
+    const newSubmissions = [];
+    for (let i = 1; i < subData.length; i++) {
+      const status = subData[i][statusCol];
+      if (!status || status === 'New' || status === '') {
+        newSubmissions.push({
+          submissionNum: subData[i][0],
+          timestamp: subData[i][1],
+          name: subData[i][2],
+          email: subData[i][3],
+          message: (subData[i][5] || '').substring(0, 40)
+        });
+      }
+    }
+
+    // Sort by timestamp descending (newest first)
+    newSubmissions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Populate (max 13 rows to fit on screen)
+    for (let i = 0; i < Math.min(newSubmissions.length, 13); i++) {
+      const sub = newSubmissions[i];
+      const dateStr = sub.timestamp ? new Date(sub.timestamp).toLocaleDateString('en-NZ') : '';
+      dashboard.getRange(10 + i, 1, 1, 5).setValues([[
+        sub.submissionNum,
+        dateStr,
+        sub.name,
+        sub.email,
+        sub.message
+      ]]).setFontSize(9);
+    }
+
+    // Show count if there are more
+    if (newSubmissions.length > 13) {
+      dashboard.getRange(23, 1).setValue('+ ' + (newSubmissions.length - 13) + ' more...').setFontStyle('italic').setFontColor('#8a8a8a');
+    }
+
+    // Update header with count
+    dashboard.getRange('A8').setValue('📥 New Submissions (' + newSubmissions.length + ')');
+  }
+
+  // === POPULATE ACTIVE JOBS (Right side, rows 6-15) ===
+  dashboard.getRange(6, 9, 10, 6).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+
   for (let i = 0; i < Math.min(activeJobs.length, 10); i++) {
     const job = activeJobs[i];
-    dashboard.getRange(19 + i, 1, 1, 7).setValues([[
+    dashboard.getRange(6 + i, 9, 1, 6).setValues([[
       job.jobNumber,
       job.client,
       job.description,
       job.daysRemaining,
       job.slaStatus,
-      job.status,
-      job.dueDate
-    ]]);
+      job.status
+    ]]).setFontSize(9);
 
     // Color code SLA status
-    const slaCell = dashboard.getRange(19 + i, 5);
+    const slaCell = dashboard.getRange(6 + i, 13);
     if (job.slaStatus === 'OVERDUE') {
       slaCell.setBackground('#ffcccc').setFontColor('#cc0000').setFontWeight('bold');
     } else if (job.slaStatus === 'AT RISK') {
@@ -4585,24 +4642,31 @@ function refreshDashboard() {
     }
   }
 
-  // Clear and populate pending quotes section (rows 33-40)
-  dashboard.getRange(33, 1, 8, 6).clearContent();
+  // Update header with count
+  dashboard.getRange('I4').setValue('🔥 Active Jobs (' + activeJobs.length + ')');
+
+  // === POPULATE PENDING QUOTES (Right side, rows 19-26) ===
+  dashboard.getRange(19, 9, 8, 6).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+
   for (let i = 0; i < Math.min(pendingQuotes.length, 8); i++) {
     const quote = pendingQuotes[i];
-    dashboard.getRange(33 + i, 1, 1, 6).setValues([[
+    dashboard.getRange(19 + i, 9, 1, 6).setValues([[
       quote.jobNumber,
       quote.client,
       quote.quoteAmount,
-      quote.daysWaiting + ' days',
+      quote.daysWaiting + 'd',
       quote.validUntil,
       quote.action
-    ]]);
+    ]]).setFontSize(9);
 
     // Highlight follow-up needed
     if (quote.action === 'Follow up!') {
-      dashboard.getRange(33 + i, 6).setBackground('#fff3cd').setFontWeight('bold');
+      dashboard.getRange(19 + i, 14).setBackground('#fff3cd').setFontWeight('bold');
     }
   }
+
+  // Update header with count
+  dashboard.getRange('I17').setValue('⏳ Pending Quotes (' + pendingQuotes.length + ')');
 
   Logger.log('Dashboard refreshed');
 }
@@ -4840,7 +4904,7 @@ function showHardResetDialog() {
       '• Invoices cleared\n' +
       '• Submissions cleared\n' +
       '• Dashboard cleared\n' +
-      '• Job and Invoice counters reset to 1\n' +
+      '• Invoice counter reset to 1\n' +
       '• All sheets reconfigured\n\n' +
       'Your system is now in a fresh state.',
       ui.ButtonSet.OK
@@ -4892,34 +4956,31 @@ function performHardReset() {
   // Clear Dashboard data areas (keep structure/headers)
   const dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
   if (dashboardSheet) {
-    // Clear summary metrics (rows 3-9, column B)
-    dashboardSheet.getRange('B3:B9').clearContent();
+    // Clear new submissions section (rows 10-23, columns A-E)
+    dashboardSheet.getRange('A10:E23').clearContent();
 
-    // Clear active jobs section (rows 13-32)
-    dashboardSheet.getRange('A13:G32').clearContent();
+    // Clear active jobs section (rows 6-15, columns I-N)
+    dashboardSheet.getRange('I6:N15').clearContent();
 
-    // Clear pending quotes section (rows 36-45)
-    dashboardSheet.getRange('A36:F45').clearContent();
+    // Clear pending quotes section (rows 19-26, columns I-N)
+    dashboardSheet.getRange('I19:N26').clearContent();
 
     // Update last refreshed timestamp
-    dashboardSheet.getRange('A1').setValue('Last refreshed: ' + formatNZDate(new Date()));
+    dashboardSheet.getRange('A2').setValue('Last refreshed: ' + formatNZDate(new Date()));
 
     Logger.log('Dashboard cleared');
   }
 
-  // Reset counters in Settings sheet
+  // Reset invoice counter in Settings sheet
   const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
   if (settingsSheet) {
     const data = settingsSheet.getDataRange().getValues();
     for (let i = 0; i < data.length; i++) {
-      if (data[i][0] === 'Next Job Number') {
-        settingsSheet.getRange(i + 1, 2).setValue(1);
-      }
       if (data[i][0] === 'Next Invoice Number') {
         settingsSheet.getRange(i + 1, 2).setValue(1);
       }
     }
-    Logger.log('Settings counters reset');
+    Logger.log('Invoice counter reset');
   }
 
   Logger.log('Hard reset completed successfully');
