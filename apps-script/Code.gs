@@ -1624,7 +1624,8 @@ function onOpen() {
       .addItem('Mark Quote Accepted', 'showAcceptQuoteDialog')
       .addItem('Start Work on Job', 'showStartWorkDialog')
       .addItem('Mark Job Complete', 'showCompleteJobDialog')
-      .addItem('Put Job On Hold', 'showOnHoldDialog'))
+      .addItem('Put Job On Hold', 'showOnHoldDialog')
+      .addItem('Cancel Job', 'showCancelJobDialog'))
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('Send Quote', 'showSendQuoteDialog')
       .addItem('Send Quote Reminder', 'showQuoteReminderDialog')
@@ -3832,6 +3833,111 @@ function putJobOnHold(jobNumber) {
   ui.alert('On Hold', 'Job ' + jobNumber + ' is now On Hold.', ui.ButtonSet.OK);
 
   Logger.log('Job ' + jobNumber + ' put on hold');
+}
+
+/**
+ * Show dialog to cancel a job
+ */
+function showCancelJobDialog() {
+  // Can cancel jobs that are Accepted, In Progress, or On Hold
+  const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.IN_PROGRESS, JOB_STATUS.ON_HOLD]);
+  showDropdownDialog(
+    'Cancel Job',
+    jobs,
+    'Job',
+    'showCancelJobConfirmation'
+  );
+}
+
+/**
+ * Show confirmation dialog for job cancellation with refund options
+ */
+function showCancelJobConfirmation(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const clientName = job['Client Name'];
+  const paymentStatus = job['Payment Status'];
+  const total = job['Total (incl GST)'];
+
+  // First confirmation
+  const confirm = ui.alert(
+    '⚠️ Cancel Job?',
+    'Are you sure you want to cancel job ' + jobNumber + '?\n\n' +
+    'Client: ' + clientName + '\n' +
+    'Payment Status: ' + paymentStatus + '\n' +
+    (total ? 'Amount: ' + formatCurrency(total) : '') + '\n\n' +
+    'This will mark the job as Cancelled.',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) {
+    return;
+  }
+
+  // Ask for cancellation reason
+  const reasonResponse = ui.prompt(
+    'Cancellation Reason',
+    'Enter a reason for cancellation (optional):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (reasonResponse.getSelectedButton() === ui.Button.CANCEL) {
+    return;
+  }
+
+  const reason = reasonResponse.getResponseText().trim();
+
+  // If payment was made, ask about refund
+  let refundStatus = null;
+  if (paymentStatus === PAYMENT_STATUS.PAID || paymentStatus === PAYMENT_STATUS.INVOICED) {
+    const refundResponse = ui.alert(
+      'Refund Required?',
+      'This job has payment status: ' + paymentStatus + '\n\n' +
+      'Will a refund be issued?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (refundResponse === ui.Button.YES) {
+      refundStatus = PAYMENT_STATUS.REFUNDED;
+    }
+  }
+
+  // Update job
+  const now = new Date();
+  const existingNotes = job['Notes'] || '';
+  const cancellationNote = '[CANCELLED ' + formatNZDate(now) + ']' + (reason ? ' Reason: ' + reason : ' No reason provided');
+  const newNotes = existingNotes ? existingNotes + '\n' + cancellationNote : cancellationNote;
+
+  const updates = {
+    'Status': JOB_STATUS.CANCELLED,
+    'Notes': newNotes,
+    'Last Updated': formatNZDate(now)
+  };
+
+  if (refundStatus) {
+    updates['Payment Status'] = refundStatus;
+  }
+
+  updateJobFields(jobNumber, updates);
+
+  // Show confirmation
+  let message = 'Job ' + jobNumber + ' has been cancelled.';
+  if (refundStatus) {
+    message += '\n\nPayment status updated to: ' + refundStatus;
+  }
+  if (reason) {
+    message += '\n\nReason recorded: ' + reason;
+  }
+
+  ui.alert('Job Cancelled', message, ui.ButtonSet.OK);
+
+  Logger.log('Job ' + jobNumber + ' cancelled. Reason: ' + (reason || 'None provided'));
 }
 
 // ============================================================================
