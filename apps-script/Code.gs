@@ -1606,6 +1606,61 @@ const PAYMENT_STATUS = {
 const JOB_CATEGORIES = ['Design', 'Content', 'Bug Fix', 'Improvement', 'App Setup', 'Other'];
 
 // ============================================================================
+// SHEET STYLING - Brand Color Palette
+// ============================================================================
+// Colors matching CartCure website and email design
+const SHEET_COLORS = {
+  // Primary brand colors
+  brandGreen: '#2d5d3f',        // Primary accent - headers, buttons
+  brandGreenLight: '#4a7c59',   // Lighter green for hover states
+
+  // Paper-like background colors (warm off-whites)
+  paperWhite: '#f9f7f3',        // Primary background
+  paperCream: '#faf8f4',        // Alternate row color
+  paperBeige: '#ece8df',        // Section backgrounds
+  paperBorder: '#d4cfc3',       // Borders and dividers
+
+  // Text colors
+  inkBlack: '#2b2b2b',          // Primary text
+  inkGray: '#5a5a5a',           // Secondary text
+  inkLight: '#8a8a8a',          // Muted text
+
+  // Header colors
+  headerBg: '#2d5d3f',          // Header background (brand green)
+  headerText: '#ffffff',        // Header text (white)
+
+  // Status colors - SLA
+  slaOnTrack: '#e8f5e9',        // Light green background
+  slaOnTrackText: '#2d5d3f',    // Brand green text
+  slaAtRisk: '#fff8e1',         // Light amber background
+  slaAtRiskText: '#b8860b',     // Dark goldenrod text
+  slaOverdue: '#ffebee',        // Light red background
+  slaOverdueText: '#c62828',    // Dark red text
+
+  // Status colors - Payment
+  paymentPaid: '#e8f5e9',       // Light green
+  paymentPaidText: '#2d5d3f',   // Brand green
+  paymentPending: '#fff8e1',    // Light amber
+  paymentPendingText: '#b8860b',// Dark goldenrod
+  paymentUnpaid: '#ffebee',     // Light red
+  paymentUnpaidText: '#c62828', // Dark red
+
+  // Status colors - Job
+  statusActive: '#e3f2fd',      // Light blue for active jobs
+  statusActiveText: '#1565c0',  // Blue text
+  statusCompleted: '#e8f5e9',   // Light green
+  statusCompletedText: '#2d5d3f',// Brand green
+  statusCancelled: '#fafafa',   // Light gray
+  statusCancelledText: '#757575',// Gray text
+
+  // Dashboard accent colors
+  metricBg: '#f5f5f5',          // Light gray for metric labels
+  sectionBg: '#fafafa',         // Very light gray for sections
+  alertBg: '#fff8e6',           // Alert/warning background
+  alertBorder: '#f5d76e'        // Alert/warning border
+};
+
+// ============================================================================
 // CUSTOM MENU
 // ============================================================================
 
@@ -1849,6 +1904,118 @@ function resetInvoiceCounter(ss) {
   }
 }
 
+// ============================================================================
+// SHEET STYLING HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Apply brand header styling to a range
+ * @param {Range} range - The range to style
+ */
+function applyHeaderStyle(range) {
+  range
+    .setBackground(SHEET_COLORS.headerBg)
+    .setFontColor(SHEET_COLORS.headerText)
+    .setFontWeight('bold')
+    .setFontFamily('Arial')
+    .setFontSize(10)
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle');
+}
+
+/**
+ * Apply paper-like background to entire sheet
+ * @param {Sheet} sheet - The sheet to style
+ */
+function applyPaperBackground(sheet) {
+  // Set default background color for the whole sheet
+  const maxRows = Math.max(sheet.getMaxRows(), 100);
+  const maxCols = Math.max(sheet.getMaxColumns(), 20);
+  sheet.getRange(1, 1, maxRows, maxCols).setBackground(SHEET_COLORS.paperWhite);
+}
+
+/**
+ * Apply alternating row colors for data rows
+ * @param {Sheet} sheet - The sheet to style
+ * @param {number} startRow - First data row (usually 2, after header)
+ * @param {number} numRows - Number of rows to apply alternating colors
+ * @param {number} numCols - Number of columns
+ */
+function applyAlternatingRows(sheet, startRow, numRows, numCols) {
+  for (let i = 0; i < numRows; i++) {
+    const rowNum = startRow + i;
+    const bgColor = (i % 2 === 0) ? SHEET_COLORS.paperWhite : SHEET_COLORS.paperCream;
+    sheet.getRange(rowNum, 1, 1, numCols).setBackground(bgColor);
+  }
+}
+
+/**
+ * Apply section header styling (for Dashboard/Analytics sections)
+ * @param {Range} range - The range to style
+ */
+function applySectionHeaderStyle(range) {
+  range
+    .setFontSize(12)
+    .setFontWeight('bold')
+    .setFontColor(SHEET_COLORS.inkBlack)
+    .setFontFamily('Georgia');
+}
+
+/**
+ * Apply table header styling (smaller headers in Dashboard/Analytics)
+ * @param {Range} range - The range to style
+ */
+function applyTableHeaderStyle(range) {
+  range
+    .setBackground(SHEET_COLORS.headerBg)
+    .setFontColor(SHEET_COLORS.headerText)
+    .setFontWeight('bold')
+    .setFontFamily('Arial')
+    .setFontSize(9)
+    .setHorizontalAlignment('center');
+}
+
+/**
+ * Apply metric card styling
+ * @param {Range} labelRange - The label range
+ * @param {Range} valueRange - The value range
+ */
+function applyMetricStyle(labelRange, valueRange) {
+  labelRange
+    .setBackground(SHEET_COLORS.paperBeige)
+    .setFontWeight('bold')
+    .setFontSize(9)
+    .setFontColor(SHEET_COLORS.inkGray)
+    .setHorizontalAlignment('center')
+    .setFontFamily('Arial');
+
+  valueRange
+    .setBackground(SHEET_COLORS.paperWhite)
+    .setFontWeight('bold')
+    .setFontSize(12)
+    .setFontColor(SHEET_COLORS.inkBlack)
+    .setHorizontalAlignment('center')
+    .setFontFamily('Georgia');
+}
+
+/**
+ * Apply border styling to a range
+ * @param {Range} range - The range to add borders
+ * @param {boolean} outer - Apply outer border
+ * @param {boolean} inner - Apply inner borders
+ */
+function applyBorders(range, outer, inner) {
+  const borderColor = SHEET_COLORS.paperBorder;
+  const borderStyle = SpreadsheetApp.BorderStyle.SOLID;
+
+  if (outer) {
+    range.setBorder(true, true, true, true, false, false, borderColor, borderStyle);
+  }
+  if (inner) {
+    range.setBorder(null, null, null, null, true, true, borderColor, borderStyle);
+  }
+}
+
 /**
  * Setup the Jobs sheet - creates if missing, repairs formatting, preserves data
  * @param {Spreadsheet} ss - The spreadsheet
@@ -1898,20 +2065,51 @@ function setupJobsSheet(ss, clearData) {
   // Set headers (overwrites row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
-  // Format header row
+  // Apply paper-like background to entire sheet
+  applyPaperBackground(sheet);
+
+  // Format header row with brand styling
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
-  headerRange.setBackground('#2d5d3f');
-  headerRange.setFontColor('#ffffff');
-  headerRange.setFontWeight('bold');
-  headerRange.setHorizontalAlignment('center');
+  applyHeaderStyle(headerRange);
+  headerRange.setWrap(true);
+
+  // Apply subtle border to header
+  applyBorders(headerRange, true, false);
+
+  // Set row height for header
+  sheet.setRowHeight(1, 35);
+
+  // Set default row height for data rows
+  for (let i = 2; i <= 50; i++) {
+    sheet.setRowHeight(i, 25);
+  }
+
+  // Apply alternating row colors for existing data
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataRange.setFontFamily('Arial');
+  dataRange.setFontSize(10);
+  dataRange.setFontColor(SHEET_COLORS.inkBlack);
+  dataRange.setVerticalAlignment('middle');
 
   // Freeze header row
   sheet.setFrozenRows(1);
 
   // Set column widths
   sheet.setColumnWidth(1, 100);  // Job #
+  sheet.setColumnWidth(2, 110);  // Submission #
+  sheet.setColumnWidth(3, 100);  // Created Date
+  sheet.setColumnWidth(4, 140);  // Client Name
+  sheet.setColumnWidth(5, 180);  // Client Email
+  sheet.setColumnWidth(6, 160);  // Store URL
   sheet.setColumnWidth(7, 300);  // Job Description
+  sheet.setColumnWidth(8, 100);  // Category
+  sheet.setColumnWidth(9, 110);  // Status
   sheet.setColumnWidth(28, 250); // Notes
+  sheet.setColumnWidth(29, 100); // Last Updated
 
   // Add data validation for Category (column 8)
   const categoryRule = SpreadsheetApp.newDataValidation()
@@ -1934,8 +2132,10 @@ function setupJobsSheet(ss, clearData) {
     .build();
   sheet.getRange(2, 23, 500, 1).setDataValidation(paymentRule);
 
-  // Add conditional formatting for SLA Status
+  // Add conditional formatting for SLA Status and other status columns
   addSLAConditionalFormatting(sheet);
+  addStatusConditionalFormatting(sheet);
+  addPaymentConditionalFormatting(sheet);
 
   Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -1947,36 +2147,36 @@ function addSLAConditionalFormatting(sheet) {
   const slaColumn = 18; // SLA Status column
   const range = sheet.getRange(2, slaColumn, 500, 1);
 
-  // Clear existing rules
+  // Clear existing rules for this column
   const rules = sheet.getConditionalFormatRules();
   const newRules = rules.filter(rule => {
     const ranges = rule.getRanges();
     return !ranges.some(r => r.getColumn() === slaColumn);
   });
 
-  // OVERDUE - Red
+  // OVERDUE - Brand red tones
   const overdueRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('OVERDUE')
-    .setBackground('#ffcccc')
-    .setFontColor('#cc0000')
+    .setBackground(SHEET_COLORS.slaOverdue)
+    .setFontColor(SHEET_COLORS.slaOverdueText)
     .setBold(true)
     .setRanges([range])
     .build();
 
-  // AT RISK - Yellow
+  // AT RISK - Brand amber tones
   const atRiskRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('AT RISK')
-    .setBackground('#fff3cd')
-    .setFontColor('#856404')
+    .setBackground(SHEET_COLORS.slaAtRisk)
+    .setFontColor(SHEET_COLORS.slaAtRiskText)
     .setBold(true)
     .setRanges([range])
     .build();
 
-  // On Track - Green
+  // On Track - Brand green tones
   const onTrackRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('On Track')
-    .setBackground('#d4edda')
-    .setFontColor('#155724')
+    .setBackground(SHEET_COLORS.slaOnTrack)
+    .setFontColor(SHEET_COLORS.slaOnTrackText)
     .setRanges([range])
     .build();
 
@@ -1985,8 +2185,121 @@ function addSLAConditionalFormatting(sheet) {
 }
 
 /**
- * Create the Invoice Log sheet
+ * Add conditional formatting for Job Status column
  */
+function addStatusConditionalFormatting(sheet) {
+  const statusColumn = 9; // Status column
+  const range = sheet.getRange(2, statusColumn, 500, 1);
+
+  const rules = sheet.getConditionalFormatRules();
+
+  // In Progress - Blue
+  const inProgressRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.IN_PROGRESS)
+    .setBackground(SHEET_COLORS.statusActive)
+    .setFontColor(SHEET_COLORS.statusActiveText)
+    .setBold(true)
+    .setRanges([range])
+    .build();
+
+  // Completed - Green
+  const completedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.COMPLETED)
+    .setBackground(SHEET_COLORS.statusCompleted)
+    .setFontColor(SHEET_COLORS.statusCompletedText)
+    .setRanges([range])
+    .build();
+
+  // Cancelled - Gray
+  const cancelledRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.CANCELLED)
+    .setBackground(SHEET_COLORS.statusCancelled)
+    .setFontColor(SHEET_COLORS.statusCancelledText)
+    .setRanges([range])
+    .build();
+
+  // Declined - Gray
+  const declinedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.DECLINED)
+    .setBackground(SHEET_COLORS.statusCancelled)
+    .setFontColor(SHEET_COLORS.statusCancelledText)
+    .setRanges([range])
+    .build();
+
+  // On Hold - Amber
+  const onHoldRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.ON_HOLD)
+    .setBackground(SHEET_COLORS.slaAtRisk)
+    .setFontColor(SHEET_COLORS.slaAtRiskText)
+    .setRanges([range])
+    .build();
+
+  // Accepted - Light green
+  const acceptedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(JOB_STATUS.ACCEPTED)
+    .setBackground('#e8f5e9')
+    .setFontColor(SHEET_COLORS.brandGreen)
+    .setRanges([range])
+    .build();
+
+  rules.push(inProgressRule, completedRule, cancelledRule, declinedRule, onHoldRule, acceptedRule);
+  sheet.setConditionalFormatRules(rules);
+}
+
+/**
+ * Add conditional formatting for Payment Status column
+ */
+function addPaymentConditionalFormatting(sheet) {
+  const paymentColumn = 23; // Payment Status column
+  const range = sheet.getRange(2, paymentColumn, 500, 1);
+
+  const rules = sheet.getConditionalFormatRules();
+
+  // Paid - Green
+  const paidRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(PAYMENT_STATUS.PAID)
+    .setBackground(SHEET_COLORS.paymentPaid)
+    .setFontColor(SHEET_COLORS.paymentPaidText)
+    .setRanges([range])
+    .build();
+
+  // Invoiced - Amber
+  const invoicedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(PAYMENT_STATUS.INVOICED)
+    .setBackground(SHEET_COLORS.paymentPending)
+    .setFontColor(SHEET_COLORS.paymentPendingText)
+    .setRanges([range])
+    .build();
+
+  // Unpaid - Light red
+  const unpaidRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(PAYMENT_STATUS.UNPAID)
+    .setBackground(SHEET_COLORS.paymentUnpaid)
+    .setFontColor(SHEET_COLORS.paymentUnpaidText)
+    .setRanges([range])
+    .build();
+
+  // Overdue - Red
+  const overdueRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(PAYMENT_STATUS.OVERDUE)
+    .setBackground(SHEET_COLORS.slaOverdue)
+    .setFontColor(SHEET_COLORS.slaOverdueText)
+    .setBold(true)
+    .setRanges([range])
+    .build();
+
+  // Refunded - Gray
+  const refundedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(PAYMENT_STATUS.REFUNDED)
+    .setBackground(SHEET_COLORS.statusCancelled)
+    .setFontColor(SHEET_COLORS.statusCancelledText)
+    .setRanges([range])
+    .build();
+
+  rules.push(paidRule, invoicedRule, unpaidRule, overdueRule, refundedRule);
+  sheet.setConditionalFormatRules(rules);
+}
+
 /**
  * Setup the Invoice Log sheet - creates if missing, repairs formatting, preserves data
  */
@@ -2018,13 +2331,40 @@ function setupInvoiceLogSheet(ss, clearData) {
   // Set headers (row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
-  // Format header
+  // Apply paper-like background
+  applyPaperBackground(sheet);
+
+  // Format header with brand styling
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
-  headerRange.setBackground('#2d5d3f');
-  headerRange.setFontColor('#ffffff');
-  headerRange.setFontWeight('bold');
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataRange.setFontFamily('Arial');
+  dataRange.setFontSize(10);
+  dataRange.setFontColor(SHEET_COLORS.inkBlack);
+  dataRange.setVerticalAlignment('middle');
 
   sheet.setFrozenRows(1);
+
+  // Set column widths
+  sheet.setColumnWidth(1, 100);  // Invoice #
+  sheet.setColumnWidth(2, 100);  // Job #
+  sheet.setColumnWidth(3, 140);  // Client Name
+  sheet.setColumnWidth(4, 180);  // Client Email
+  sheet.setColumnWidth(5, 100);  // Invoice Date
+  sheet.setColumnWidth(6, 100);  // Due Date
+  sheet.setColumnWidth(7, 120);  // Amount
+  sheet.setColumnWidth(8, 80);   // GST
+  sheet.setColumnWidth(9, 100);  // Total
+  sheet.setColumnWidth(10, 90);  // Status
+  sheet.setColumnWidth(14, 200); // Notes
 
   // Add data validation for Status
   const statusRule = SpreadsheetApp.newDataValidation()
@@ -2033,7 +2373,56 @@ function setupInvoiceLogSheet(ss, clearData) {
     .build();
   sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
 
+  // Add conditional formatting for invoice Status
+  addInvoiceStatusConditionalFormatting(sheet);
+
   Logger.log('Invoice Log sheet ' + (isNew ? 'created' : 'updated'));
+}
+
+/**
+ * Add conditional formatting for Invoice Status column
+ */
+function addInvoiceStatusConditionalFormatting(sheet) {
+  const statusColumn = 10; // Status column
+  const range = sheet.getRange(2, statusColumn, 500, 1);
+
+  const rules = sheet.getConditionalFormatRules();
+
+  // Paid - Green
+  const paidRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Paid')
+    .setBackground(SHEET_COLORS.paymentPaid)
+    .setFontColor(SHEET_COLORS.paymentPaidText)
+    .setRanges([range])
+    .build();
+
+  // Sent - Amber
+  const sentRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Sent')
+    .setBackground(SHEET_COLORS.paymentPending)
+    .setFontColor(SHEET_COLORS.paymentPendingText)
+    .setRanges([range])
+    .build();
+
+  // Overdue - Red
+  const overdueRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Overdue')
+    .setBackground(SHEET_COLORS.slaOverdue)
+    .setFontColor(SHEET_COLORS.slaOverdueText)
+    .setBold(true)
+    .setRanges([range])
+    .build();
+
+  // Cancelled - Gray
+  const cancelledRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('Cancelled')
+    .setBackground(SHEET_COLORS.statusCancelled)
+    .setFontColor(SHEET_COLORS.statusCancelledText)
+    .setRanges([range])
+    .build();
+
+  rules.push(paidRule, sentRule, overdueRule, cancelledRule);
+  sheet.setConditionalFormatRules(rules);
 }
 
 /**
@@ -2088,16 +2477,46 @@ function setupSettingsSheet(ss, clearData) {
     sheet.getRange(1, 1, mergedSettings.length, 3).setValues(mergedSettings);
   }
 
-  // Format header
-  sheet.getRange(1, 1, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold');
+  // Apply paper-like background
+  applyPaperBackground(sheet);
 
-  // Format setting names
-  sheet.getRange(2, 1, defaultSettings.length - 1, 1).setFontWeight('bold');
+  // Format header with brand styling
+  const headerRange = sheet.getRange(1, 1, 1, 3);
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors for settings rows
+  applyAlternatingRows(sheet, 2, defaultSettings.length - 1, 3);
+
+  // Format setting names (first column)
+  const settingNamesRange = sheet.getRange(2, 1, defaultSettings.length - 1, 1);
+  settingNamesRange.setFontWeight('bold');
+  settingNamesRange.setFontColor(SHEET_COLORS.inkBlack);
+  settingNamesRange.setFontFamily('Arial');
+  settingNamesRange.setFontSize(10);
+
+  // Format value column
+  const valueRange = sheet.getRange(2, 2, defaultSettings.length - 1, 1);
+  valueRange.setFontFamily('Arial');
+  valueRange.setFontSize(10);
+  valueRange.setFontColor(SHEET_COLORS.brandGreen);
+
+  // Format description column (muted text)
+  const descRange = sheet.getRange(2, 3, defaultSettings.length - 1, 1);
+  descRange.setFontFamily('Arial');
+  descRange.setFontSize(9);
+  descRange.setFontColor(SHEET_COLORS.inkLight);
+  descRange.setFontStyle('italic');
+
+  // Add subtle borders to the entire settings table
+  const tableRange = sheet.getRange(1, 1, defaultSettings.length, 3);
+  applyBorders(tableRange, true, true);
 
   // Set column widths
   sheet.setColumnWidth(1, 180);
   sheet.setColumnWidth(2, 250);
-  sheet.setColumnWidth(3, 350);
+  sheet.setColumnWidth(3, 380);
 
   sheet.setFrozenRows(1);
 
@@ -2112,7 +2531,7 @@ function setupSettingsSheet(ss, clearData) {
 }
 
 /**
- * Create the Dashboard sheet
+ * Create the Dashboard sheet with brand styling
  */
 function createDashboardSheet(ss) {
   let sheet = ss.getSheetByName(SHEETS.DASHBOARD);
@@ -2126,20 +2545,33 @@ function createDashboardSheet(ss) {
     sheet.clear();
   }
 
-  // Dashboard header
+  // Apply paper-like background to entire sheet
+  applyPaperBackground(sheet);
+
+  // Dashboard header with brand styling
   sheet.getRange('A1').setValue('📊 CartCure Dashboard');
-  sheet.getRange('A1').setFontSize(18).setFontWeight('bold').setFontColor('#2d5d3f');
+  sheet.getRange('A1')
+    .setFontSize(20)
+    .setFontWeight('bold')
+    .setFontColor(SHEET_COLORS.brandGreen)
+    .setFontFamily('Georgia');
 
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
-  sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
+  sheet.getRange('A2')
+    .setFontColor(SHEET_COLORS.inkLight)
+    .setFontStyle('italic')
+    .setFontSize(9)
+    .setFontFamily('Arial');
 
   // Refresh checkbox (triggers refresh when checked)
   sheet.getRange('G1').setValue('🔄 Refresh →');
   sheet.getRange('G1')
     .setFontWeight('bold')
     .setFontSize(10)
+    .setFontColor(SHEET_COLORS.inkGray)
     .setHorizontalAlignment('right')
-    .setVerticalAlignment('middle');
+    .setVerticalAlignment('middle')
+    .setFontFamily('Arial');
 
   // Checkbox that triggers refresh
   sheet.getRange('H1').insertCheckboxes();
@@ -2149,9 +2581,9 @@ function createDashboardSheet(ss) {
 
   // === LEFT COLUMN: Metrics + New Submissions ===
 
-  // Summary Metrics Section (compact horizontal layout)
+  // Summary Metrics Section with brand styling
   sheet.getRange('A4').setValue('📈 Metrics');
-  sheet.getRange('A4').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('A4'));
 
   const metricsLabels = [
     ['OVERDUE', 'AT RISK', 'In Progress', 'Pending Quote', 'Quoted', 'Unpaid $', 'Revenue MTD'],
@@ -2159,37 +2591,83 @@ function createDashboardSheet(ss) {
   ];
 
   sheet.getRange(5, 1, 2, 7).setValues(metricsLabels);
-  sheet.getRange(5, 1, 1, 7).setBackground('#f0f0f0').setFontWeight('bold').setFontSize(9).setHorizontalAlignment('center');
-  sheet.getRange(6, 1, 1, 7).setHorizontalAlignment('center').setFontSize(11).setFontWeight('bold');
-  // Color code OVERDUE and AT RISK
-  sheet.getRange(6, 1).setFontColor('#cc0000'); // OVERDUE count in red
-  sheet.getRange(6, 2).setFontColor('#856404'); // AT RISK count in amber
+
+  // Style metric labels
+  applyMetricStyle(sheet.getRange(5, 1, 1, 7), sheet.getRange(6, 1, 1, 7));
+
+  // Add borders to metric cards
+  applyBorders(sheet.getRange(5, 1, 2, 7), true, true);
+
+  // Color code OVERDUE and AT RISK values
+  sheet.getRange(6, 1).setFontColor(SHEET_COLORS.slaOverdueText);
+  sheet.getRange(6, 2).setFontColor(SHEET_COLORS.slaAtRiskText);
+  sheet.getRange(6, 3).setFontColor(SHEET_COLORS.statusActiveText); // In Progress - blue
+  sheet.getRange(6, 7).setFontColor(SHEET_COLORS.brandGreen); // Revenue - green
 
   // New Submissions Section
   sheet.getRange('A8').setValue('📥 New Submissions (not actioned)');
-  sheet.getRange('A8').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('A8'));
 
   const newSubmissionsHeaders = ['Submission #', 'Date', 'Name', 'Email', 'Message'];
   sheet.getRange(9, 1, 1, 5).setValues([newSubmissionsHeaders]);
-  sheet.getRange(9, 1, 1, 5).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(9, 1, 1, 5));
+
+  // Apply alternating rows for submissions data area
+  applyAlternatingRows(sheet, 10, 6, 5);
+
+  // Style data area text
+  sheet.getRange(10, 1, 6, 5)
+    .setFontFamily('Arial')
+    .setFontSize(10)
+    .setFontColor(SHEET_COLORS.inkBlack)
+    .setVerticalAlignment('middle');
+
+  // Add border to submissions table
+  applyBorders(sheet.getRange(9, 1, 7, 5), true, false);
 
   // === RIGHT COLUMN: Active Jobs + Pending Quotes ===
 
   // Active Jobs Section
   sheet.getRange('I4').setValue('🔥 Active Jobs (by urgency)');
-  sheet.getRange('I4').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('I4'));
 
   const activeJobsHeaders = ['Job #', 'Client', 'Description', 'Days Left', 'SLA', 'Status'];
   sheet.getRange(5, 9, 1, 6).setValues([activeJobsHeaders]);
-  sheet.getRange(5, 9, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(5, 9, 1, 6));
+
+  // Apply alternating rows for active jobs
+  applyAlternatingRows(sheet, 6, 10, 6);
+
+  // Style data area
+  sheet.getRange(6, 9, 10, 6)
+    .setFontFamily('Arial')
+    .setFontSize(10)
+    .setFontColor(SHEET_COLORS.inkBlack)
+    .setVerticalAlignment('middle');
+
+  // Add border to active jobs table
+  applyBorders(sheet.getRange(5, 9, 11, 6), true, false);
 
   // Pending Quotes Section
   sheet.getRange('I17').setValue('⏳ Pending Quotes');
-  sheet.getRange('I17').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('I17'));
 
   const pendingQuotesHeaders = ['Job #', 'Client', 'Amount', 'Waiting', 'Valid Until', 'Action'];
   sheet.getRange(18, 9, 1, 6).setValues([pendingQuotesHeaders]);
-  sheet.getRange(18, 9, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(18, 9, 1, 6));
+
+  // Apply alternating rows for pending quotes
+  applyAlternatingRows(sheet, 19, 6, 6);
+
+  // Style data area
+  sheet.getRange(19, 9, 6, 6)
+    .setFontFamily('Arial')
+    .setFontSize(10)
+    .setFontColor(SHEET_COLORS.inkBlack)
+    .setVerticalAlignment('middle');
+
+  // Add border to pending quotes table
+  applyBorders(sheet.getRange(18, 9, 7, 6), true, false);
 
   // Set column widths for compact layout
   sheet.setColumnWidth(1, 130);  // Submission # / Metric
@@ -2209,9 +2687,12 @@ function createDashboardSheet(ss) {
 
   // Set row heights for compactness
   for (let i = 1; i <= 30; i++) {
-    sheet.setRowHeight(i, 20);
+    sheet.setRowHeight(i, 22);
   }
-  sheet.setRowHeight(1, 28); // Title row slightly taller
+  sheet.setRowHeight(1, 32); // Title row slightly taller
+  sheet.setRowHeight(4, 28); // Section headers
+  sheet.setRowHeight(8, 28);
+  sheet.setRowHeight(17, 28);
 
   Logger.log('Dashboard sheet created successfully');
 }
@@ -2231,80 +2712,121 @@ function createAnalyticsSheet(ss) {
     sheet.clear();
   }
 
-  // Set up the sheet structure
-  // Title
+  // Apply paper-like background to entire sheet
+  applyPaperBackground(sheet);
+
+  // Title with brand styling
   sheet.getRange('A1').setValue('📈 CartCure Analytics');
-  sheet.getRange('A1').setFontSize(18).setFontWeight('bold').setFontColor('#2d5d3f');
+  sheet.getRange('A1')
+    .setFontSize(20)
+    .setFontWeight('bold')
+    .setFontColor(SHEET_COLORS.brandGreen)
+    .setFontFamily('Georgia');
+
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
-  sheet.getRange('A2').setFontColor('#8a8a8a').setFontStyle('italic').setFontSize(9);
+  sheet.getRange('A2')
+    .setFontColor(SHEET_COLORS.inkLight)
+    .setFontStyle('italic')
+    .setFontSize(9)
+    .setFontFamily('Arial');
 
   // Refresh checkbox
   sheet.getRange('G1').setValue('🔄 Refresh →');
-  sheet.getRange('G1').setFontWeight('bold').setFontSize(10).setHorizontalAlignment('right');
+  sheet.getRange('G1')
+    .setFontWeight('bold')
+    .setFontSize(10)
+    .setFontColor(SHEET_COLORS.inkGray)
+    .setHorizontalAlignment('right')
+    .setFontFamily('Arial');
   sheet.getRange('H1').insertCheckboxes();
   sheet.getRange('H1').setValue(false);
   sheet.getRange('H1').setNote('Check this box to refresh analytics');
 
   // === SECTION 1: KEY METRICS (Row 4-7) ===
   sheet.getRange('A4').setValue('📊 Key Metrics');
-  sheet.getRange('A4').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('A4'));
 
   const metricsHeaders = ['Total Jobs', 'Total Revenue', 'Avg Job Value', 'Conversion Rate', 'Completion Rate', 'On-Time Rate'];
   sheet.getRange(5, 1, 1, 6).setValues([metricsHeaders]);
-  sheet.getRange(5, 1, 1, 6).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9).setHorizontalAlignment('center');
-  // Data row 6 will be populated by refresh
+  applyMetricStyle(sheet.getRange(5, 1, 1, 6), sheet.getRange(6, 1, 1, 6));
+  applyBorders(sheet.getRange(5, 1, 2, 6), true, true);
 
   // === SECTION 2: JOB STATUS BREAKDOWN (Row 9-18, Left) ===
   sheet.getRange('A9').setValue('📋 Jobs by Status');
-  sheet.getRange('A9').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('A9'));
 
   const statusHeaders = ['Status', 'Count', '%'];
   sheet.getRange(10, 1, 1, 3).setValues([statusHeaders]);
-  sheet.getRange(10, 1, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(10, 1, 1, 3));
+  applyAlternatingRows(sheet, 11, 8, 3);
+  sheet.getRange(11, 1, 8, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(10, 1, 9, 3), true, false);
 
   // === SECTION 3: PAYMENT STATUS (Row 9-18, Right) ===
   sheet.getRange('E9').setValue('💰 Payment Status');
-  sheet.getRange('E9').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('E9'));
 
   const paymentHeaders = ['Status', 'Count', 'Amount'];
   sheet.getRange(10, 5, 1, 3).setValues([paymentHeaders]);
-  sheet.getRange(10, 5, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(10, 5, 1, 3));
+  applyAlternatingRows(sheet, 11, 5, 3);
+  sheet.getRange(11, 5, 5, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(10, 5, 6, 3), true, false);
 
   // === SECTION 4: SLA PERFORMANCE (Row 9-18, Far Right) ===
   sheet.getRange('I9').setValue('⏱️ SLA Performance');
-  sheet.getRange('I9').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('I9'));
 
   const slaHeaders = ['Status', 'Count', '%'];
   sheet.getRange(10, 9, 1, 3).setValues([slaHeaders]);
-  sheet.getRange(10, 9, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(10, 9, 1, 3));
+  applyAlternatingRows(sheet, 11, 3, 3);
+  sheet.getRange(11, 9, 3, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(10, 9, 4, 3), true, false);
 
   // === SECTION 5: MONTHLY REVENUE (Row 20-32) ===
   sheet.getRange('A20').setValue('📅 Monthly Performance (Last 6 Months)');
-  sheet.getRange('A20').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('A20'));
 
   const monthlyHeaders = ['Month', 'Jobs Created', 'Jobs Completed', 'Revenue', 'Avg Value'];
   sheet.getRange(21, 1, 1, 5).setValues([monthlyHeaders]);
-  sheet.getRange(21, 1, 1, 5).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(21, 1, 1, 5));
+  applyAlternatingRows(sheet, 22, 6, 5);
+  sheet.getRange(22, 1, 6, 5).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(21, 1, 7, 5), true, false);
 
   // === SECTION 6: TOP CATEGORIES (Row 20-32, Right) ===
   sheet.getRange('G20').setValue('🏷️ Jobs by Category');
-  sheet.getRange('G20').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('G20'));
 
   const categoryHeaders = ['Category', 'Count', 'Revenue'];
   sheet.getRange(21, 7, 1, 3).setValues([categoryHeaders]);
-  sheet.getRange(21, 7, 1, 3).setBackground('#2d5d3f').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  applyTableHeaderStyle(sheet.getRange(21, 7, 1, 3));
+  applyAlternatingRows(sheet, 22, 6, 3);
+  sheet.getRange(22, 7, 6, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(21, 7, 7, 3), true, false);
 
   // === SECTION 7: OVERDUE & AT RISK (Row 20, Far Right) ===
   sheet.getRange('K20').setValue('⚠️ Attention Required');
-  sheet.getRange('K20').setFontSize(12).setFontWeight('bold');
+  applySectionHeaderStyle(sheet.getRange('K20'));
+  sheet.getRange('K20').setFontColor(SHEET_COLORS.slaOverdueText); // Red for attention
 
   const attentionHeaders = ['Job #', 'Client', 'Status', 'Days'];
   sheet.getRange(21, 11, 1, 4).setValues([attentionHeaders]);
-  sheet.getRange(21, 11, 1, 4).setBackground('#cc0000').setFontColor('#ffffff').setFontWeight('bold').setFontSize(9);
+  // Use red header for attention section
+  sheet.getRange(21, 11, 1, 4)
+    .setBackground(SHEET_COLORS.slaOverdueText)
+    .setFontColor(SHEET_COLORS.headerText)
+    .setFontWeight('bold')
+    .setFontFamily('Arial')
+    .setFontSize(9);
+  applyAlternatingRows(sheet, 22, 6, 4);
+  sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyBorders(sheet.getRange(21, 11, 7, 4), true, false);
 
   // Set column widths
   sheet.setColumnWidth(1, 120);  // Status/Month
-  sheet.setColumnWidth(2, 80);   // Count
+  sheet.setColumnWidth(2, 90);   // Count
   sheet.setColumnWidth(3, 80);   // %/Completed
   sheet.setColumnWidth(4, 20);   // Spacer
   sheet.setColumnWidth(5, 100);  // Payment Status
@@ -2320,9 +2842,12 @@ function createAnalyticsSheet(ss) {
 
   // Set row heights
   for (let i = 1; i <= 32; i++) {
-    sheet.setRowHeight(i, 20);
+    sheet.setRowHeight(i, 22);
   }
-  sheet.setRowHeight(1, 28);
+  sheet.setRowHeight(1, 32);  // Title row
+  sheet.setRowHeight(4, 28);  // Section headers
+  sheet.setRowHeight(9, 28);
+  sheet.setRowHeight(20, 28);
 
   Logger.log('Analytics sheet created successfully');
 }
@@ -2428,11 +2953,13 @@ function refreshAnalytics() {
   let paymentRow = 11;
   Object.entries(paymentCounts).forEach(([status, count]) => {
     analytics.getRange(paymentRow, 5, 1, 3).setValues([[status, count, formatCurrency(paymentAmounts[status])]]);
-    // Color code
+    // Color code using brand colors
     if (status === PAYMENT_STATUS.PAID) {
-      analytics.getRange(paymentRow, 5).setBackground('#d4edda');
+      analytics.getRange(paymentRow, 5).setBackground(SHEET_COLORS.paymentPaid);
+      analytics.getRange(paymentRow, 5).setFontColor(SHEET_COLORS.paymentPaidText);
     } else if (status === PAYMENT_STATUS.UNPAID || status === PAYMENT_STATUS.INVOICED) {
-      analytics.getRange(paymentRow, 5).setBackground('#fff3cd');
+      analytics.getRange(paymentRow, 5).setBackground(SHEET_COLORS.paymentPending);
+      analytics.getRange(paymentRow, 5).setFontColor(SHEET_COLORS.paymentPendingText);
     }
     paymentRow++;
   });
@@ -2453,13 +2980,21 @@ function refreshAnalytics() {
 
   analytics.getRange(11, 9, 3, 3).clearContent();
   let slaRow = 11;
-  [['On Track', '#d4edda'], ['AT RISK', '#fff3cd'], ['OVERDUE', '#ffcccc']].forEach(([status, color]) => {
+  // Use brand colors for SLA status
+  const slaColorMap = [
+    ['On Track', SHEET_COLORS.slaOnTrack, SHEET_COLORS.slaOnTrackText],
+    ['AT RISK', SHEET_COLORS.slaAtRisk, SHEET_COLORS.slaAtRiskText],
+    ['OVERDUE', SHEET_COLORS.slaOverdue, SHEET_COLORS.slaOverdueText]
+  ];
+  slaColorMap.forEach(([status, bgColor, textColor]) => {
     const count = slaCounts[status];
     const pct = activeSlaTotal > 0 ? (count / activeSlaTotal * 100).toFixed(1) + '%' : '0%';
     analytics.getRange(slaRow, 9, 1, 3).setValues([[status, count, pct]]);
-    analytics.getRange(slaRow, 9).setBackground(color);
-    if (status === 'OVERDUE') analytics.getRange(slaRow, 9).setFontColor('#cc0000').setFontWeight('bold');
-    if (status === 'AT RISK') analytics.getRange(slaRow, 9).setFontColor('#856404').setFontWeight('bold');
+    analytics.getRange(slaRow, 9).setBackground(bgColor);
+    analytics.getRange(slaRow, 9).setFontColor(textColor);
+    if (status === 'OVERDUE' || status === 'AT RISK') {
+      analytics.getRange(slaRow, 9).setFontWeight('bold');
+    }
     slaRow++;
   });
 
@@ -2613,13 +3148,25 @@ function setupSubmissionsSheet(ss) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
 
-  // Format header row with CartCure green
+  // Apply paper-like background
+  applyPaperBackground(sheet);
+
+  // Format header row with brand styling
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
-  headerRange.setBackground('#2d5d3f');
-  headerRange.setFontColor('#ffffff');
-  headerRange.setFontWeight('bold');
-  headerRange.setHorizontalAlignment('center');
-  headerRange.setVerticalAlignment('middle');
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors for existing data
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataArea.setFontFamily('Arial');
+  dataArea.setFontSize(10);
+  dataArea.setFontColor(SHEET_COLORS.inkBlack);
+  dataArea.setVerticalAlignment('middle');
 
   // Freeze header row
   sheet.setFrozenRows(1);
@@ -2659,7 +3206,7 @@ function setupSubmissionsSheet(ss) {
 }
 
 /**
- * Add conditional formatting for Submission Status column
+ * Add conditional formatting for Submission Status column with brand colors
  */
 function addSubmissionStatusFormatting(sheet) {
   const statusColumn = 9; // Status column
@@ -2675,17 +3222,17 @@ function addSubmissionStatusFormatting(sheet) {
   // New - Blue (needs attention)
   const newRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('New')
-    .setBackground('#cfe2ff')
-    .setFontColor('#084298')
+    .setBackground(SHEET_COLORS.statusActive)
+    .setFontColor(SHEET_COLORS.statusActiveText)
     .setBold(true)
     .setRanges([range])
     .build();
 
-  // In Review - Yellow (being processed)
+  // In Review - Amber (being processed)
   const reviewRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('In Review')
-    .setBackground('#fff3cd')
-    .setFontColor('#856404')
+    .setBackground(SHEET_COLORS.slaAtRisk)
+    .setFontColor(SHEET_COLORS.slaAtRiskText)
     .setBold(true)
     .setRanges([range])
     .build();
@@ -2693,24 +3240,24 @@ function addSubmissionStatusFormatting(sheet) {
   // Job Created - Green (success)
   const jobCreatedRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('Job Created')
-    .setBackground('#d4edda')
-    .setFontColor('#155724')
+    .setBackground(SHEET_COLORS.statusCompleted)
+    .setFontColor(SHEET_COLORS.statusCompletedText)
     .setRanges([range])
     .build();
 
   // Declined - Gray (closed)
   const declinedRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('Declined')
-    .setBackground('#e9ecef')
-    .setFontColor('#6c757d')
+    .setBackground(SHEET_COLORS.statusCancelled)
+    .setFontColor(SHEET_COLORS.statusCancelledText)
     .setRanges([range])
     .build();
 
   // Spam - Red (rejected)
   const spamRule = SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo('Spam')
-    .setBackground('#ffcccc')
-    .setFontColor('#cc0000')
+    .setBackground(SHEET_COLORS.slaOverdue)
+    .setFontColor(SHEET_COLORS.slaOverdueText)
     .setRanges([range])
     .build();
 
