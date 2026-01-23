@@ -86,6 +86,16 @@ const BLOCKED_PATTERNS = [
   '172.16.'
 ];
 
+// Human-readable word list for submission numbers (must match client-side list)
+const SUBMISSION_WORDS = [
+  'MAPLE', 'RIVER', 'CORAL', 'FROST', 'AMBER', 'CLOUD', 'STONE', 'BLOOM',
+  'SPARK', 'OCEAN', 'CEDAR', 'DAWN', 'FLAME', 'PEARL', 'STORM', 'LUNAR',
+  'GROVE', 'HAVEN', 'PEAK', 'TIDE', 'FERN', 'BLAZE', 'DUSK', 'SILK',
+  'MINT', 'SAGE', 'FLINT', 'CREST', 'PINE', 'CLIFF', 'MOSS', 'OPAL',
+  'REED', 'BROOK', 'GLOW', 'WREN', 'IRIS', 'EMBER', 'SWIFT', 'HAZE',
+  'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL'
+];
+
 // ============================================================================
 // MAIN HANDLER
 // ============================================================================
@@ -493,19 +503,21 @@ function validateAndSanitizeInput(data) {
 
 /**
  * Validate submission number format
+ * Supports both new format (CC-WORD-XXX) and legacy format (CC-YYYYMMDD-XXXXX)
  */
 function validateSubmissionNumber(submissionNumber) {
   if (!submissionNumber || submissionNumber.trim() === '') {
-    // Generate one server-side if not provided (fallback)
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomNum = Math.floor(10000 + Math.random() * 90000);
-    return `CC-${dateStr}-${randomNum}`;
+    // Generate one server-side if not provided (fallback) - use new human-readable format
+    const randomWord = SUBMISSION_WORDS[Math.floor(Math.random() * SUBMISSION_WORDS.length)];
+    const randomNum = Math.floor(100 + Math.random() * 900); // 3-digit number
+    return `CC-${randomWord}-${randomNum}`;
   }
 
-  // Validate format: CC-YYYYMMDD-XXXXX
-  const regex = /^CC-\d{8}-\d{5}$/;
-  if (!regex.test(submissionNumber)) {
+  // Validate format: CC-WORD-XXX (new) or CC-YYYYMMDD-XXXXX (legacy)
+  const newFormatRegex = /^CC-[A-Z]{3,6}-\d{3}$/;
+  const legacyFormatRegex = /^CC-\d{8}-\d{5}$/;
+
+  if (!newFormatRegex.test(submissionNumber) && !legacyFormatRegex.test(submissionNumber)) {
     const error = new Error('Invalid submission number format');
     error.userMessage = 'Invalid submission format.';
     throw error;
@@ -1940,12 +1952,14 @@ function applyPaperBackground(sheet) {
  * @param {number} startRow - First data row (usually 2, after header)
  * @param {number} numRows - Number of rows to apply alternating colors
  * @param {number} numCols - Number of columns
+ * @param {number} startCol - Starting column (default 1)
  */
-function applyAlternatingRows(sheet, startRow, numRows, numCols) {
+function applyAlternatingRows(sheet, startRow, numRows, numCols, startCol) {
+  const colStart = startCol || 1;
   for (let i = 0; i < numRows; i++) {
     const rowNum = startRow + i;
     const bgColor = (i % 2 === 0) ? SHEET_COLORS.paperWhite : SHEET_COLORS.paperCream;
-    sheet.getRange(rowNum, 1, 1, numCols).setBackground(bgColor);
+    sheet.getRange(rowNum, colStart, 1, numCols).setBackground(bgColor);
   }
 }
 
@@ -2636,7 +2650,7 @@ function createDashboardSheet(ss) {
   applyTableHeaderStyle(sheet.getRange(5, 9, 1, 6));
 
   // Apply alternating rows for active jobs
-  applyAlternatingRows(sheet, 6, 10, 6);
+  applyAlternatingRows(sheet, 6, 10, 6, 9);
 
   // Style data area
   sheet.getRange(6, 9, 10, 6)
@@ -2657,7 +2671,7 @@ function createDashboardSheet(ss) {
   applyTableHeaderStyle(sheet.getRange(18, 9, 1, 6));
 
   // Apply alternating rows for pending quotes
-  applyAlternatingRows(sheet, 19, 6, 6);
+  applyAlternatingRows(sheet, 19, 6, 6, 9);
 
   // Style data area
   sheet.getRange(19, 9, 6, 6)
@@ -2758,8 +2772,8 @@ function createAnalyticsSheet(ss) {
   const statusHeaders = ['Status', 'Count', '%'];
   sheet.getRange(10, 1, 1, 3).setValues([statusHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 1, 1, 3));
-  applyAlternatingRows(sheet, 11, 8, 3);
-  sheet.getRange(11, 1, 8, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyAlternatingRows(sheet, 11, 8, 3, 1);
+  sheet.getRange(11, 1, 8, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 1, 9, 3), true, false);
 
   // === SECTION 3: PAYMENT STATUS (Row 9-18, Right) ===
@@ -2769,8 +2783,8 @@ function createAnalyticsSheet(ss) {
   const paymentHeaders = ['Status', 'Count', 'Amount'];
   sheet.getRange(10, 5, 1, 3).setValues([paymentHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 5, 1, 3));
-  applyAlternatingRows(sheet, 11, 5, 3);
-  sheet.getRange(11, 5, 5, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyAlternatingRows(sheet, 11, 5, 3, 5);
+  sheet.getRange(11, 5, 5, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 5, 6, 3), true, false);
 
   // === SECTION 4: SLA PERFORMANCE (Row 9-18, Far Right) ===
@@ -2780,8 +2794,8 @@ function createAnalyticsSheet(ss) {
   const slaHeaders = ['Status', 'Count', '%'];
   sheet.getRange(10, 9, 1, 3).setValues([slaHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 9, 1, 3));
-  applyAlternatingRows(sheet, 11, 3, 3);
-  sheet.getRange(11, 9, 3, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyAlternatingRows(sheet, 11, 3, 3, 9);
+  sheet.getRange(11, 9, 3, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 9, 4, 3), true, false);
 
   // === SECTION 5: MONTHLY REVENUE (Row 20-32) ===
@@ -2791,8 +2805,8 @@ function createAnalyticsSheet(ss) {
   const monthlyHeaders = ['Month', 'Jobs Created', 'Jobs Completed', 'Revenue', 'Avg Value'];
   sheet.getRange(21, 1, 1, 5).setValues([monthlyHeaders]);
   applyTableHeaderStyle(sheet.getRange(21, 1, 1, 5));
-  applyAlternatingRows(sheet, 22, 6, 5);
-  sheet.getRange(22, 1, 6, 5).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyAlternatingRows(sheet, 22, 6, 5, 1);
+  sheet.getRange(22, 1, 6, 5).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 1, 7, 5), true, false);
 
   // === SECTION 6: TOP CATEGORIES (Row 20-32, Right) ===
@@ -2802,8 +2816,8 @@ function createAnalyticsSheet(ss) {
   const categoryHeaders = ['Category', 'Count', 'Revenue'];
   sheet.getRange(21, 7, 1, 3).setValues([categoryHeaders]);
   applyTableHeaderStyle(sheet.getRange(21, 7, 1, 3));
-  applyAlternatingRows(sheet, 22, 6, 3);
-  sheet.getRange(22, 7, 6, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+  applyAlternatingRows(sheet, 22, 6, 3, 7);
+  sheet.getRange(22, 7, 6, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 7, 7, 3), true, false);
 
   // === SECTION 7: OVERDUE & AT RISK (Row 20, Far Right) ===
@@ -2819,9 +2833,10 @@ function createAnalyticsSheet(ss) {
     .setFontColor(SHEET_COLORS.headerText)
     .setFontWeight('bold')
     .setFontFamily('Arial')
-    .setFontSize(9);
-  applyAlternatingRows(sheet, 22, 6, 4);
-  sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack);
+    .setFontSize(9)
+    .setHorizontalAlignment('center');
+  applyAlternatingRows(sheet, 22, 6, 4, 11);
+  sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 11, 7, 4), true, false);
 
   // Set column widths
@@ -2841,15 +2856,104 @@ function createAnalyticsSheet(ss) {
   sheet.setColumnWidth(14, 60);  // Days
 
   // Set row heights
-  for (let i = 1; i <= 32; i++) {
+  for (let i = 1; i <= 45; i++) {
     sheet.setRowHeight(i, 22);
   }
   sheet.setRowHeight(1, 32);  // Title row
   sheet.setRowHeight(4, 28);  // Section headers
   sheet.setRowHeight(9, 28);
   sheet.setRowHeight(20, 28);
+  sheet.setRowHeight(30, 28); // Charts section header
+
+  // Create visual charts section (below existing tables)
+  createAnalyticsCharts(sheet);
 
   Logger.log('Analytics sheet created successfully');
+}
+
+/**
+ * Create visual charts for the Analytics sheet
+ * @param {Sheet} sheet - The Analytics sheet
+ */
+function createAnalyticsCharts(sheet) {
+  // Clear any existing charts first
+  const existingCharts = sheet.getCharts();
+  existingCharts.forEach(chart => sheet.removeChart(chart));
+
+  // === SECTION: VISUAL CHARTS (Row 30+) ===
+  sheet.getRange('A30').setValue('📊 Visual Analytics');
+  applySectionHeaderStyle(sheet.getRange('A30'));
+  sheet.setRowHeight(30, 28);
+
+  // Create a pie chart for Job Status Distribution (using data from row 11-18, cols A-B)
+  const statusPieChart = sheet.newChart()
+    .setChartType(Charts.ChartType.PIE)
+    .addRange(sheet.getRange('A11:B18'))  // Status data
+    .setPosition(31, 1, 0, 0)  // Row 31, Column A
+    .setOption('title', 'Jobs by Status')
+    .setOption('titleTextStyle', { color: SHEET_COLORS.inkBlack, fontSize: 12, bold: true })
+    .setOption('legend', { position: 'right', textStyle: { fontSize: 10 } })
+    .setOption('pieSliceTextStyle', { fontSize: 9 })
+    .setOption('backgroundColor', SHEET_COLORS.paperWhite)
+    .setOption('width', 380)
+    .setOption('height', 220)
+    .setOption('colors', [
+      SHEET_COLORS.statusPendingBg,   // Pending Quote
+      SHEET_COLORS.statusQuotedBg,    // Quoted
+      SHEET_COLORS.statusAcceptedBg,  // Accepted
+      SHEET_COLORS.statusActiveBg,    // In Progress
+      SHEET_COLORS.statusCompletedBg, // Completed
+      SHEET_COLORS.statusOnHoldBg,    // On Hold
+      SHEET_COLORS.statusCancelledBg, // Cancelled
+      SHEET_COLORS.statusDeclinedBg   // Declined
+    ])
+    .build();
+
+  sheet.insertChart(statusPieChart);
+
+  // Create a bar chart for Monthly Performance (using data from row 22-27, cols A-D)
+  const monthlyBarChart = sheet.newChart()
+    .setChartType(Charts.ChartType.COLUMN)
+    .addRange(sheet.getRange('A21:D27'))  // Monthly headers and data
+    .setPosition(31, 6, 0, 0)  // Row 31, Column F
+    .setOption('title', 'Monthly Performance')
+    .setOption('titleTextStyle', { color: SHEET_COLORS.inkBlack, fontSize: 12, bold: true })
+    .setOption('legend', { position: 'bottom', textStyle: { fontSize: 9 } })
+    .setOption('backgroundColor', SHEET_COLORS.paperWhite)
+    .setOption('width', 450)
+    .setOption('height', 220)
+    .setOption('hAxis', { title: 'Month', textStyle: { fontSize: 9 } })
+    .setOption('vAxis', { title: 'Count / $', textStyle: { fontSize: 9 }, minValue: 0 })
+    .setOption('colors', [SHEET_COLORS.brandGreen, SHEET_COLORS.statusCompletedBg, SHEET_COLORS.statusQuotedBg])
+    .setOption('isStacked', false)
+    .build();
+
+  sheet.insertChart(monthlyBarChart);
+
+  // Create a donut chart for Payment Status (using data from row 11-15, cols E-F)
+  const paymentDonutChart = sheet.newChart()
+    .setChartType(Charts.ChartType.PIE)
+    .addRange(sheet.getRange('E11:F15'))  // Payment status data
+    .setPosition(31, 11, 0, 0)  // Row 31, Column K
+    .setOption('title', 'Payment Status')
+    .setOption('titleTextStyle', { color: SHEET_COLORS.inkBlack, fontSize: 12, bold: true })
+    .setOption('legend', { position: 'right', textStyle: { fontSize: 10 } })
+    .setOption('pieHole', 0.4)  // Makes it a donut chart
+    .setOption('backgroundColor', SHEET_COLORS.paperWhite)
+    .setOption('width', 350)
+    .setOption('height', 220)
+    .setOption('colors', [
+      SHEET_COLORS.paymentUnpaidBg,
+      SHEET_COLORS.paymentInvoicedBg,
+      SHEET_COLORS.paymentPaidBg,
+      '#e57373',  // Overdue (light red)
+      '#9e9e9e'   // Refunded (gray)
+    ])
+    .build();
+
+  sheet.insertChart(paymentDonutChart);
+
+  Logger.log('Analytics charts created successfully');
 }
 
 /**
@@ -3754,6 +3858,125 @@ function getInvoicesByStatusFallback(statusFilter = []) {
   return invoices;
 }
 
+// ============================================================================
+// CONTEXT-AWARE SELECTION HELPERS
+// ============================================================================
+
+/**
+ * Get job number from currently selected cell (if valid)
+ * Looks for J-WORD-XXX or J-YYYYMMDD-XXXXX format in current selection
+ * @returns {string|null} Job number if found in selection, null otherwise
+ */
+function getSelectedJobNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const selection = sheet.getActiveCell();
+  const value = selection.getValue();
+
+  if (!value || typeof value !== 'string') return null;
+
+  const trimmed = value.toString().trim();
+
+  // Match new format (J-WORD-XXX) or legacy format (J-YYYYMMDD-XXXXX)
+  const newFormatRegex = /^J-[A-Z]{3,6}-\d{3}$/;
+  const legacyFormatRegex = /^J-\d{8}-\d{5}$/;
+
+  if (newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+/**
+ * Get submission number from currently selected cell (if valid)
+ * Looks for CC-WORD-XXX or CC-YYYYMMDD-XXXXX format in current selection
+ * @returns {string|null} Submission number if found in selection, null otherwise
+ */
+function getSelectedSubmissionNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const selection = sheet.getActiveCell();
+  const value = selection.getValue();
+
+  if (!value || typeof value !== 'string') return null;
+
+  const trimmed = value.toString().trim();
+
+  // Match new format (CC-WORD-XXX) or legacy format (CC-YYYYMMDD-XXXXX)
+  const newFormatRegex = /^CC-[A-Z]{3,6}-\d{3}$/;
+  const legacyFormatRegex = /^CC-\d{8}-\d{5}$/;
+
+  if (newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+/**
+ * Get invoice number from currently selected cell (if valid)
+ * @returns {string|null} Invoice number if found in selection, null otherwise
+ */
+function getSelectedInvoiceNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const selection = sheet.getActiveCell();
+  const value = selection.getValue();
+
+  if (!value || typeof value !== 'string') return null;
+
+  const trimmed = value.toString().trim();
+
+  // Match invoice format (INV-XXXX)
+  const invoiceRegex = /^INV-\d{4,}$/;
+
+  if (invoiceRegex.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+/**
+ * Show context-aware dropdown dialog
+ * If a valid item is selected in the spreadsheet, use it directly
+ * Otherwise, show the dropdown for selection
+ *
+ * @param {string} title - Dialog title
+ * @param {Array} items - Array of items for dropdown
+ * @param {string} itemType - Type of item (e.g., 'Job', 'Submission')
+ * @param {string} callback - Function name to call with selection
+ * @param {string|null} selectedValue - Pre-selected value from context (if any)
+ */
+function showContextAwareDialog(title, items, itemType, callback, selectedValue) {
+  const ui = SpreadsheetApp.getUi();
+
+  // If we have a context-selected value, confirm and use it directly
+  if (selectedValue) {
+    // Verify the selected value is in our valid items list (if items provided)
+    const isValidSelection = !items || items.length === 0 ||
+      items.some(item => item.number === selectedValue);
+
+    if (isValidSelection) {
+      const response = ui.alert(
+        'Confirm Selection',
+        'Use selected ' + itemType.toLowerCase() + ': ' + selectedValue + '?',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        // Call the callback function directly with the selected value
+        const callbackFn = this[callback];
+        if (typeof callbackFn === 'function') {
+          callbackFn(selectedValue);
+        }
+        return;
+      }
+    }
+  }
+
+  // Fall back to dropdown dialog
+  showDropdownDialog(title, items, itemType, callback);
+}
+
 /**
  * Show HTML dialog with dropdown selection
  * OPTIMIZED: Added loading state and button disabling to prevent duplicate submissions
@@ -3917,12 +4140,14 @@ function showDropdownDialog(title, items, itemType, callback) {
  * Show dialog to create job from submission
  */
 function showCreateJobDialog() {
+  const selectedSubmission = getSelectedSubmissionNumber();
   const submissions = getAvailableSubmissions();
-  showDropdownDialog(
+  showContextAwareDialog(
     'Create Job from Submission',
     submissions,
     'Submission',
-    'createJobFromSubmission'
+    'createJobFromSubmission',
+    selectedSubmission
   );
 }
 
@@ -4254,12 +4479,14 @@ function updateJobField(jobNumber, fieldName, value) {
  * Show dialog to mark quote as accepted
  */
 function showAcceptQuoteDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Mark Quote Accepted',
     jobs,
     'Job',
-    'markQuoteAccepted'
+    'markQuoteAccepted',
+    selectedJob
   );
 }
 
@@ -4350,12 +4577,14 @@ function updateSubmissionStatus(submissionNumber, status) {
  * Show dialog to start work on a job
  */
 function showStartWorkDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.ON_HOLD]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Start Work on Job',
     jobs,
     'Job',
-    'startWorkOnJob'
+    'startWorkOnJob',
+    selectedJob
   );
 }
 
@@ -4404,12 +4633,14 @@ function startWorkOnJob(jobNumber) {
  * Show dialog to mark job complete
  */
 function showCompleteJobDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Mark Job Complete',
     jobs,
     'Job',
-    'markJobComplete'
+    'markJobComplete',
+    selectedJob
   );
 }
 
@@ -4468,12 +4699,14 @@ function markJobComplete(jobNumber) {
  * Show dialog to put job on hold
  */
 function showOnHoldDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS, JOB_STATUS.ACCEPTED]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Put Job On Hold',
     jobs,
     'Job',
-    'putJobOnHold'
+    'putJobOnHold',
+    selectedJob
   );
 }
 
@@ -4500,13 +4733,15 @@ function putJobOnHold(jobNumber) {
  * Show dialog to cancel a job
  */
 function showCancelJobDialog() {
+  const selectedJob = getSelectedJobNumber();
   // Can cancel jobs that are Accepted, In Progress, or On Hold
   const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.IN_PROGRESS, JOB_STATUS.ON_HOLD]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Cancel Job',
     jobs,
     'Job',
-    'showCancelJobConfirmation'
+    'showCancelJobConfirmation',
+    selectedJob
   );
 }
 
@@ -4612,12 +4847,14 @@ function showCancelJobConfirmation(jobNumber) {
  * Show dialog to send quote
  */
 function showSendQuoteDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.PENDING_QUOTE]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Send Quote',
     jobs,
     'Job',
-    'sendQuoteEmail'
+    'sendQuoteEmail',
+    selectedJob
   );
 }
 
@@ -5009,12 +5246,14 @@ https://cartcure.co.nz
  * Show dialog to send quote reminder
  */
 function showQuoteReminderDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Send Quote Reminder',
     jobs,
     'Job',
-    'sendQuoteReminder'
+    'sendQuoteReminder',
+    selectedJob
   );
 }
 
@@ -5076,12 +5315,14 @@ function sendQuoteReminder(jobNumber) {
  * Show dialog to decline quote
  */
 function showDeclineQuoteDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.PENDING_QUOTE]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Mark Quote Declined',
     jobs,
     'Job',
-    'markQuoteDeclined'
+    'markQuoteDeclined',
+    selectedJob
   );
 }
 
@@ -5115,12 +5356,14 @@ function markQuoteDeclined(jobNumber) {
  * Show dialog to generate invoice
  */
 function showGenerateInvoiceDialog() {
+  const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Generate Invoice',
     jobs,
     'Job',
-    'generateInvoiceForJob'
+    'generateInvoiceForJob',
+    selectedJob
   );
 }
 
@@ -5196,12 +5439,14 @@ function generateInvoiceForJob(jobNumber) {
  * Show dialog to send invoice
  */
 function showSendInvoiceDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
   const invoices = getInvoicesByStatus(['Draft']);
-  showDropdownDialog(
+  showContextAwareDialog(
     'Send Invoice',
     invoices,
     'Invoice',
-    'sendInvoiceEmail'
+    'sendInvoiceEmail',
+    selectedInvoice
   );
 }
 
@@ -5507,9 +5752,10 @@ function sendInvoiceEmail(invoiceNumber) {
 
 /**
  * Show dialog to mark invoice as paid
- * OPTIMIZED: Added loading state and button disabling to prevent duplicate submissions
+ * OPTIMIZED: Added loading state, button disabling, and context-aware selection
  */
 function showMarkPaidDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
   const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
 
   if (!invoices || invoices.length === 0) {
@@ -5517,6 +5763,9 @@ function showMarkPaidDialog() {
     ui.alert('No Invoices Available', 'No sent or overdue invoices available to mark as paid.', ui.ButtonSet.OK);
     return;
   }
+
+  // If we have a context-selected invoice, pre-select it in the dialog
+  const preSelectedInvoice = selectedInvoice || '';
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -5614,7 +5863,7 @@ function showMarkPaidDialog() {
           <label for="invoiceSelect">Select Invoice:</label>
           <select id="invoiceSelect">
             <option value="">-- Select Invoice --</option>
-            ${invoices.map(inv => `<option value="${inv.number}">${inv.display}</option>`).join('')}
+            ${invoices.map(inv => '<option value="' + inv.number + '"' + (inv.number === preSelectedInvoice ? ' selected' : '') + '>' + inv.display + '</option>').join('')}
           </select>
 
           <label for="paymentMethod">Payment Method:</label>
