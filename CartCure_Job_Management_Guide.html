@@ -509,7 +509,7 @@
         <tr>
             <td>Generate Invoice</td>
             <td>Dropdown of completed jobs</td>
-            <td>Only shows "Completed" jobs without invoices</td>
+            <td>Shows "Completed" jobs. Warns if invoices already exist for a job, allowing multiple invoices per job</td>
         </tr>
         <tr>
             <td>Send Invoice</td>
@@ -618,6 +618,7 @@
         <li>"Accept Quote" button</li>
         <li>Your bank details</li>
     </ul>
+    A copy is automatically CC'd to <strong>info@cartcure.co.nz</strong>
 </div>
 
 <h2>When Client Accepts a Quote</h2>
@@ -645,12 +646,18 @@
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Start Work on Job</strong></li>
     <li>Select a job from the dropdown list</li>
     <li>Status changes to "In Progress"</li>
+    <li>Client automatically receives an email notification</li>
 </ol>
+
+<div class="info">
+    <strong>Automatic Email:</strong> If resuming from "On Hold" status, the email will mention how many days the job was on hold.
+</div>
 
 <h3>Complete the Job</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Job Complete</strong></li>
     <li>Select a job from the dropdown list</li>
+    <li>Client automatically receives a completion notification email</li>
     <li>You'll be asked if you want to generate an invoice</li>
 </ol>
 
@@ -658,8 +665,14 @@
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Put Job On Hold</strong></li>
     <li>Select a job from the dropdown list</li>
+    <li><strong>Enter an explanation</strong> (required) - this will be shared with the client</li>
+    <li>Client receives an email with your explanation and note that the SLA timer is paused</li>
     <li>Use this when waiting for client info</li>
 </ol>
+
+<div class="alert">
+    <strong>Important:</strong> The explanation field is required and will be included in the email sent to the client. Keep it professional and brief.
+</div>
 
 <div class="page-break"></div>
 
@@ -669,14 +682,37 @@
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Generate Invoice</strong></li>
     <li>Select a job from the dropdown list</li>
-    <li>Invoice number is auto-generated (INV-2026-001)</li>
+    <li>If invoices already exist for this job, you'll see a warning: "[number] invoice(s) already exist for this job: [invoice numbers]. Are you sure you want to create another?"</li>
+    <li>Click <strong>Yes</strong> to create an additional invoice, or <strong>No</strong> to cancel</li>
+    <li>Invoice number is auto-generated to mirror the job number:
+        <ul>
+            <li>Job <strong>J-MAPLE-001</strong> → First invoice: <strong>INV-MAPLE-001</strong></li>
+            <li>Second invoice for same job: <strong>INV-MAPLE-001-2</strong></li>
+            <li>Third invoice: <strong>INV-MAPLE-001-3</strong>, and so on</li>
+        </ul>
+    </li>
+    <li>The job's Invoice # field is updated to show the most recent invoice</li>
 </ol>
+
+<div class="info">
+    <strong>Invoice Numbering:</strong> Invoice numbers are automatically generated from the job number (J-WORD-XXX becomes INV-WORD-XXX). This makes it easy to see which job an invoice belongs to at a glance.
+</div>
+
+<div class="info">
+    <strong>Multiple Invoices:</strong> You can create multiple invoices for a single job. This is useful for:
+    <ul>
+        <li>Partial billing (deposit invoice, then final invoice)</li>
+        <li>Additional work requested after initial invoice</li>
+        <li>Milestone-based payments on large projects</li>
+    </ul>
+    Additional invoices automatically get a suffix (-2, -3, etc.) so you can track them all. The system tracks all invoices for each job in the Invoice Log sheet.
+</div>
 
 <h3>Send the Invoice</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Invoice</strong></li>
-    <li>Enter the Invoice # (e.g., INV-2026-001)</li>
-    <li>Client receives professional invoice email</li>
+    <li>Enter the Invoice # (e.g., INV-MAPLE-001, INV-MAPLE-001-2)</li>
+    <li>Client receives professional invoice email (CC: info@cartcure.co.nz)</li>
 </ol>
 
 <h3>Record Payment</h3>
@@ -689,7 +725,151 @@
 
 <div class="page-break"></div>
 
-<h1>Part 3: Understanding the Dashboard</h1>
+<h1>Part 3: Automated Email Notifications</h1>
+
+<p>The system automatically sends professional, branded email notifications to clients when job statuses change. All emails are also CC'd to <strong>info@cartcure.co.nz</strong> so you always have a copy.</p>
+
+<h2>Email Notification System</h2>
+
+<h3>When Are Emails Sent?</h3>
+<p>Clients receive automatic email notifications for these events:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Event</th>
+            <th>Email Subject</th>
+            <th>What Client Sees</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Work Started</strong></td>
+            <td>Your Job is Now In Progress (J-WORD-XXX)</td>
+            <td>"Great news! We've started work on your job and are actively working on it."</td>
+        </tr>
+        <tr>
+            <td><strong>Work Resumed</strong></td>
+            <td>Your Job is Now In Progress (J-WORD-XXX)</td>
+            <td>"Great news! We've resumed work on your job after [X] days."</td>
+        </tr>
+        <tr>
+            <td><strong>Job On Hold</strong></td>
+            <td>Your Job is On Hold (J-WORD-XXX)</td>
+            <td>Brief explanation you provide + note that 7-day SLA timer is paused</td>
+        </tr>
+        <tr>
+            <td><strong>Job Completed</strong></td>
+            <td>Your Job is Complete (J-WORD-XXX)</td>
+            <td>"Excellent news! We've completed the work. We'll be in touch shortly with the final details and invoice."</td>
+        </tr>
+        <tr>
+            <td><strong>Job Cancelled</strong></td>
+            <td>Your Job Has Been Cancelled (J-WORD-XXX)</td>
+            <td>Simple cancellation notice (reason is kept internal, not sent to client)</td>
+        </tr>
+        <tr>
+            <td><strong>Quote Sent</strong></td>
+            <td>Quote for Your Shopify Work (J-WORD-XXX)</td>
+            <td>Professional quote with pricing, scope, bank details, and turnaround time</td>
+        </tr>
+        <tr>
+            <td><strong>Invoice Sent</strong></td>
+            <td>Invoice INV-WORD-XXX for Job J-WORD-XXX</td>
+            <td>Professional invoice with payment details and due date</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Email Features</h3>
+<ul>
+    <li><strong>Professional Branding:</strong> All emails use CartCure's brand colors and logo</li>
+    <li><strong>Job Number in Subject:</strong> Every email includes the job number in brackets at the end of the subject line for easy reference</li>
+    <li><strong>CC to Company Email:</strong> All client emails are automatically CC'd to info@cartcure.co.nz</li>
+    <li><strong>Client Name Personalization:</strong> Each email addresses the client by name</li>
+    <li><strong>Mobile-Friendly:</strong> Professional HTML design with plain text fallback</li>
+</ul>
+
+<h2>Special Case: Putting Jobs On Hold</h2>
+
+<div class="alert">
+    <strong>Important:</strong> When you put a job on hold, you MUST provide an explanation that will be shared with the client.
+</div>
+
+<h3>How It Works</h3>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Put Job On Hold</strong></li>
+    <li>Select a job from the dropdown</li>
+    <li>A dialog appears asking for an <strong>explanation (required)</strong></li>
+    <li>Enter a brief explanation for the client (e.g., "Waiting for product images from your team")</li>
+    <li>Click <strong>Put On Hold</strong></li>
+</ol>
+
+<div class="success">
+    The client receives an email that includes:
+    <ul>
+        <li>Your explanation of why the job is on hold</li>
+        <li>A note that the 7-day SLA timer is also paused</li>
+        <li>Assurance that you'll notify them when work resumes</li>
+    </ul>
+</div>
+
+<div class="info">
+    <strong>SLA Timer:</strong> When a job is on hold, the 7-day SLA countdown is paused. When you resume work, the client is notified how long the job was on hold.
+</div>
+
+<h2>Email Recipients</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Recipient Type</th>
+            <th>Email Address</th>
+            <th>When</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Client (TO)</strong></td>
+            <td>From Jobs sheet, Client Email column</td>
+            <td>All emails</td>
+        </tr>
+        <tr>
+            <td><strong>Company (CC)</strong></td>
+            <td>info@cartcure.co.nz</td>
+            <td>All emails (quotes, invoices, status updates)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Troubleshooting Email Issues</h2>
+
+<h3>What if a client's email address is missing?</h3>
+<ul>
+    <li>The system will skip sending the email (it won't fail)</li>
+    <li>The job status will still update correctly</li>
+    <li>Check the Apps Script execution log for a warning message</li>
+    <li>Add the client's email to the Jobs sheet and manually notify them if needed</li>
+</ul>
+
+<h3>What if email sending fails?</h3>
+<ul>
+    <li>The job status change will still complete successfully</li>
+    <li>The error is logged but doesn't block the operation</li>
+    <li>Check the Apps Script execution log for error details</li>
+    <li>You may need to manually follow up with the client</li>
+</ul>
+
+<h3>Checking if emails were sent</h3>
+<ul>
+    <li>Check your info@cartcure.co.nz inbox - you'll have a CC of every email sent</li>
+    <li>View Apps Script execution logs: <strong>Extensions &gt; Apps Script &gt; Executions</strong></li>
+    <li>Look for log entries like "Status update email sent for J-WORD-XXX"</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1>Part 4: Understanding the Dashboard</h1>
 
 <h2>Summary Metrics Section</h2>
 

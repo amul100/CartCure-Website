@@ -3562,6 +3562,32 @@ function updateSetting(settingName, value) {
 /**
  * Get the next invoice number and increment the counter
  */
+/**
+ * Generate invoice number based on job number
+ * Format mirrors job number (J-WORD-XXX becomes INV-WORD-XXX)
+ * For multiple invoices per job, adds suffix: INV-WORD-XXX-2, INV-WORD-XXX-3, etc.
+ *
+ * @param {string} jobNumber - The job number (e.g., "J-MAPLE-001")
+ * @param {number} invoiceCount - Number of existing invoices for this job
+ * @returns {string} Invoice number (e.g., "INV-MAPLE-001" or "INV-MAPLE-001-2")
+ */
+function generateInvoiceNumber(jobNumber, invoiceCount) {
+  // Replace J- prefix with INV-
+  let invoiceNumber = jobNumber.replace(/^J-/, 'INV-');
+
+  // If this is the 2nd, 3rd, etc. invoice, add suffix
+  if (invoiceCount > 0) {
+    invoiceNumber += '-' + (invoiceCount + 1);
+  }
+
+  return invoiceNumber;
+}
+
+/**
+ * LEGACY: Get next sequential invoice number
+ * DEPRECATED: This function is kept for backwards compatibility but is no longer used
+ * New invoices use generateInvoiceNumber() which mirrors job numbers
+ */
 function getNextInvoiceNumber() {
   const currentNum = parseInt(getSetting('Next Invoice Number')) || 1;
   const year = new Date().getFullYear();
@@ -4049,6 +4075,10 @@ function getSelectedSubmissionNumber() {
 
 /**
  * Get invoice number from currently selected cell (if valid)
+ * Matches multiple formats:
+ * - New format: INV-WORD-XXX or INV-WORD-XXX-N (for multiple invoices)
+ * - Legacy format: INV-YYYY-XXX
+ * - Old format: INV-XXXX
  * @returns {string|null} Invoice number if found in selection, null otherwise
  */
 function getSelectedInvoiceNumber() {
@@ -4060,10 +4090,14 @@ function getSelectedInvoiceNumber() {
 
   const trimmed = value.toString().trim();
 
-  // Match invoice format (INV-XXXX)
-  const invoiceRegex = /^INV-\d{4,}$/;
+  // Match new format (INV-WORD-XXX or INV-WORD-XXX-2, etc.)
+  const newFormatRegex = /^INV-[A-Z]{3,6}-\d{3}(-\d+)?$/;
+  // Match legacy year-based format (INV-2024-001, INV-2025-123, etc.)
+  const legacyYearFormatRegex = /^INV-\d{4}-\d{3,}$/;
+  // Match old sequential format (INV-0001, INV-1234, etc.)
+  const oldFormatRegex = /^INV-\d{4,}$/;
 
-  if (invoiceRegex.test(trimmed)) {
+  if (newFormatRegex.test(trimmed) || legacyYearFormatRegex.test(trimmed) || oldFormatRegex.test(trimmed)) {
     return trimmed;
   }
 
@@ -4087,7 +4121,7 @@ function showContextAwareDialog(title, items, itemType, callback, selectedValue)
   // If we have a context-selected value, confirm and use it directly
   if (selectedValue) {
     // Verify the selected value is in our valid items list (if items provided)
-    const isValidSelection = !items || items.length === 0 ||
+    const isValidSelection = items && items.length > 0 &&
       items.some(item => item.number === selectedValue);
 
     if (isValidSelection) {
@@ -4747,16 +4781,37 @@ function startWorkOnJob(jobNumber) {
 
   const now = new Date();
 
+  // Capture current status BEFORE update to detect if resuming from On Hold
+  const previousStatus = job['Status'];
+  const wasOnHold = previousStatus === JOB_STATUS.ON_HOLD;
+
+  // Calculate days on hold if resuming from On Hold
+  let daysOnHold = 0;
+  if (wasOnHold && job['Last Updated']) {
+    try {
+      const onHoldDate = new Date(job['Last Updated']);
+      daysOnHold = Math.floor((now - onHoldDate) / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      Logger.log('Error calculating days on hold: ' + error.message);
+    }
+  }
+
   // OPTIMIZATION: Batch update both fields in a single operation instead of 2 separate calls
   updateJobFields(jobNumber, {
     'Status': JOB_STATUS.IN_PROGRESS,
     'Actual Start Date': formatNZDate(now)
   });
 
+  // Send email notification
+  sendStatusUpdateEmail(jobNumber, JOB_STATUS.IN_PROGRESS, {
+    wasOnHold: wasOnHold,
+    daysOnHold: daysOnHold
+  });
+
   // Update submission status
   updateSubmissionStatus(job['Submission #'], 'In Progress');
 
-  ui.alert('Work Started', 'Job ' + jobNumber + ' is now In Progress.', ui.ButtonSet.OK);
+  ui.alert('Work Started', 'Job ' + jobNumber + ' is now In Progress.\n\nClient has been notified.', ui.ButtonSet.OK);
 
   Logger.log('Work started on ' + jobNumber);
 
@@ -4811,12 +4866,15 @@ function markJobComplete(jobNumber) {
     'Days Remaining': ''
   });
 
+  // Send email notification
+  sendStatusUpdateEmail(jobNumber, JOB_STATUS.COMPLETED);
+
   // Update submission status
   updateSubmissionStatus(job['Submission #'], 'Completed');
 
   const generateInvoice = ui.alert(
     'Job Complete',
-    'Job ' + jobNumber + ' marked as Complete!\n\nWould you like to generate an invoice now?',
+    'Job ' + jobNumber + ' marked as Complete!\n\nClient has been notified.\n\nWould you like to generate an invoice now?',
     ui.ButtonSet.YES_NO
   );
 
@@ -4831,24 +4889,150 @@ function markJobComplete(jobNumber) {
 }
 
 /**
- * Show dialog to put job on hold
+ * Show dialog to put job on hold (with explanation requirement)
  */
 function showOnHoldDialog() {
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS, JOB_STATUS.ACCEPTED]);
-  showContextAwareDialog(
-    'Put Job On Hold',
-    jobs,
-    'Job',
-    'putJobOnHold',
-    selectedJob
-  );
+
+  // Use specialized on hold dialog instead of generic context-aware dialog
+  showOnHoldDialogWithExplanation(selectedJob, jobs);
 }
 
 /**
- * Put a job on hold
+ * Show specialized dialog for putting job on hold (requires explanation)
+ *
+ * @param {string} selectedJob - Pre-selected job number from context
+ * @param {Array} jobs - Array of eligible jobs
  */
-function putJobOnHold(jobNumber) {
+function showOnHoldDialogWithExplanation(selectedJob, jobs) {
+  const ui = SpreadsheetApp.getUi();
+
+  // If we have a context-selected job, verify and show explanation prompt
+  if (selectedJob) {
+    const isValidSelection = jobs && jobs.length > 0 &&
+      jobs.some(job => job.number === selectedJob);
+
+    if (isValidSelection) {
+      const response = ui.alert(
+        'Confirm Selection',
+        'Put job ' + selectedJob + ' on hold?',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        // Prompt for explanation
+        const explanationResponse = ui.prompt(
+          'On Hold Explanation',
+          'Please provide a brief explanation for the client (required):',
+          ui.ButtonSet.OK_CANCEL
+        );
+
+        if (explanationResponse.getSelectedButton() === ui.Button.OK) {
+          const explanation = explanationResponse.getResponseText().trim();
+
+          if (!explanation) {
+            ui.alert('Explanation Required', 'Please provide an explanation for putting the job on hold.', ui.ButtonSet.OK);
+            return;
+          }
+
+          putJobOnHold(selectedJob, explanation);
+        }
+        return;
+      }
+    }
+  }
+
+  // Fall back to dropdown dialog with explanation field
+  if (!jobs || jobs.length === 0) {
+    ui.alert('No Jobs Available', 'No jobs available to put on hold.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Create HTML dialog with dropdown and explanation field
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+          .container { max-width: 500px; }
+          label { display: block; margin-bottom: 8px; margin-top: 12px; font-weight: bold; color: #2d5d3f; }
+          select, textarea { width: 100%; padding: 10px; font-size: 14px; border: 2px solid #d4cfc3; border-radius: 4px; box-sizing: border-box; font-family: Arial, sans-serif; }
+          textarea { min-height: 80px; resize: vertical; }
+          .required { color: #c41e3a; }
+          .button { background-color: #2d5d3f; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 20px; }
+          .button:hover { background-color: #1f4029; }
+          .button:disabled { background-color: #ccc; cursor: not-allowed; }
+          .error { color: #c41e3a; margin-top: 10px; display: none; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2 style="color: #2d5d3f; margin-top: 0;">Put Job On Hold</h2>
+
+          <label for="jobSelect">Select Job <span class="required">*</span></label>
+          <select id="jobSelect">
+            ${jobs.map(job =>
+              `<option value="${job.number}">${job.number} - ${job.clientName}</option>`
+            ).join('')}
+          </select>
+
+          <label for="explanation">Explanation for Client <span class="required">*</span></label>
+          <textarea id="explanation" placeholder="Brief explanation of why the job is being put on hold..."></textarea>
+
+          <div id="error" class="error">Please provide an explanation</div>
+
+          <button id="submitBtn" class="button" onclick="handleSubmit()">Put On Hold</button>
+        </div>
+
+        <script>
+          function handleSubmit() {
+            const jobNumber = document.getElementById('jobSelect').value;
+            const explanation = document.getElementById('explanation').value.trim();
+            const errorDiv = document.getElementById('error');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (!explanation) {
+              errorDiv.style.display = 'block';
+              return;
+            }
+
+            errorDiv.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                alert('Error: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Put On Hold';
+              })
+              .putJobOnHold(jobNumber, explanation);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(500)
+    .setHeight(350);
+
+  ui.showModalDialog(htmlOutput, 'Put Job On Hold');
+}
+
+/**
+ * Put a job on hold with explanation
+ *
+ * @param {string} jobNumber - The job number
+ * @param {string} explanation - Explanation for putting job on hold
+ */
+function putJobOnHold(jobNumber, explanation) {
   const ui = SpreadsheetApp.getUi();
   const job = getJobByNumber(jobNumber);
 
@@ -4857,11 +5041,27 @@ function putJobOnHold(jobNumber) {
     return;
   }
 
-  updateJobField(jobNumber, 'Status', JOB_STATUS.ON_HOLD);
+  const now = new Date();
+  const existingNotes = job['Notes'] || '';
+  const onHoldNote = '[ON HOLD ' + formatNZDate(now) + '] ' + explanation;
+  const newNotes = existingNotes ? existingNotes + '\n' + onHoldNote : onHoldNote;
 
-  ui.alert('On Hold', 'Job ' + jobNumber + ' is now On Hold.', ui.ButtonSet.OK);
+  // Update status and notes
+  updateJobFields(jobNumber, {
+    'Status': JOB_STATUS.ON_HOLD,
+    'Notes': newNotes,
+    'Last Updated': formatNZDate(now)
+  });
 
-  Logger.log('Job ' + jobNumber + ' put on hold');
+  // Send email notification
+  sendStatusUpdateEmail(jobNumber, JOB_STATUS.ON_HOLD, { explanation: explanation });
+
+  ui.alert('On Hold', 'Job ' + jobNumber + ' is now On Hold.\n\nClient has been notified.', ui.ButtonSet.OK);
+
+  Logger.log('Job ' + jobNumber + ' put on hold. Reason: ' + explanation);
+
+  // Refresh dashboard
+  refreshDashboard();
 }
 
 /**
@@ -4957,8 +5157,11 @@ function showCancelJobConfirmation(jobNumber) {
 
   updateJobFields(jobNumber, updates);
 
+  // Send email notification (without reason - kept internal)
+  sendStatusUpdateEmail(jobNumber, JOB_STATUS.CANCELLED);
+
   // Show confirmation
-  let message = 'Job ' + jobNumber + ' has been cancelled.';
+  let message = 'Job ' + jobNumber + ' has been cancelled.\n\nClient has been notified.';
   if (refundStatus) {
     message += '\n\nPayment status updated to: ' + refundStatus;
   }
@@ -5077,6 +5280,7 @@ function sendQuoteEmail(jobNumber) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
+      cc: 'info@cartcure.co.nz',
       subject: subject,
       body: plainBody,
       htmlBody: htmlBody,
@@ -5090,7 +5294,7 @@ function sendQuoteEmail(jobNumber) {
     updateJobField(jobNumber, 'Quote Valid Until', formatNZDate(validUntil));
 
     ui.alert('Quote Sent',
-      'Quote sent successfully to ' + clientEmail + '!\n\n' +
+      'Quote sent successfully to ' + clientEmail + ' (CC: info@cartcure.co.nz)!\n\n' +
       'Amount: ' + formatCurrency(totalAmount) + (isGSTRegistered ? ' (incl GST)' : '') + '\n' +
       'Valid until: ' + formatNZDate(validUntil),
       ui.ButtonSet.OK
@@ -5378,6 +5582,283 @@ https://cartcure.co.nz
 }
 
 /**
+ * Generate status update email HTML
+ *
+ * @param {Object} data - Email data object
+ * @param {string} data.jobNumber - Job number
+ * @param {string} data.clientName - Client name
+ * @param {string} data.status - New job status
+ * @param {string} data.businessName - Business name
+ * @param {string} [data.explanation] - Explanation for On Hold
+ * @param {boolean} [data.wasOnHold] - Whether resuming from On Hold
+ * @param {number} [data.daysOnHold] - Days the job was on hold
+ * @returns {string} HTML email content
+ */
+function generateStatusUpdateEmailHtml(data) {
+  const colors = {
+    brandGreen: '#2d5d3f',
+    paperWhite: '#f9f7f3',
+    paperCream: '#faf8f4',
+    paperBorder: '#d4cfc3',
+    inkBlack: '#2b2b2b',
+    inkGray: '#5a5a5a',
+    inkLight: '#8a8a8a'
+  };
+
+  // Build status-specific content section
+  let statusContent = '';
+  switch(data.status) {
+    case 'In Progress':
+      if (data.wasOnHold && data.daysOnHold > 0) {
+        const daysText = data.daysOnHold === 1 ? '1 day' : data.daysOnHold + ' days';
+        statusContent = `<p>Great news! We've resumed work on your job and are actively working on it again after ${daysText}.</p>`;
+      } else {
+        statusContent = `<p>Great news! We've started work on your job and are actively working on it.</p>`;
+      }
+      break;
+    case 'On Hold':
+      statusContent = `
+        <p>We need to pause work on your job temporarily.</p>
+        ${data.explanation ? `
+          <div style="background-color: ${colors.paperCream}; border-left: 4px solid ${colors.brandGreen}; padding: 15px 20px; margin: 15px 0;">
+            <p style="margin: 0; color: ${colors.inkBlack}; font-size: 15px; line-height: 1.7;">
+              <strong>Reason:</strong> ${data.explanation}
+            </p>
+          </div>
+        ` : ''}
+        <p><strong>Note:</strong> The 7-day SLA timer is also paused while your job is on hold.</p>
+        <p>We'll notify you as soon as we resume work.</p>
+      `;
+      break;
+    case 'Completed':
+      statusContent = `
+        <p>Excellent news! We've completed the work on your job.</p>
+        <p>We'll be in touch shortly with the final details and invoice.</p>
+      `;
+      break;
+    case 'Cancelled':
+      statusContent = `
+        <p>Your job has been cancelled as requested.</p>
+        <p>If you have any questions or would like to discuss this further, please don't hesitate to reach out.</p>
+      `;
+      break;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: ${colors.paperWhite}; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+              <!-- Header with Logo -->
+              <tr>
+                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
+                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+                </td>
+              </tr>
+
+              <!-- Status Badge -->
+              <tr>
+                <td style="padding: 25px 40px;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="background-color: ${colors.brandGreen}; padding: 15px 20px; text-align: center;">
+                        <span style="color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">JOB UPDATE</span>
+                        <br>
+                        <span style="color: #ffffff; font-size: 24px; font-weight: bold;">${data.jobNumber}</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Greeting & Status Message -->
+              <tr>
+                <td style="padding: 0 40px 30px 40px;">
+                  <h1 style="margin: 0 0 15px 0; color: ${colors.brandGreen}; font-size: 24px;">
+                    Hi ${data.clientName},
+                  </h1>
+                  <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 18px; font-weight: bold;">
+                    Your job is now: ${data.status}
+                  </p>
+                  <div style="color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
+                    ${statusContent}
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder};">
+                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; text-align: center;">
+                    Questions? Just reply to this email.<br>
+                    ${data.businessName} | Quick Shopify Fixes for NZ Businesses<br>
+                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen};">cartcure.co.nz</a>
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate status update email plain text
+ *
+ * @param {Object} data - Email data object (same as generateStatusUpdateEmailHtml)
+ * @returns {string} Plain text email content
+ */
+function generateStatusUpdateEmailPlainText(data) {
+  let statusMessage = '';
+  switch(data.status) {
+    case 'In Progress':
+      if (data.wasOnHold && data.daysOnHold > 0) {
+        const daysText = data.daysOnHold === 1 ? '1 day' : data.daysOnHold + ' days';
+        statusMessage = 'Great news! We\'ve resumed work on your job and are actively working on it again after ' + daysText + '.';
+      } else {
+        statusMessage = 'Great news! We\'ve started work on your job and are actively working on it.';
+      }
+      break;
+    case 'On Hold':
+      statusMessage = 'We need to pause work on your job temporarily.';
+      if (data.explanation) {
+        statusMessage += '\n\nReason: ' + data.explanation;
+      }
+      statusMessage += '\n\nNote: The 7-day SLA timer is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
+      break;
+    case 'Completed':
+      statusMessage = 'Excellent news! We\'ve completed the work on your job.\n\nWe\'ll be in touch shortly with the final details and invoice.';
+      break;
+    case 'Cancelled':
+      statusMessage = 'Your job has been cancelled as requested.\n\nIf you have any questions or would like to discuss this further, please don\'t hesitate to reach out.';
+      break;
+  }
+
+  return `
+═══════════════════════════════════════════════════
+   JOB UPDATE - ${data.jobNumber}
+═══════════════════════════════════════════════════
+
+Hi ${data.clientName},
+
+Your job is now: ${data.status}
+
+${statusMessage}
+
+Questions? Just reply to this email.
+
+Cheers,
+The CartCure Team
+
+───────────────────────────────────────────────────
+CartCure | Quick Shopify Fixes for NZ Businesses
+https://cartcure.co.nz
+  `;
+}
+
+/**
+ * Get appropriate subject line for status change email
+ *
+ * @param {string} status - Job status
+ * @param {string} jobNumber - Job number
+ * @returns {string} Email subject line
+ */
+function getStatusEmailSubject(status, jobNumber) {
+  const subjectMap = {
+    'In Progress': 'Your Job is Now In Progress',
+    'On Hold': 'Your Job is On Hold',
+    'Completed': 'Your Job is Complete',
+    'Cancelled': 'Your Job Has Been Cancelled'
+  };
+
+  const baseSubject = subjectMap[status] || 'Job Status Update';
+  return baseSubject + ' (' + jobNumber + ')';
+}
+
+/**
+ * Send status update email to client
+ *
+ * @param {string} jobNumber - The job number
+ * @param {string} newStatus - The new status
+ * @param {Object} [options={}] - Optional parameters
+ * @param {string} [options.explanation] - Explanation for On Hold
+ * @param {boolean} [options.wasOnHold] - Whether resuming from On Hold
+ * @param {number} [options.daysOnHold] - Days the job was on hold
+ * @returns {boolean} True if email sent successfully, false otherwise
+ */
+function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    Logger.log('Cannot send status email - job not found: ' + jobNumber);
+    return false;
+  }
+
+  const clientEmail = job['Client Email'];
+  const clientName = job['Client Name'];
+
+  // Validate client email
+  if (!clientEmail || clientEmail.trim() === '') {
+    Logger.log('Cannot send status email - no client email for ' + jobNumber);
+    return false;
+  }
+
+  // Get settings
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const ccEmail = 'info@cartcure.co.nz';
+
+  // Build email data
+  const emailData = {
+    jobNumber: jobNumber,
+    clientName: clientName,
+    status: newStatus,
+    businessName: businessName,
+    explanation: options.explanation || '',
+    wasOnHold: options.wasOnHold || false,
+    daysOnHold: options.daysOnHold || 0
+  };
+
+  // Generate email content
+  const subject = getStatusEmailSubject(newStatus, jobNumber);
+  const htmlBody = generateStatusUpdateEmailHtml(emailData);
+  const plainBody = generateStatusUpdateEmailPlainText(emailData);
+
+  // Send email
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      cc: ccEmail,
+      subject: subject,
+      body: plainBody,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    Logger.log('Status update email sent for ' + jobNumber + ' (status: ' + newStatus + ') to ' + clientEmail + ' (CC: ' + ccEmail + ')');
+    return true;
+
+  } catch (error) {
+    Logger.log('Error sending status update email for ' + jobNumber + ': ' + error.message);
+    // Don't alert user - just log. Status change should still succeed even if email fails
+    return false;
+  }
+}
+
+/**
  * Show dialog to send quote reminder
  */
 function showQuoteReminderDialog() {
@@ -5515,10 +5996,23 @@ function generateInvoiceForJob(jobNumber) {
     return;
   }
 
-  // Check if invoice already exists
-  if (job['Invoice #']) {
-    ui.alert('Invoice Exists', 'An invoice already exists for this job: ' + job['Invoice #'], ui.ButtonSet.OK);
-    return;
+  // Check if invoices already exist for this job
+  const existingInvoices = getInvoicesByJobNumber(jobNumber);
+
+  if (existingInvoices && existingInvoices.length > 0) {
+    const invoiceList = existingInvoices.map(inv => inv['Invoice #']).join(', ');
+    const invoiceWord = existingInvoices.length === 1 ? 'invoice' : 'invoices';
+
+    const response = ui.alert(
+      'Invoices Already Exist',
+      existingInvoices.length + ' ' + invoiceWord + ' already exist for this job: ' + invoiceList + '\n\n' +
+      'Are you sure you want to create another invoice?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      return; // User cancelled
+    }
   }
 
   const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
@@ -5527,7 +6021,8 @@ function generateInvoiceForJob(jobNumber) {
     return;
   }
 
-  const invoiceNumber = getNextInvoiceNumber();
+  // Generate invoice number based on job number
+  const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices.length);
   const now = new Date();
   const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
   const dueDate = new Date(now);
@@ -5556,18 +6051,25 @@ function generateInvoiceForJob(jobNumber) {
 
   invoiceSheet.appendRow(invoiceRow);
 
-  // Update job with invoice number
+  // Update job with latest invoice number
   updateJobField(jobNumber, 'Invoice #', invoiceNumber);
 
+  // Update success message based on whether this is an additional invoice
+  const isAdditionalInvoice = existingInvoices && existingInvoices.length > 0;
+  const invoiceCountMessage = isAdditionalInvoice
+    ? '\n\nThis is invoice #' + (existingInvoices.length + 1) + ' for this job.'
+    : '';
+
   ui.alert('Invoice Generated',
-    'Invoice ' + invoiceNumber + ' created!\n\n' +
+    'Invoice ' + invoiceNumber + ' created!' + invoiceCountMessage + '\n\n' +
     'Amount: ' + formatCurrency(total) + '\n' +
     'Due Date: ' + formatNZDate(dueDate) + '\n\n' +
     'Use CartCure > Invoices > Send Invoice to email it.',
     ui.ButtonSet.OK
   );
 
-  Logger.log('Invoice ' + invoiceNumber + ' generated for ' + jobNumber);
+  Logger.log('Invoice ' + invoiceNumber + ' generated for ' + jobNumber +
+    (isAdditionalInvoice ? ' (additional invoice #' + (existingInvoices.length + 1) + ')' : ''));
 }
 
 /**
@@ -5651,6 +6153,60 @@ function getInvoiceByNumber(invoiceNumber) {
   Logger.log('[PERF] getInvoiceByNumber() - Found ' + invoiceNumber + ' in ' + executionTime + 'ms (TextFinder optimization)');
 
   return invoice;
+}
+
+/**
+ * Get all invoices for a specific job number
+ * Returns an array of invoice objects for the given job
+ * @param {string} jobNumber - The job number to search for
+ * @returns {Array} Array of invoice objects for this job
+ */
+function getInvoicesByJobNumber(jobNumber) {
+  const startTime = new Date().getTime();
+
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.INVOICES);
+
+  if (!sheet) {
+    Logger.log('[PERF] getInvoicesByJobNumber() - Invoices sheet not found');
+    return [];
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return []; // No data rows
+
+  // Load all data at once
+  const allData = sheet.getDataRange().getValues();
+  const headers = allData[0];
+  const jobNumColIndex = headers.indexOf('Job #');
+
+  if (jobNumColIndex === -1) {
+    Logger.log('[PERF] getInvoicesByJobNumber() - Job # column not found');
+    return [];
+  }
+
+  const invoices = [];
+
+  // Find all rows with matching job number
+  for (let i = 1; i < allData.length; i++) {
+    const row = allData[i];
+    const rowJobNum = row[jobNumColIndex];
+
+    if (rowJobNum === jobNumber) {
+      const invoice = {};
+      headers.forEach((header, index) => {
+        invoice[header] = row[index];
+      });
+      invoice._rowIndex = i + 1; // Store row index (1-based)
+      invoices.push(invoice);
+    }
+  }
+
+  const endTime = new Date().getTime();
+  const executionTime = endTime - startTime;
+  Logger.log('[PERF] getInvoicesByJobNumber() - Found ' + invoices.length + ' invoices for ' + jobNumber + ' in ' + executionTime + 'ms');
+
+  return invoices;
 }
 
 /**
@@ -5862,6 +6418,7 @@ function sendInvoiceEmail(invoiceNumber) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
+      cc: 'info@cartcure.co.nz',
       subject: subject,
       htmlBody: htmlBody,
       name: businessName,
@@ -5877,7 +6434,7 @@ function sendInvoiceEmail(invoiceNumber) {
     // Update job payment status
     updateJobField(jobNumber, 'Payment Status', PAYMENT_STATUS.INVOICED);
 
-    ui.alert('Invoice Sent', 'Invoice sent to ' + clientEmail, ui.ButtonSet.OK);
+    ui.alert('Invoice Sent', 'Invoice sent to ' + clientEmail + ' (CC: info@cartcure.co.nz)', ui.ButtonSet.OK);
     Logger.log('Invoice ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
     Logger.log('Error sending invoice: ' + error.message);
@@ -5887,19 +6444,56 @@ function sendInvoiceEmail(invoiceNumber) {
 
 /**
  * Show dialog to mark invoice as paid
- * OPTIMIZED: Added loading state, button disabling, and context-aware selection
+ * OPTIMIZED: Uses context-aware dialog for consistent UX
  */
 function showMarkPaidDialog() {
   const selectedInvoice = getSelectedInvoiceNumber();
   const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
 
+  // Use context-aware dialog for consistent behavior
+  showContextAwareDialogForMarkPaid(
+    'Mark Invoice as Paid',
+    invoices,
+    'Invoice',
+    selectedInvoice
+  );
+}
+
+/**
+ * Show context-aware dialog specifically for marking invoices as paid
+ * This is a specialized version that includes payment method and reference fields
+ */
+function showContextAwareDialogForMarkPaid(title, invoices, itemType, selectedInvoice) {
+  const ui = SpreadsheetApp.getUi();
+
+  // If we have a context-selected invoice, verify it's valid and confirm
+  if (selectedInvoice) {
+    const isValidSelection = invoices && invoices.length > 0 &&
+      invoices.some(inv => inv.number === selectedInvoice);
+
+    if (isValidSelection) {
+      const selectedInv = invoices.find(inv => inv.number === selectedInvoice);
+      const response = ui.alert(
+        'Confirm Selection',
+        'Mark invoice ' + selectedInvoice + ' (' + selectedInv.clientName + ') as paid?',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        // Show payment method dialog
+        showPaymentMethodDialog(selectedInvoice);
+        return;
+      }
+    }
+  }
+
+  // Check if there are any invoices available
   if (!invoices || invoices.length === 0) {
-    const ui = SpreadsheetApp.getUi();
     ui.alert('No Invoices Available', 'No sent or overdue invoices available to mark as paid.', ui.ButtonSet.OK);
     return;
   }
 
-  // If we have a context-selected invoice, pre-select it in the dialog
+  // Fall back to dropdown dialog with payment fields
   const preSelectedInvoice = selectedInvoice || '';
 
   const htmlContent = `
@@ -6071,6 +6665,184 @@ function showMarkPaidDialog() {
   const html = HtmlService.createHtmlOutput(htmlContent)
     .setWidth(550)
     .setHeight(400);
+
+  SpreadsheetApp.getUi().showModalDialog(html, 'Mark Invoice as Paid');
+}
+
+/**
+ * Show payment method dialog for a specific invoice
+ * Called when user confirms they want to mark a selected invoice as paid
+ */
+function showPaymentMethodDialog(invoiceNumber) {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+          }
+          .container {
+            max-width: 500px;
+          }
+          label {
+            display: block;
+            margin-bottom: 8px;
+            margin-top: 12px;
+            font-weight: bold;
+            color: #333;
+          }
+          select, input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+          }
+          select:disabled, input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+          }
+          .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+          }
+          button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.2s;
+          }
+          .btn-primary {
+            background-color: #4285f4;
+            color: white;
+          }
+          .btn-primary:hover:not(:disabled) {
+            background-color: #357ae8;
+          }
+          .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .btn-secondary {
+            background-color: #f1f1f1;
+            color: #333;
+          }
+          .btn-secondary:hover:not(:disabled) {
+            background-color: #e1e1e1;
+          }
+          .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+          }
+          .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          .invoice-info {
+            background-color: #f5f5f5;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+          }
+          .invoice-info strong {
+            color: #333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="invoice-info">
+            <strong>Invoice:</strong> ${invoiceNumber}
+          </div>
+
+          <label for="paymentMethod">Payment Method:</label>
+          <select id="paymentMethod">
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Stripe">Stripe</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Cash">Cash</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label for="paymentRef">Payment Reference:</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID or reference (optional)">
+          <div class="note">Optional: Enter transaction ID or payment reference</div>
+
+          <div class="button-container">
+            <button id="cancelBtn" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button id="submitBtn" class="btn-primary" onclick="submitPayment()">Mark as Paid</button>
+          </div>
+        </div>
+
+        <script>
+          var isSubmitting = false;
+
+          function submitPayment() {
+            if (isSubmitting) return;
+
+            const method = document.getElementById('paymentMethod').value;
+            const reference = document.getElementById('paymentRef').value;
+
+            // Disable buttons and show loading state
+            isSubmitting = true;
+            const submitBtn = document.getElementById('submitBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading-spinner"></span>Processing...';
+            document.getElementById('paymentMethod').disabled = true;
+            document.getElementById('paymentRef').disabled = true;
+
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                // Re-enable on error
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
+                submitBtn.innerHTML = 'Mark as Paid';
+                document.getElementById('paymentMethod').disabled = false;
+                document.getElementById('paymentRef').disabled = false;
+                alert('Error: ' + error);
+              })
+              .markInvoicePaid('${invoiceNumber}', method, reference);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(500)
+    .setHeight(350);
 
   SpreadsheetApp.getUi().showModalDialog(html, 'Mark Invoice as Paid');
 }
