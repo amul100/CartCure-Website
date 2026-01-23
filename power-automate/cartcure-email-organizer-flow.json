@@ -1,0 +1,742 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "/*MANUAL_SETUP_INSTRUCTIONS*/": {
+    "STEP_1_IMPORT_THIS_FLOW": {
+      "description": "How to import this flow into Power Automate",
+      "instructions": [
+        "1. Go to https://make.powerautomate.com",
+        "2. Sign in with your info@cartcure.co.nz Microsoft 365 account",
+        "3. Click 'My flows' in the left sidebar",
+        "4. Click 'Import' at the top",
+        "5. Click 'Upload' and select this JSON file",
+        "6. Follow the import wizard to create a new flow"
+      ],
+      "note": "After importing, you'll need to configure connections (see STEP_2)"
+    },
+    "STEP_2_CONFIGURE_CONNECTIONS": {
+      "description": "Set up Office 365 Outlook connection",
+      "instructions": [
+        "1. After importing, Power Automate will ask you to set up connections",
+        "2. Click 'Select during import' next to Office 365 Outlook",
+        "3. Choose 'Create new' connection",
+        "4. Sign in with info@cartcure.co.nz when prompted",
+        "5. Grant permissions to access your mailbox",
+        "6. Click 'Save' to finalize the connection"
+      ],
+      "security_note": "This connection only accesses YOUR mailbox (info@cartcure.co.nz). It doesn't share data with anyone."
+    },
+    "STEP_3_CUSTOMIZE_FOLDER_STRUCTURE": {
+      "description": "Configure your desired folder structure",
+      "current_structure": "Clients/[Job Number]/Invoices",
+      "how_to_modify": [
+        "1. After importing, click 'Edit' on the flow",
+        "2. Find the action called 'Create client folder if not exists'",
+        "3. Update the 'Folder Path' field to match your preferred structure",
+        "4. Find the action called 'Create job folder if not exists'",
+        "5. Update the 'Folder Path' to build on the client folder",
+        "6. Repeat for invoice folder creation",
+        "7. Click 'Save' when done"
+      ],
+      "tip": "You can add additional folder levels by adding more 'Get folder' and 'Create folder' actions"
+    },
+    "STEP_4_TEST_THE_FLOW": {
+      "description": "Test the flow before enabling it",
+      "instructions": [
+        "1. Click 'Test' button in top-right corner of flow editor",
+        "2. Select 'Manually'",
+        "3. Click 'Test' button",
+        "4. Send yourself a test email with a job number in the subject (e.g., 'Test (J-TIGER-001)')",
+        "5. Wait 1-2 minutes for the flow to trigger",
+        "6. Check your Outlook inbox - the email should be moved to a new folder",
+        "7. Verify folder structure: Clients/J-TIGER-001/Invoices was created"
+      ]
+    },
+    "STEP_5_ENABLE_THE_FLOW": {
+      "description": "Turn on automatic email organization",
+      "instructions": [
+        "1. After successful testing, click 'Turn on' at the top of the flow",
+        "2. The flow will now run automatically whenever an email arrives",
+        "3. You can monitor runs by clicking 'My flows' > [Flow name] > 'Run history'"
+      ]
+    },
+    "STEP_6_MONITOR_AND_TROUBLESHOOT": {
+      "description": "Keep an eye on the flow's performance",
+      "how_to_check_runs": [
+        "1. Go to https://make.powerautomate.com",
+        "2. Click 'My flows'",
+        "3. Click on 'CartCure Email Organizer' flow",
+        "4. View 'Run history' to see all executions",
+        "5. Click on any run to see details (green = success, red = failed)"
+      ],
+      "common_issues": {
+        "emails_not_moving": "Check that flow is turned ON. Verify email contains job number in subject line in format (J-WORD-XXX)",
+        "folder_not_created": "Check Outlook permissions for the connection. May need to re-authenticate.",
+        "flow_failing": "Check run history for error details. Most common issue is incorrect folder path format."
+      }
+    }
+  },
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "When_a_new_email_arrives": {
+      "type": "ApiConnectionNotification",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['office365']['connectionId']"
+          }
+        },
+        "fetch": {
+          "method": "get",
+          "pathTemplate": {
+            "template": "/v2/Mail/OnNewEmail"
+          },
+          "queries": {
+            "folderPath": "Inbox",
+            "importance": "Any",
+            "fetchOnlyWithAttachment": false,
+            "includeAttachments": false
+          }
+        },
+        "subscribe": {
+          "method": "post",
+          "pathTemplate": {
+            "template": "/GraphMailSubscriptionPoke/$subscriptions"
+          },
+          "queries": {
+            "folderPath": "Inbox"
+          }
+        }
+      },
+      "splitOn": "@triggerBody()?['value']",
+      "/*TRIGGER_EXPLANATION*/": "This trigger fires whenever a new email arrives in your info@cartcure.co.nz Inbox. It runs automatically in real-time."
+    }
+  },
+  "actions": {
+    "/*ACTION_OVERVIEW*/": {
+      "description": "This flow has 8 main steps that run in sequence",
+      "steps": [
+        "1. Extract job number from email subject using regex pattern",
+        "2. Check if job number was found (if not, stop - email not job-related)",
+        "3. Get client name from Jobs sheet via HTTP request to Apps Script",
+        "4. Check if 'Clients' root folder exists, create if needed",
+        "5. Check if job-specific folder exists under Clients, create if needed",
+        "6. Check if 'Invoices' folder exists under job folder (if invoice email), create if needed",
+        "7. Move the email to the appropriate folder",
+        "8. Mark email as read (optional - can be disabled)"
+      ]
+    },
+    "Extract_job_number_from_subject": {
+      "type": "Compose",
+      "inputs": "@first(split(split(triggerBody()?['subject'], '(J-')[1], ')'))",
+      "runAfter": {},
+      "/*EXPLANATION*/": "This extracts job number from subject line. Example: 'Your Job is Complete (J-TIGER-042)' → extracts 'TIGER-042'. The full job number becomes 'J-TIGER-042'.",
+      "/*CUSTOMIZE*/": "If your job number format changes, update the split logic here. Current format: (J-WORD-NNN)"
+    },
+    "Check_if_job_number_exists": {
+      "type": "Condition",
+      "expression": {
+        "and": [
+          {
+            "not": {
+              "equals": [
+                "@outputs('Extract_job_number_from_subject')",
+                "@null"
+              ]
+            }
+          },
+          {
+            "not": {
+              "equals": [
+                "@outputs('Extract_job_number_from_subject')",
+                ""
+              ]
+            }
+          },
+          {
+            "contains": [
+              "@triggerBody()?['subject']",
+              "(J-"
+            ]
+          }
+        ]
+      },
+      "actions": {
+        "Build_full_job_number": {
+          "type": "Compose",
+          "inputs": "J-@{outputs('Extract_job_number_from_subject')}",
+          "runAfter": {},
+          "/*EXPLANATION*/": "Constructs full job number: 'J-TIGER-042'"
+        },
+        "Determine_email_type": {
+          "type": "Compose",
+          "inputs": "@if(contains(toLower(triggerBody()?['subject']), 'invoice'), 'Invoice', if(contains(toLower(triggerBody()?['subject']), 'quote'), 'Quote', 'Status Update'))",
+          "runAfter": {
+            "Build_full_job_number": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Detects email type based on subject line keywords. Returns 'Invoice', 'Quote', or 'Status Update'.",
+          "/*CUSTOMIZE*/": "Add more email types by adding additional if() conditions here"
+        },
+        "Get_client_name_from_Google_Sheets": {
+          "type": "Http",
+          "inputs": {
+            "method": "GET",
+            "uri": "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec?action=getClientName&jobNumber=@{outputs('Build_full_job_number')}",
+            "headers": {
+              "Content-Type": "application/json"
+            }
+          },
+          "runAfter": {
+            "Determine_email_type": [
+              "Succeeded"
+            ]
+          },
+          "/*MANUAL_CONFIGURATION_REQUIRED*/": {
+            "step": "You MUST update the URI with your Apps Script Web App deployment URL",
+            "how_to_get_deployment_url": [
+              "1. Commit and push your latest Code.gs to Git (the doGet function is already added)",
+              "2. Open your CartCure Google Sheet",
+              "3. Go to Extensions > Apps Script",
+              "4. The doGet() function should be at the bottom (auto-deployed from Git)",
+              "5. Click 'Deploy' > 'New deployment'",
+              "6. Choose type: 'Web app'",
+              "7. Execute as: 'Me'",
+              "8. Who has access: 'Anyone' (this is safe - it only returns client names for valid job numbers)",
+              "9. Click 'Deploy'",
+              "10. Copy the 'Web app URL' and paste it here, replacing the placeholder"
+            ],
+            "security_note": "This HTTP call is safe. It only allows reading client names associated with job numbers. No sensitive data is exposed."
+          },
+          "/*EXPLANATION*/": "Calls your Google Sheets Apps Script to get the client name for this job number. This allows organizing by client name instead of just job number."
+        },
+        "Parse_client_name_response": {
+          "type": "ParseJson",
+          "inputs": {
+            "content": "@body('Get_client_name_from_Google_Sheets')",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "clientName": {
+                  "type": "string"
+                },
+                "jobNumber": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Get_client_name_from_Google_Sheets": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Parses the JSON response from Apps Script to extract client name"
+        },
+        "Check_if_Clients_root_folder_exists": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['office365']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/v2/Mail/GetFolder",
+            "queries": {
+              "folderId": "Clients"
+            }
+          },
+          "runAfter": {
+            "Parse_client_name_response": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Checks if 'Clients' folder exists in your Outlook mailbox root",
+          "/*CUSTOMIZE*/": "Change 'Clients' to any other root folder name you prefer"
+        },
+        "Create_Clients_folder_if_needed": {
+          "type": "Condition",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Check_if_Clients_root_folder_exists')?['statusCode']",
+                  404
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Create_Clients_folder": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/v2/Mail/CreateFolder",
+                "body": {
+                  "FolderPath": "Clients",
+                  "ParentFolderId": "Inbox"
+                }
+              },
+              "runAfter": {},
+              "/*EXPLANATION*/": "Creates 'Clients' folder if it doesn't exist. Only runs once, on first email."
+            }
+          },
+          "runAfter": {
+            "Check_if_Clients_root_folder_exists": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "else": {
+            "actions": {}
+          }
+        },
+        "Build_client_folder_path": {
+          "type": "Compose",
+          "inputs": "Clients/@{body('Parse_client_name_response')?['clientName']}",
+          "runAfter": {
+            "Create_Clients_folder_if_needed": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Builds path: 'Clients/John Smith'",
+          "/*CUSTOMIZE*/": "To organize by job number instead of client name, change to: Clients/@{outputs('Build_full_job_number')}"
+        },
+        "Check_if_client_folder_exists": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['office365']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/v2/Mail/GetFolder",
+            "queries": {
+              "folderId": "@outputs('Build_client_folder_path')"
+            }
+          },
+          "runAfter": {
+            "Build_client_folder_path": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Create_client_folder_if_needed": {
+          "type": "Condition",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Check_if_client_folder_exists')?['statusCode']",
+                  404
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Create_client_folder": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/v2/Mail/CreateFolder",
+                "body": {
+                  "FolderPath": "@outputs('Build_client_folder_path')"
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "runAfter": {
+            "Check_if_client_folder_exists": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "else": {
+            "actions": {}
+          }
+        },
+        "Build_job_folder_path": {
+          "type": "Compose",
+          "inputs": "@{outputs('Build_client_folder_path')}/@{outputs('Build_full_job_number')}",
+          "runAfter": {
+            "Create_client_folder_if_needed": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Builds path: 'Clients/John Smith/J-TIGER-042'"
+        },
+        "Check_if_job_folder_exists": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['office365']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/v2/Mail/GetFolder",
+            "queries": {
+              "folderId": "@outputs('Build_job_folder_path')"
+            }
+          },
+          "runAfter": {
+            "Build_job_folder_path": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Create_job_folder_if_needed": {
+          "type": "Condition",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Check_if_job_folder_exists')?['statusCode']",
+                  404
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Create_job_folder": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/v2/Mail/CreateFolder",
+                "body": {
+                  "FolderPath": "@outputs('Build_job_folder_path')"
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "runAfter": {
+            "Check_if_job_folder_exists": [
+              "Succeeded",
+              "Failed"
+            ]
+          },
+          "else": {
+            "actions": {}
+          }
+        },
+        "Check_if_invoice_email": {
+          "type": "Condition",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Determine_email_type')",
+                  "Invoice"
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Build_invoice_folder_path": {
+              "type": "Compose",
+              "inputs": "@{outputs('Build_job_folder_path')}/Invoices",
+              "runAfter": {},
+              "/*EXPLANATION*/": "Builds path: 'Clients/John Smith/J-TIGER-042/Invoices'"
+            },
+            "Check_if_invoice_folder_exists": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/v2/Mail/GetFolder",
+                "queries": {
+                  "folderId": "@outputs('Build_invoice_folder_path')"
+                }
+              },
+              "runAfter": {
+                "Build_invoice_folder_path": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Create_invoice_folder_if_needed": {
+              "type": "Condition",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('Check_if_invoice_folder_exists')?['statusCode']",
+                      404
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Create_invoice_folder": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['office365']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail/CreateFolder",
+                    "body": {
+                      "FolderPath": "@outputs('Build_invoice_folder_path')"
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "Check_if_invoice_folder_exists": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              },
+              "else": {
+                "actions": {}
+              }
+            },
+            "Move_email_to_invoice_folder": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/v2/Mail/Move/@{encodeURIComponent(triggerBody()?['id'])}",
+                "body": {
+                  "DestinationFolderId": "@outputs('Build_invoice_folder_path')"
+                }
+              },
+              "runAfter": {
+                "Create_invoice_folder_if_needed": [
+                  "Succeeded"
+                ]
+              },
+              "/*EXPLANATION*/": "Moves the email to: Clients/[Client]/[Job]/Invoices"
+            }
+          },
+          "runAfter": {
+            "Create_job_folder_if_needed": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "Move_email_to_job_folder": {
+                "type": "ApiConnection",
+                "inputs": {
+                  "host": {
+                    "connection": {
+                      "name": "@parameters('$connections')['office365']['connectionId']"
+                    }
+                  },
+                  "method": "post",
+                  "path": "/v2/Mail/Move/@{encodeURIComponent(triggerBody()?['id'])}",
+                  "body": {
+                    "DestinationFolderId": "@outputs('Build_job_folder_path')"
+                  }
+                },
+                "runAfter": {},
+                "/*EXPLANATION*/": "Moves the email to: Clients/[Client]/[Job] (for non-invoice emails like quotes, status updates)"
+              }
+            }
+          },
+          "/*CUSTOMIZE*/": "To add more subfolder types (Quotes, Payments, etc.), duplicate this condition block and change the email type check"
+        },
+        "Mark_email_as_read": {
+          "type": "ApiConnection",
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['office365']['connectionId']"
+              }
+            },
+            "method": "patch",
+            "path": "/v2/Mail/UpdateMessage/@{encodeURIComponent(triggerBody()?['id'])}",
+            "body": {
+              "IsRead": true
+            }
+          },
+          "runAfter": {
+            "Check_if_invoice_email": [
+              "Succeeded"
+            ]
+          },
+          "/*EXPLANATION*/": "Marks the email as read after organizing. OPTIONAL: Delete this action if you want emails to stay unread.",
+          "/*CUSTOMIZE*/": "To keep emails unread, delete this entire action block"
+        }
+      },
+      "runAfter": {
+        "Extract_job_number_from_subject": [
+          "Succeeded"
+        ]
+      },
+      "else": {
+        "actions": {
+          "Terminate_flow_not_a_job_email": {
+            "type": "Terminate",
+            "inputs": {
+              "runStatus": "Succeeded"
+            },
+            "runAfter": {},
+            "/*EXPLANATION*/": "If no job number found in subject, flow stops here (email stays in Inbox). This prevents organizing non-job emails."
+          }
+        }
+      }
+    }
+  },
+  "outputs": {},
+  "/*APPS_SCRIPT_INTEGRATION*/": {
+    "description": "The doGet() function is already included in Code.gs (at the bottom)",
+    "what_it_does": "Returns client name for a given job number via HTTP GET request",
+    "endpoint_format": "https://script.google.com/.../exec?action=getClientName&jobNumber=J-TIGER-042",
+    "response_format": {
+      "success": true,
+      "jobNumber": "J-TIGER-042",
+      "clientName": "John Smith"
+    },
+    "deployment_required": [
+      "1. Commit and push Code.gs to Git (doGet function auto-deploys)",
+      "2. Open Google Sheet > Extensions > Apps Script",
+      "3. Deploy > New deployment > Web app",
+      "4. Execute as: Me, Who has access: Anyone",
+      "5. Copy Web App URL",
+      "6. Update 'Get_client_name_from_Google_Sheets' action URI in this flow"
+    ],
+    "security_note": "This endpoint is safe. It only returns client names for valid job numbers. No sensitive financial or personal data is exposed."
+  },
+  "/*FOLDER_STRUCTURE_RESULT*/": {
+    "description": "After the flow runs successfully, your Outlook folder structure will look like this",
+    "example": {
+      "Inbox": {
+        "Clients": {
+          "John_Smith": {
+            "J-TIGER-042": {
+              "Invoices": [
+                "Invoice INV-TIGER-042 for Job J-TIGER-042.eml"
+              ],
+              "other_emails": [
+                "Your Job is Now In Progress (J-TIGER-042).eml",
+                "Your Job is Complete (J-TIGER-042).eml"
+              ]
+            },
+            "J-MAPLE-015": {
+              "Invoices": [],
+              "other_emails": [
+                "Quote for Your Shopify Work (J-MAPLE-015).eml"
+              ]
+            }
+          },
+          "Sarah_Johnson": {
+            "J-EAGLE-088": {
+              "Invoices": [
+                "Invoice INV-EAGLE-088 for Job J-EAGLE-088.eml"
+              ],
+              "other_emails": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "/*GIT_WORKFLOW*/": {
+    "description": "How to manage this flow with Git version control",
+    "workflow": [
+      "1. Make changes to this JSON file locally",
+      "2. Commit and push to your Git repository",
+      "3. When you want to deploy changes:",
+      "   a. Go to https://make.powerautomate.com",
+      "   b. Delete the old flow (or turn it off)",
+      "   c. Import the updated JSON file",
+      "   d. Reconfigure connections (usually automatic)",
+      "   e. Test and turn on"
+    ],
+    "backup_strategy": "Whenever you modify the flow in Power Automate's visual editor, export it and commit the new JSON to Git. This keeps your repo in sync.",
+    "export_instructions": [
+      "1. Go to https://make.powerautomate.com",
+      "2. Click 'My flows'",
+      "3. Click '...' (three dots) next to your flow",
+      "4. Click 'Export' > 'Package (.zip)'",
+      "5. Download and extract the ZIP",
+      "6. Find the flow JSON file inside",
+      "7. Replace this file with the new version",
+      "8. Commit to Git"
+    ]
+  },
+  "/*TESTING_TIPS*/": {
+    "test_scenarios": [
+      {
+        "scenario": "New job - first email",
+        "test": "Send email with subject 'Test (J-NEWJOB-001)'",
+        "expected_result": "Creates: Clients/[Client]/J-NEWJOB-001/ and moves email there"
+      },
+      {
+        "scenario": "Invoice for existing job",
+        "test": "Send email with subject 'Invoice INV-TIGER-042 (J-TIGER-042)'",
+        "expected_result": "Creates: Clients/[Client]/J-TIGER-042/Invoices/ and moves email there"
+      },
+      {
+        "scenario": "Email without job number",
+        "test": "Send email with subject 'Hello there'",
+        "expected_result": "Email stays in Inbox (flow terminates early)"
+      },
+      {
+        "scenario": "Multiple emails for same job",
+        "test": "Send 3 emails with same job number",
+        "expected_result": "All 3 emails go to same folder (folder only created once)"
+      }
+    ]
+  },
+  "/*LIMITATIONS_AND_NOTES*/": {
+    "power_automate_limits": {
+      "free_plan": "750 runs per month (sufficient for most small businesses)",
+      "paid_plan": "Unlimited runs with Office 365 Business Premium or higher",
+      "current_plan": "Check your plan at https://make.powerautomate.com > Settings > View my licenses"
+    },
+    "known_limitations": [
+      "Flow only works on NEW emails (not retroactive - won't organize existing emails)",
+      "Folder creation can take 1-2 seconds, so rapid successive emails might fail (rare)",
+      "Client name lookup requires Apps Script Web App to be deployed and accessible",
+      "If Google Sheets is down, flow will fail (emails stay in Inbox)"
+    ],
+    "future_enhancements": [
+      "Add 'Quotes' subfolder for quote emails",
+      "Add 'Payments' subfolder for payment confirmation emails",
+      "Add email archiving after 90 days",
+      "Add notification when job folder reaches 10+ emails"
+    ]
+  }
+}
