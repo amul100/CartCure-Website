@@ -1686,7 +1686,7 @@ function onOpen() {
       .addItem('Refresh Dashboard', 'refreshDashboard')
       .addItem('Refresh Analytics', 'refreshAnalytics')
       .addSeparator()
-      .addItem('Enable Auto-Refresh (2 min)', 'enableAutoRefresh')
+      .addItem('Enable Auto-Refresh (1 min)', 'enableAutoRefresh')
       .addItem('Disable Auto-Refresh', 'disableAutoRefresh'))
     .addSeparator()
     .addSubMenu(ui.createMenu('📋 Jobs')
@@ -1709,6 +1709,9 @@ function onOpen() {
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog'))
     .addToUi();
+
+  // Enable auto-refresh by default if not already enabled
+  ensureAutoRefreshEnabled();
 }
 
 /**
@@ -1748,10 +1751,10 @@ function enableAutoRefresh() {
   // Create new time-driven trigger
   ScriptApp.newTrigger('autoRefreshDashboard')
     .timeBased()
-    .everyMinutes(2)
+    .everyMinutes(1)
     .create();
 
-  ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 2 minutes.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
+  ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 1 minute.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
   Logger.log('Auto-refresh enabled');
 }
 
@@ -1789,6 +1792,24 @@ function autoRefreshDashboard() {
   }
 }
 
+/**
+ * Ensure auto-refresh is enabled (called on spreadsheet open)
+ */
+function ensureAutoRefreshEnabled() {
+  // Check if auto-refresh trigger already exists
+  const triggers = ScriptApp.getProjectTriggers();
+  const hasAutoRefresh = triggers.some(trigger => trigger.getHandlerFunction() === 'autoRefreshDashboard');
+
+  // If no trigger exists, create one
+  if (!hasAutoRefresh) {
+    ScriptApp.newTrigger('autoRefreshDashboard')
+      .timeBased()
+      .everyMinutes(1)
+      .create();
+    Logger.log('Auto-refresh enabled on spreadsheet open');
+  }
+}
+
 // ============================================================================
 // SETUP FUNCTIONS
 // ============================================================================
@@ -1815,6 +1836,117 @@ function showSetupDialog() {
 }
 
 /**
+ * Back up data from all sheets before repair
+ * @param {Spreadsheet} ss - The spreadsheet object
+ * @returns {Object} Object containing backed up data from all sheets
+ */
+function backupSheetData(ss) {
+  const backup = {};
+
+  // Back up Submissions data
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  if (submissionsSheet && submissionsSheet.getLastRow() > 1) {
+    backup.submissions = submissionsSheet.getRange(2, 1, submissionsSheet.getLastRow() - 1, submissionsSheet.getLastColumn()).getValues();
+    Logger.log('Backed up ' + backup.submissions.length + ' submission rows');
+  }
+
+  // Back up Jobs data
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  if (jobsSheet && jobsSheet.getLastRow() > 1) {
+    backup.jobs = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, jobsSheet.getLastColumn()).getValues();
+    Logger.log('Backed up ' + backup.jobs.length + ' job rows');
+  }
+
+  // Back up Invoice Log data
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+  if (invoiceSheet && invoiceSheet.getLastRow() > 1) {
+    backup.invoices = invoiceSheet.getRange(2, 1, invoiceSheet.getLastRow() - 1, invoiceSheet.getLastColumn()).getValues();
+    Logger.log('Backed up ' + backup.invoices.length + ' invoice rows');
+  }
+
+  // Back up Settings data
+  const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+  if (settingsSheet && settingsSheet.getLastRow() > 0) {
+    backup.settings = settingsSheet.getDataRange().getValues();
+    Logger.log('Backed up settings data');
+  }
+
+  return backup;
+}
+
+/**
+ * Delete all sheets except one (Google Sheets requires at least 1 sheet)
+ * @param {Spreadsheet} ss - The spreadsheet object
+ */
+function deleteAllSheets(ss) {
+  const sheets = ss.getSheets();
+
+  // Keep the first sheet temporarily, delete all others
+  for (let i = sheets.length - 1; i >= 1; i--) {
+    ss.deleteSheet(sheets[i]);
+    Logger.log('Deleted sheet: ' + sheets[i].getName());
+  }
+
+  // Rename the remaining sheet to avoid conflicts
+  if (sheets.length > 0) {
+    sheets[0].setName('_temp_sheet_');
+  }
+}
+
+/**
+ * Restore backed up data to newly created sheets
+ * @param {Spreadsheet} ss - The spreadsheet object
+ * @param {Object} backup - The backed up data object
+ */
+function restoreSheetData(ss, backup) {
+  // Restore Submissions data
+  if (backup.submissions && backup.submissions.length > 0) {
+    const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+    if (submissionsSheet) {
+      submissionsSheet.getRange(2, 1, backup.submissions.length, backup.submissions[0].length).setValues(backup.submissions);
+      Logger.log('Restored ' + backup.submissions.length + ' submission rows');
+    }
+  }
+
+  // Restore Jobs data
+  if (backup.jobs && backup.jobs.length > 0) {
+    const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+    if (jobsSheet) {
+      jobsSheet.getRange(2, 1, backup.jobs.length, backup.jobs[0].length).setValues(backup.jobs);
+      Logger.log('Restored ' + backup.jobs.length + ' job rows');
+    }
+  }
+
+  // Restore Invoice Log data
+  if (backup.invoices && backup.invoices.length > 0) {
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    if (invoiceSheet) {
+      invoiceSheet.getRange(2, 1, backup.invoices.length, backup.invoices[0].length).setValues(backup.invoices);
+      Logger.log('Restored ' + backup.invoices.length + ' invoice rows');
+    }
+  }
+
+  // Restore Settings data (overwrite default settings with backed up values)
+  if (backup.settings && backup.settings.length > 0) {
+    const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+    if (settingsSheet) {
+      // Clear existing data first
+      settingsSheet.clear();
+      // Restore backed up settings
+      settingsSheet.getRange(1, 1, backup.settings.length, backup.settings[0].length).setValues(backup.settings);
+      Logger.log('Restored settings data');
+    }
+  }
+
+  // Delete the temporary sheet if it still exists
+  const tempSheet = ss.getSheetByName('_temp_sheet_');
+  if (tempSheet) {
+    ss.deleteSheet(tempSheet);
+    Logger.log('Deleted temporary sheet');
+  }
+}
+
+/**
  * Setup all required sheets for job management
  * @param {boolean} clearData - If true, deletes all data (hard reset mode)
  */
@@ -1825,37 +1957,39 @@ function setupSheets(clearData) {
   try {
     Logger.log('Starting setup (clearData=' + clearData + ')...');
 
-    // If clearing data, delete data rows first (before recreating structure)
-    if (clearData) {
-      clearAllSheetData(ss);
+    // Step 1: Back up data from existing sheets (unless hard reset)
+    let backupData = null;
+    if (!clearData) {
+      backupData = backupSheetData(ss);
+      Logger.log('Data backed up successfully');
     }
 
-    // Create/update Jobs sheet
+    // Step 2: Delete all existing sheets except the first one (Google Sheets requires at least 1 sheet)
+    deleteAllSheets(ss);
+    Logger.log('All sheets deleted');
+
+    // Step 3: Create/update all sheets with fresh structure
     setupJobsSheet(ss, clearData);
-
-    // Create/update Invoice Log sheet
     setupInvoiceLogSheet(ss, clearData);
-
-    // Create/update Settings sheet (always preserve settings unless hard reset)
     setupSettingsSheet(ss, clearData);
-
-    // Create/update Dashboard sheet (always recreate structure)
     createDashboardSheet(ss);
-
-    // Create/update Analytics sheet
     createAnalyticsSheet(ss);
-
-    // Update Submissions sheet with new columns
     setupSubmissionsSheet(ss);
 
-    // Reset invoice counter if clearing data
+    // Step 4: Restore backed up data (unless hard reset)
+    if (!clearData && backupData) {
+      restoreSheetData(ss, backupData);
+      Logger.log('Data restored successfully');
+    }
+
+    // Step 5: Reset invoice counter if clearing data
     if (clearData) {
       resetInvoiceCounter(ss);
     }
 
     const message = clearData
       ? 'Hard reset complete! All data has been deleted and sheets have been reset.'
-      : 'Setup complete! All sheets have been created/repaired.\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
+      : 'Setup complete! All sheets have been created/repaired with data preserved.\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
 
     ui.alert(clearData ? '✅ Hard Reset Complete' : '✅ Setup Complete', message, ui.ButtonSet.OK);
 
@@ -2515,6 +2649,7 @@ function setupSettingsSheet(ss, clearData) {
   valueRange.setFontFamily('Arial');
   valueRange.setFontSize(10);
   valueRange.setFontColor(SHEET_COLORS.brandGreen);
+  valueRange.setHorizontalAlignment('center');
 
   // Format description column (muted text)
   const descRange = sheet.getRange(2, 3, defaultSettings.length - 1, 1);
