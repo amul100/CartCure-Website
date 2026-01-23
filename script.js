@@ -46,6 +46,16 @@
     // Production mode flag (set to true for production)
     const IS_PRODUCTION = true;
 
+    // Human-readable word list for submission numbers (easy to remember, say, and type)
+    const SUBMISSION_WORDS = [
+        'MAPLE', 'RIVER', 'CORAL', 'FROST', 'AMBER', 'CLOUD', 'STONE', 'BLOOM',
+        'SPARK', 'OCEAN', 'CEDAR', 'DAWN', 'FLAME', 'PEARL', 'STORM', 'LUNAR',
+        'GROVE', 'HAVEN', 'PEAK', 'TIDE', 'FERN', 'BLAZE', 'DUSK', 'SILK',
+        'MINT', 'SAGE', 'FLINT', 'CREST', 'PINE', 'CLIFF', 'MOSS', 'OPAL',
+        'REED', 'BROOK', 'GLOW', 'WREN', 'IRIS', 'EMBER', 'SWIFT', 'HAZE',
+        'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL'
+    ];
+
     // ========================================================================
     // RATE LIMITING
     // ========================================================================
@@ -435,11 +445,12 @@
         button.style.opacity = '0.7';
 
         try {
-            // Generate unique submission number: CC-YYYYMMDD-XXXXX
+            // Generate unique human-readable submission number: CC-WORD-XXX
+            // Format is easier to remember, say over phone, and type
             const now = new Date();
-            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-            const randomNum = Math.floor(10000 + Math.random() * 90000); // 5-digit random number
-            const submissionNumber = `CC-${dateStr}-${randomNum}`;
+            const randomWord = SUBMISSION_WORDS[Math.floor(Math.random() * SUBMISSION_WORDS.length)];
+            const randomNum = Math.floor(100 + Math.random() * 900); // 3-digit number (100-999)
+            const submissionNumber = `CC-${randomWord}-${randomNum}`;
 
             // Build form data
             const formData = {

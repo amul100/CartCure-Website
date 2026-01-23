@@ -231,12 +231,13 @@
         Complete workflow management with SLA tracking,<br>
         professional quotes, and payment management
     </p>
-    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 1.0</p>
+    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.0</p>
 </div>
 
 <div class="toc">
     <h2>Table of Contents</h2>
     <ul>
+        <li><a href="#part0"><strong>Part 0:</strong> What's New in Version 2.0</a></li>
         <li><a href="#part1"><strong>Part 1:</strong> Deployment Instructions</a></li>
         <li><a href="#part2"><strong>Part 2:</strong> Daily Workflow</a></li>
         <li><a href="#part3"><strong>Part 3:</strong> Understanding the Dashboard</a></li>
@@ -252,7 +253,90 @@
     </ul>
 </div>
 
-<h1>Part 1: Deployment Instructions</h1>
+<h1 id="part0">Part 0: What's New in Version 2.0</h1>
+
+<div class="success">
+    <strong>🎉 New Features & Improvements</strong>
+</div>
+
+<h2>1. Human-Readable Job & Submission Numbers</h2>
+
+<p><strong>New Format:</strong> Easy-to-remember identifiers like <code>CC-MAPLE-427</code> instead of <code>CC-20250124-45678</code></p>
+
+<ul>
+    <li><strong>Submission Numbers:</strong> Now use format <code>CC-WORD-XXX</code> (e.g., <code>CC-RIVER-523</code>, <code>CC-FROST-184</code>)</li>
+    <li><strong>Job Numbers:</strong> Derived from submissions as <code>J-WORD-XXX</code> (e.g., <code>J-MAPLE-427</code>)</li>
+    <li><strong>Benefits:</strong>
+        <ul>
+            <li>Much easier to say over the phone or in emails</li>
+            <li>Easier to remember and type</li>
+            <li>Less error-prone than long date-based numbers</li>
+            <li>More professional and memorable for clients</li>
+        </ul>
+    </li>
+    <li><strong>Backwards Compatible:</strong> Legacy format (<code>CC-YYYYMMDD-XXXXX</code>) still supported</li>
+</ul>
+
+<h2>2. Context-Aware Menu Actions</h2>
+
+<p><strong>Smart Selection:</strong> Menu actions now detect when you've selected a cell containing a job/submission number</p>
+
+<ul>
+    <li><strong>How It Works:</strong>
+        <ol>
+            <li>Click on any cell containing a job number (e.g., <code>J-MAPLE-427</code>) or submission number</li>
+            <li>Use the CartCure menu to perform an action (e.g., "Send Quote")</li>
+            <li>System asks: "Use selected job: J-MAPLE-427?" - Click Yes</li>
+            <li>Action executes immediately without needing to find it in a dropdown</li>
+        </ol>
+    </li>
+    <li><strong>Workflow Improvement:</strong>
+        <ul>
+            <li>No more scrolling through long dropdowns</li>
+            <li>Click the cell, use the menu, confirm - done!</li>
+            <li>Especially useful when working from Dashboard or Jobs sheet</li>
+        </ul>
+    </li>
+    <li><strong>Fallback:</strong> If no cell is selected, the traditional dropdown dialog appears</li>
+</ul>
+
+<h2>3. Enhanced Submission Form</h2>
+
+<p><strong>Better Information Collection:</strong> Form now encourages users to provide more detailed information</p>
+
+<ul>
+    <li><strong>Improved Placeholder Text:</strong> "Be as detailed as possible - include what page it's on, what should happen vs what's happening, any error messages, etc."</li>
+    <li><strong>Helpful Hint:</strong> Visual hint showing "💡 The more detail you provide, the faster and more accurate your quote will be!"</li>
+    <li><strong>Voice Note Encouragement:</strong> Updated label to "Prefer to explain out loud? Record a voice note" with subtext "Voice notes often capture details that are hard to type out. Feel free to ramble!"</li>
+    <li><strong>Result:</strong> Better quality submissions = more accurate quotes = less back-and-forth</li>
+</ul>
+
+<h2>4. Visual Analytics Charts</h2>
+
+<p><strong>New Charts Section:</strong> Analytics sheet now includes visual graphs for at-a-glance insights</p>
+
+<ul>
+    <li><strong>Jobs by Status Pie Chart:</strong> Visual breakdown of job statuses with color-coded slices</li>
+    <li><strong>Monthly Performance Bar Chart:</strong> Shows jobs created, completed, and revenue trends over 6 months</li>
+    <li><strong>Payment Status Donut Chart:</strong> Quick view of payment distribution (Paid, Unpaid, Invoiced, etc.)</li>
+    <li><strong>Location:</strong> Charts appear at the bottom of the Analytics sheet (row 30+)</li>
+    <li><strong>Auto-Update:</strong> Charts refresh automatically when you refresh analytics data</li>
+</ul>
+
+<h2>5. Dashboard Formatting Consistency</h2>
+
+<p><strong>Visual Polish:</strong> Improved consistency across Dashboard and Analytics sheets</p>
+
+<ul>
+    <li>All tables now have consistent alternating row colors</li>
+    <li>Proper vertical alignment throughout</li>
+    <li>Consistent font sizes and spacing</li>
+    <li>Better visual hierarchy and readability</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h1 id="part1">Part 1: Deployment Instructions</h1>
 
 <div class="info">
     <strong>Prerequisites:</strong>
@@ -346,15 +430,30 @@
 
 <div class="page-break"></div>
 
-<h1>Part 2: Daily Workflow</h1>
+<h1 id="part2">Part 2: Daily Workflow</h1>
+
+<h2>Context-Aware Menu Actions (New!)</h2>
+
+<div class="success">
+    <strong>Version 2.0 Feature:</strong> Menu actions now automatically detect selected cells - no more dropdown searching!
+</div>
+
+<p>The fastest way to perform actions is now to <strong>click on a job/submission number</strong> in any sheet (Dashboard, Jobs, etc.) and then use the menu. The system will ask "Use selected job: J-MAPLE-427?" - just click Yes!</p>
+
+<h3>Quick Example</h3>
+
+<ol>
+    <li><strong>Click</strong> on a job number cell (e.g., <code>J-RIVER-523</code>) in the Dashboard</li>
+    <li><strong>Menu:</strong> CartCure &gt; Quotes &gt; Send Quote</li>
+    <li><strong>Confirm:</strong> System asks "Use selected job: J-RIVER-523?" - Click Yes</li>
+    <li><strong>Done!</strong> Quote is sent immediately</li>
+</ol>
+
+<p><strong>Benefits:</strong> No scrolling through dropdowns, fewer clicks, faster workflow. If you don't select a cell first, the traditional dropdown will appear as a fallback.</p>
 
 <h2>Smart Dropdown Interface</h2>
 
-<div class="success">
-    <strong>New Feature:</strong> All menu actions now use smart dropdown selection instead of manual number entry!
-</div>
-
-<p>The system has been upgraded with an intelligent dropdown interface that makes job management faster and error-free. Instead of manually typing submission numbers, job numbers, or invoice numbers, you now select from pre-filtered dropdown lists.</p>
+<p>When you don't pre-select a cell, the system shows smart dropdown lists filtered by the action you're performing. Instead of manually typing submission numbers, job numbers, or invoice numbers, you select from pre-filtered dropdown lists.</p>
 
 <h3>How It Works</h3>
 
@@ -702,13 +801,74 @@
 
 <div class="page-break"></div>
 
-<h1>Part 5: Reports</h1>
+<h1 id="part5">Part 5: Reports & Analytics</h1>
 
-<h2>Overdue Jobs Report</h2>
+<h2>Analytics Sheet Overview</h2>
+
+<p>The <strong>Analytics</strong> sheet provides comprehensive business intelligence with both tabular data and visual charts.</p>
+
+<h3>Key Metrics Section</h3>
+<p>Top row shows at-a-glance metrics:</p>
+<ul>
+    <li>Total Jobs</li>
+    <li>Total Revenue</li>
+    <li>Average Job Value</li>
+    <li>Conversion Rate (jobs/submissions)</li>
+    <li>Completion Rate</li>
+    <li>On-Time Rate</li>
+</ul>
+
+<h3>Data Tables</h3>
+<ul>
+    <li><strong>Jobs by Status:</strong> Breakdown of all job statuses with counts and percentages</li>
+    <li><strong>Payment Status:</strong> Payment distribution with counts and amounts</li>
+    <li><strong>SLA Performance:</strong> How many jobs are on track, at risk, or overdue</li>
+    <li><strong>Monthly Performance:</strong> Last 6 months of job activity and revenue</li>
+    <li><strong>Jobs by Category:</strong> Which job types are most common</li>
+    <li><strong>Attention Required:</strong> Jobs needing immediate follow-up</li>
+</ul>
+
+<h3>Visual Charts (New in v2.0!)</h3>
+
+<p><strong>Location:</strong> Bottom of Analytics sheet (starting at row 30)</p>
+
+<div class="success">
+    <strong>Three Visual Charts for Quick Insights:</strong>
+</div>
+
+<ol>
+    <li><strong>Jobs by Status Pie Chart</strong>
+        <ul>
+            <li>Visual breakdown of all job statuses</li>
+            <li>Color-coded slices matching your status colors</li>
+            <li>Shows distribution at a glance</li>
+        </ul>
+    </li>
+    <li><strong>Monthly Performance Bar Chart</strong>
+        <ul>
+            <li>6-month trend of jobs created, completed, and revenue</li>
+            <li>Helps identify seasonal patterns</li>
+            <li>Compare month-over-month performance</li>
+        </ul>
+    </li>
+    <li><strong>Payment Status Donut Chart</strong>
+        <ul>
+            <li>Visual representation of payment distribution</li>
+            <li>Quickly see how much is paid vs unpaid vs invoiced</li>
+            <li>Donut format (hollow center) for clean presentation</li>
+        </ul>
+    </li>
+</ol>
+
+<p><strong>Refreshing Analytics:</strong> Click the checkbox at H1 or use <strong>CartCure &gt; Dashboard &gt; Refresh Analytics</strong>. All charts update automatically with your latest data.</p>
+
+<h2>Standard Reports</h2>
+
+<h3>Overdue Jobs Report</h3>
 <p><strong>🛒 CartCure &gt; 📈 Reports &gt; Overdue Jobs</strong></p>
 <p>Lists all jobs that are past their due date.</p>
 
-<h2>Outstanding Payments Report</h2>
+<h3>Outstanding Payments Report</h3>
 <p><strong>🛒 CartCure &gt; 📈 Reports &gt; Outstanding Payments</strong></p>
 <p>Shows:</p>
 <ul>
@@ -716,7 +876,7 @@
     <li>List of unpaid jobs with amounts</li>
 </ul>
 
-<h2>Monthly Summary</h2>
+<h3>Monthly Summary</h3>
 <p><strong>🛒 CartCure &gt; 📈 Reports &gt; Monthly Summary</strong></p>
 <p>Shows for current month:</p>
 <ul>
