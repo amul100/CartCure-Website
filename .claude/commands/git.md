@@ -1,0 +1,1 @@
+perform all command line actions to safely and correctly push/commit changes to git. The only other text you should respond with is "Changes pushed sucessfully" if successful. no other text or verbosity. Of course, if action fails you need to explain why and try to fix the issue.
