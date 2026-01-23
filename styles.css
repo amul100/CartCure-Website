@@ -350,6 +350,7 @@ nav {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    margin-bottom: 1rem;
 }
 
 .voice-recording-section>label {
@@ -393,22 +394,22 @@ nav {
 }
 
 .voice-button {
-    background: linear-gradient(135deg, #c0c0c0 0%, #2DAD58 100%);
-    color: var(--paper-white);
+    background: #84cc16;
+    color: var(--ink-black);
     padding: 0.65rem 1rem;
-    border: 3px solid var(--accent-green);
+    border: 3px solid #65a30d;
     border-radius: 0;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    box-shadow: 3px 3px 0px rgba(45, 93, 63, 0.3);
+    box-shadow: 3px 3px 0px rgba(101, 163, 13, 0.4);
     position: relative;
     overflow: hidden;
 }
@@ -420,8 +421,8 @@ nav {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.5s;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(163, 230, 53, 0.5) 50%, rgba(255, 255, 255, 0.3) 100%);
+    transition: left 0.5s ease;
 }
 
 .voice-button:hover::before {
@@ -429,8 +430,10 @@ nav {
 }
 
 .voice-button:hover {
+    background: linear-gradient(135deg, #84cc16 0%, #a3e635 50%, #bef264 100%);
     transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0px rgba(45, 93, 63, 0.3);
+    box-shadow: 5px 5px 0px rgba(101, 163, 13, 0.5);
+    border-color: #84cc16;
 }
 
 .voice-button.recording {
