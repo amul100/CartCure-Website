@@ -438,6 +438,10 @@ function handleTestimonialSubmission(data) {
     if (!IS_PRODUCTION) {
       debugLog.push('');
       debugLog.push('Proceeding to job lookup...');
+      // Log all job numbers in sheet for comparison
+      const allJobNumbers = jobsData.slice(1).map(row => (row[jobNumberColIndex] || '').toString());
+      debugLog.push('All job numbers in sheet: ' + allJobNumbers.join(', '));
+      debugLog.push('Looking for: "' + jobNumber + '"');
       saveTestimonialDebugFile(jobNumber, debugLog);
     }
 
@@ -446,6 +450,13 @@ function handleTestimonialSubmission(data) {
       const cellValue = (row[jobNumberColIndex] || '').toString().toUpperCase();
       return cellValue === jobNumber;
     });
+
+    // Debug: Log job exists check
+    if (!IS_PRODUCTION) {
+      const debugFolder = getOrCreateDebugFolder();
+      debugFolder.createFile('TESTIMONIAL_JOB_CHECK_' + new Date().getTime() + '.txt',
+        'Job exists check for "' + jobNumber + '": ' + jobExists + '\nAll jobs: ' + jobsData.slice(1).map(row => row[jobNumberColIndex]).join(', '));
+    }
 
     if (!jobExists) {
       return ContentService
@@ -458,6 +469,15 @@ function handleTestimonialSubmission(data) {
 
     // Check if testimonial already exists for this job
     let testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+
+    // Debug: Log testimonials sheet check
+    if (!IS_PRODUCTION) {
+      const debugFolder = getOrCreateDebugFolder();
+      debugFolder.createFile('TESTIMONIAL_SHEET_CHECK_' + new Date().getTime() + '.txt',
+        'Testimonials sheet: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL') +
+        '\nLast row: ' + (testimonialsSheet ? testimonialsSheet.getLastRow() : 'N/A'));
+    }
+
     if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
       const testimonialData = testimonialsSheet.getDataRange().getValues();
       const jobColIndex = testimonialData[0].indexOf('Job Number');
@@ -466,6 +486,13 @@ function handleTestimonialSubmission(data) {
           const cellValue = (row[jobColIndex] || '').toString().toUpperCase();
           return cellValue === jobNumber;
         });
+
+        // Debug: Log already submitted check
+        if (!IS_PRODUCTION) {
+          const debugFolder = getOrCreateDebugFolder();
+          debugFolder.createFile('TESTIMONIAL_DUPLICATE_CHECK_' + new Date().getTime() + '.txt',
+            'Already submitted for ' + jobNumber + ': ' + alreadySubmitted);
+        }
 
         if (alreadySubmitted) {
           return ContentService
