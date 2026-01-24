@@ -116,9 +116,16 @@ function doPost(e) {
 
     // Parse request body - handle both JSON and form-encoded data
     let data;
-    if (e.postData && e.postData.type === 'application/json') {
-      data = JSON.parse(e.postData.contents);
-      if (!IS_PRODUCTION) Logger.log('Parsed as JSON');
+    if (e.postData && (e.postData.type === 'application/json' || e.postData.type === 'text/plain')) {
+      // Handle both application/json and text/plain (which some forms use for CORS)
+      try {
+        data = JSON.parse(e.postData.contents);
+        if (!IS_PRODUCTION) Logger.log('Parsed as JSON from ' + e.postData.type);
+      } catch (parseError) {
+        // If JSON parsing fails, fall back to parameter
+        data = e.parameter;
+        if (!IS_PRODUCTION) Logger.log('JSON parse failed, using e.parameter');
+      }
     } else {
       // URL-encoded form data comes in e.parameter
       data = e.parameter;
