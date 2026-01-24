@@ -361,18 +361,50 @@ function handleTestimonialSubmission(data) {
 
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
 
+    // Debug log array for file output
+    const debugLog = [];
+    debugLog.push('=== Testimonial Submission Debug ===');
+    debugLog.push('Timestamp: ' + new Date().toISOString());
+    debugLog.push('Job Number: ' + jobNumber);
+    debugLog.push('Name: ' + name);
+    debugLog.push('');
+
     // Validate that job number exists in Jobs sheet
-    if (!IS_PRODUCTION) {
-      Logger.log('SHEETS.JOBS value: ' + SHEETS.JOBS);
-      Logger.log('Looking for sheet: "' + SHEETS.JOBS + '"');
-    }
+    debugLog.push('SHEETS.JOBS value: ' + SHEETS.JOBS);
     const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
     if (!jobsSheet) {
+      const allSheets = ss.getSheets().map(s => s.getName());
+      debugLog.push('ERROR: Jobs sheet not found!');
+      debugLog.push('Available sheets: ' + allSheets.join(', '));
+
+      // Save debug file
       if (!IS_PRODUCTION) {
-        Logger.log('ERROR: Jobs sheet not found! Sheet name used: ' + SHEETS.JOBS);
-        const allSheets = ss.getSheets().map(s => s.getName());
-        Logger.log('Available sheets: ' + allSheets.join(', '));
+        saveTestimonialDebugFile(jobNumber, debugLog);
       }
+
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Unable to verify job reference. Please try again later.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    debugLog.push('Jobs sheet found: YES');
+
+    const jobsData = jobsSheet.getDataRange().getValues();
+    const jobNumberColIndex = jobsData[0].indexOf('Job Number');
+    debugLog.push('Row count: ' + jobsData.length);
+    debugLog.push('Headers: ' + jobsData[0].join(', '));
+    debugLog.push('Job Number column index: ' + jobNumberColIndex);
+
+    if (jobNumberColIndex === -1) {
+      debugLog.push('ERROR: Job Number column not found in headers');
+
+      // Save debug file
+      if (!IS_PRODUCTION) {
+        saveTestimonialDebugFile(jobNumber, debugLog);
+      }
+
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -381,23 +413,11 @@ function handleTestimonialSubmission(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    const jobsData = jobsSheet.getDataRange().getValues();
-    const jobNumberColIndex = jobsData[0].indexOf('Job Number');
+    // Save debug file on success path too
     if (!IS_PRODUCTION) {
-      Logger.log('Jobs sheet found. Row count: ' + jobsData.length);
-      Logger.log('Headers: ' + jobsData[0].join(', '));
-      Logger.log('Job Number column index: ' + jobNumberColIndex);
-    }
-    if (jobNumberColIndex === -1) {
-      if (!IS_PRODUCTION) {
-        Logger.log('ERROR: Job Number column not found in headers');
-      }
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Unable to verify job reference. Please try again later.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      debugLog.push('');
+      debugLog.push('Proceeding to job lookup...');
+      saveTestimonialDebugFile(jobNumber, debugLog);
     }
 
     // Check if job exists
@@ -1059,6 +1079,23 @@ function saveDebugFileToDrive(data) {
   } catch (error) {
     Logger.log('Error saving debug file to Drive: ' + error.message);
     // Don't throw - this is just for debugging, shouldn't break the submission
+    return '';
+  }
+}
+
+/**
+ * Save testimonial debug log to a file in Google Drive
+ */
+function saveTestimonialDebugFile(jobNumber, debugLog) {
+  try {
+    const folder = getOrCreateDebugFolder();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = 'TESTIMONIAL_DEBUG_' + (jobNumber || 'unknown') + '_' + timestamp + '.txt';
+    const file = folder.createFile(fileName, debugLog.join('\n'));
+    Logger.log('Testimonial debug file saved: ' + file.getUrl());
+    return file.getUrl();
+  } catch (error) {
+    Logger.log('Error saving testimonial debug file: ' + error.message);
     return '';
   }
 }
