@@ -362,8 +362,17 @@ function handleTestimonialSubmission(data) {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
 
     // Validate that job number exists in Jobs sheet
+    if (!IS_PRODUCTION) {
+      Logger.log('SHEETS.JOBS value: ' + SHEETS.JOBS);
+      Logger.log('Looking for sheet: "' + SHEETS.JOBS + '"');
+    }
     const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
     if (!jobsSheet) {
+      if (!IS_PRODUCTION) {
+        Logger.log('ERROR: Jobs sheet not found! Sheet name used: ' + SHEETS.JOBS);
+        const allSheets = ss.getSheets().map(s => s.getName());
+        Logger.log('Available sheets: ' + allSheets.join(', '));
+      }
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -374,7 +383,15 @@ function handleTestimonialSubmission(data) {
 
     const jobsData = jobsSheet.getDataRange().getValues();
     const jobNumberColIndex = jobsData[0].indexOf('Job Number');
+    if (!IS_PRODUCTION) {
+      Logger.log('Jobs sheet found. Row count: ' + jobsData.length);
+      Logger.log('Headers: ' + jobsData[0].join(', '));
+      Logger.log('Job Number column index: ' + jobNumberColIndex);
+    }
     if (jobNumberColIndex === -1) {
+      if (!IS_PRODUCTION) {
+        Logger.log('ERROR: Job Number column not found in headers');
+      }
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
