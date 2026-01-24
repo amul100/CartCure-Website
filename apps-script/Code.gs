@@ -887,6 +887,7 @@ function saveToSheet(data) {
     if (lastRow === 0) {
       debugLog.push('No headers found - creating headers');
       sheet.appendRow([
+        'Status',
         'Submission #',
         'Timestamp',
         'Name',
@@ -894,8 +895,7 @@ function saveToSheet(data) {
         'Store URL',
         'Message',
         'Has Voice Note',
-        'Voice Note Link',
-        'Status'
+        'Voice Note Link'
       ]);
     } else {
       debugLog.push('Headers already exist');
@@ -916,8 +916,9 @@ function saveToSheet(data) {
     debugLog.push('Writing to sheet: "' + sheet.getName() + '"');
     debugLog.push('Sheet index: ' + sheet.getIndex());
 
-    // Prepare the row data with Status set to 'New'
+    // Prepare the row data with Status first (set to 'New')
     const rowData = [
+      'New',
       data.submissionNumber,
       data.timestamp,
       data.name,
@@ -925,8 +926,7 @@ function saveToSheet(data) {
       data.storeUrl,
       data.message,
       data.hasVoiceNote ? 'Yes' : 'No',
-      audioFileUrl,
-      'New'
+      audioFileUrl
     ];
 
     // Write to the target row
@@ -2249,18 +2249,10 @@ function setupJobsSheet(ss, clearData) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths
-  sheet.setColumnWidth(1, 100);  // Job #
-  sheet.setColumnWidth(2, 110);  // Submission #
-  sheet.setColumnWidth(3, 100);  // Created Date
-  sheet.setColumnWidth(4, 140);  // Client Name
-  sheet.setColumnWidth(5, 180);  // Client Email
-  sheet.setColumnWidth(6, 160);  // Store URL
-  sheet.setColumnWidth(7, 300);  // Job Description
-  sheet.setColumnWidth(8, 100);  // Category
-  sheet.setColumnWidth(9, 110);  // Status
-  sheet.setColumnWidth(28, 250); // Notes
-  sheet.setColumnWidth(29, 100); // Last Updated
+  // Auto-resize all columns to fit content
+  for (let col = 1; col <= headers.length; col++) {
+    sheet.autoResizeColumn(col);
+  }
 
   // Add data validation for Category (column 8)
   const categoryRule = SpreadsheetApp.newDataValidation()
@@ -2504,18 +2496,10 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   sheet.setFrozenRows(1);
 
-  // Set column widths
-  sheet.setColumnWidth(1, 100);  // Invoice #
-  sheet.setColumnWidth(2, 100);  // Job #
-  sheet.setColumnWidth(3, 140);  // Client Name
-  sheet.setColumnWidth(4, 180);  // Client Email
-  sheet.setColumnWidth(5, 100);  // Invoice Date
-  sheet.setColumnWidth(6, 100);  // Due Date
-  sheet.setColumnWidth(7, 120);  // Amount
-  sheet.setColumnWidth(8, 80);   // GST
-  sheet.setColumnWidth(9, 100);  // Total
-  sheet.setColumnWidth(10, 90);  // Status
-  sheet.setColumnWidth(14, 200); // Notes
+  // Auto-resize all columns to fit content
+  for (let col = 1; col <= headers.length; col++) {
+    sheet.autoResizeColumn(col);
+  }
 
   // Add data validation for Status
   const statusRule = SpreadsheetApp.newDataValidation()
@@ -2665,10 +2649,10 @@ function setupSettingsSheet(ss, clearData) {
   const tableRange = sheet.getRange(1, 1, defaultSettings.length, 3);
   applyBorders(tableRange, true, true);
 
-  // Set column widths
-  sheet.setColumnWidth(1, 180);
-  sheet.setColumnWidth(2, 250);
-  sheet.setColumnWidth(3, 380);
+  // Auto-resize all columns to fit content
+  for (let col = 1; col <= 3; col++) {
+    sheet.autoResizeColumn(col);
+  }
 
   sheet.setFrozenRows(1);
 
@@ -2783,22 +2767,22 @@ function createDashboardSheet(ss) {
   sheet.getRange('I4').setValue('🔥 Active Jobs (by urgency)');
   applySectionHeaderStyle(sheet.getRange('I4'));
 
-  const activeJobsHeaders = ['Job #', 'Client', 'Description', 'Days Left', 'SLA', 'Status'];
-  sheet.getRange(5, 9, 1, 6).setValues([activeJobsHeaders]);
-  applyTableHeaderStyle(sheet.getRange(5, 9, 1, 6));
+  const activeJobsHeaders = ['Job #', 'Client', 'Description', 'Amount', 'Days Left', 'SLA', 'Status'];
+  sheet.getRange(5, 9, 1, 7).setValues([activeJobsHeaders]);
+  applyTableHeaderStyle(sheet.getRange(5, 9, 1, 7));
 
   // Apply alternating rows for active jobs
-  applyAlternatingRows(sheet, 6, 10, 6, 9);
+  applyAlternatingRows(sheet, 6, 10, 7, 9);
 
   // Style data area
-  sheet.getRange(6, 9, 10, 6)
+  sheet.getRange(6, 9, 10, 7)
     .setFontFamily('Arial')
     .setFontSize(10)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
   // Add border to active jobs table
-  applyBorders(sheet.getRange(5, 9, 11, 6), true, false);
+  applyBorders(sheet.getRange(5, 9, 11, 7), true, false);
 
   // Pending Quotes Section
   sheet.getRange('I17').setValue('⏳ Pending Quotes');
@@ -2821,21 +2805,13 @@ function createDashboardSheet(ss) {
   // Add border to pending quotes table
   applyBorders(sheet.getRange(18, 9, 7, 6), true, false);
 
-  // Set column widths for compact layout
-  sheet.setColumnWidth(1, 130);  // Submission # / Metric
-  sheet.setColumnWidth(2, 85);   // Date / Metric
-  sheet.setColumnWidth(3, 100);  // Name / Metric
-  sheet.setColumnWidth(4, 150);  // Email / Metric
-  sheet.setColumnWidth(5, 180);  // Message / Metric
-  sheet.setColumnWidth(6, 70);   // Metric
-  sheet.setColumnWidth(7, 80);   // Metric
-  sheet.setColumnWidth(8, 15);   // Spacer
-  sheet.setColumnWidth(9, 130);  // Job #
-  sheet.setColumnWidth(10, 100); // Client
-  sheet.setColumnWidth(11, 150); // Description
-  sheet.setColumnWidth(12, 65);  // Days Left / Waiting
-  sheet.setColumnWidth(13, 70);  // SLA / Valid Until
-  sheet.setColumnWidth(14, 80);  // Status / Action
+  // Auto-resize all columns to fit content
+  for (let col = 1; col <= 15; col++) {
+    if (col !== 8) { // Skip spacer column
+      sheet.autoResizeColumn(col);
+    }
+  }
+  sheet.setColumnWidth(8, 15);   // Spacer column stays fixed
 
   // Set row heights for compactness
   for (let i = 1; i <= 30; i++) {
@@ -2977,21 +2953,14 @@ function createAnalyticsSheet(ss) {
   sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 11, 7, 4), true, false);
 
-  // Set column widths
-  sheet.setColumnWidth(1, 120);  // Status/Month
-  sheet.setColumnWidth(2, 90);   // Count
-  sheet.setColumnWidth(3, 80);   // %/Completed
+  // Auto-resize all columns to fit content (except spacers)
+  for (let col = 1; col <= 14; col++) {
+    if (col !== 4 && col !== 8) { // Skip spacer columns
+      sheet.autoResizeColumn(col);
+    }
+  }
   sheet.setColumnWidth(4, 20);   // Spacer
-  sheet.setColumnWidth(5, 100);  // Payment Status
-  sheet.setColumnWidth(6, 80);   // Count
-  sheet.setColumnWidth(7, 100);  // Amount/Category
   sheet.setColumnWidth(8, 20);   // Spacer
-  sheet.setColumnWidth(9, 100);  // SLA Status
-  sheet.setColumnWidth(10, 70);  // Count
-  sheet.setColumnWidth(11, 130); // Job #
-  sheet.setColumnWidth(12, 100); // Client
-  sheet.setColumnWidth(13, 80);  // Status
-  sheet.setColumnWidth(14, 60);  // Days
 
   // Set row heights
   for (let i = 1; i <= 45; i++) {
@@ -3118,7 +3087,9 @@ function refreshAnalytics() {
 
   // Get submissions data
   const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
-  const submissions = subData.slice(1).filter(row => row[0]);
+  const subHeaders = subData[0] || [];
+  const subNumCol = subHeaders.indexOf('Submission #');
+  const submissions = subData.slice(1).filter(row => row[subNumCol !== -1 ? subNumCol : 1]);
 
   // === CALCULATE KEY METRICS ===
   const totalJobs = jobs.length;
@@ -3360,8 +3331,9 @@ function setupSubmissionsSheet(ss) {
     }
   }
 
-  // Define headers with Status column
+  // Define headers with Status column first for quick visibility
   const headers = [
+    'Status',
     'Submission #',
     'Timestamp',
     'Name',
@@ -3369,25 +3341,41 @@ function setupSubmissionsSheet(ss) {
     'Store URL',
     'Message',
     'Has Voice Note',
-    'Voice Note Link',
-    'Status'
+    'Voice Note Link'
   ];
 
-  // Check if we need to add the Status column to existing data
+  // Check if we need to migrate the column order (Status should be column A)
   const currentHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+  const statusIsFirst = currentHeaders[0] === 'Status';
   const needsStatusColumn = !currentHeaders.includes('Status');
 
-  if (needsStatusColumn && sheet.getLastRow() > 0) {
-    Logger.log('Adding Status column to existing Submissions sheet');
-    // Add Status header
-    sheet.getRange(1, 9).setValue('Status');
-    // Set all existing submissions to 'New' status
-    if (sheet.getLastRow() > 1) {
-      sheet.getRange(2, 9, sheet.getLastRow() - 1, 1).setValue('New');
-    }
-  } else if (sheet.getLastRow() === 0) {
+  if (sheet.getLastRow() === 0) {
     // New sheet - set headers
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  } else if (needsStatusColumn) {
+    // Old format without Status column - insert Status as column A
+    Logger.log('Adding Status column as first column to existing Submissions sheet');
+    sheet.insertColumnBefore(1);
+    sheet.getRange(1, 1).setValue('Status');
+    // Set all existing submissions to 'New' status
+    if (sheet.getLastRow() > 1) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).setValue('New');
+    }
+  } else if (!statusIsFirst) {
+    // Status exists but not in first position - need to migrate
+    Logger.log('Migrating Status column to first position');
+    const statusColIndex = currentHeaders.indexOf('Status') + 1; // 1-based
+    if (statusColIndex > 1) {
+      // Get all Status data
+      const lastRow = sheet.getLastRow();
+      const statusData = sheet.getRange(1, statusColIndex, lastRow, 1).getValues();
+      // Delete the old Status column
+      sheet.deleteColumn(statusColIndex);
+      // Insert new column A
+      sheet.insertColumnBefore(1);
+      // Set Status data in column A
+      sheet.getRange(1, 1, lastRow, 1).setValues(statusData);
+    }
   }
 
   // Apply paper-like background
@@ -3413,24 +3401,25 @@ function setupSubmissionsSheet(ss) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths for better readability
-  sheet.setColumnWidth(1, 120);  // Submission #
-  sheet.setColumnWidth(2, 160);  // Timestamp
-  sheet.setColumnWidth(3, 150);  // Name
-  sheet.setColumnWidth(4, 200);  // Email
-  sheet.setColumnWidth(5, 250);  // Store URL
-  sheet.setColumnWidth(6, 350);  // Message
-  sheet.setColumnWidth(7, 120);  // Has Voice Note
-  sheet.setColumnWidth(8, 250);  // Voice Note Link
-  sheet.setColumnWidth(9, 130);  // Status
+  // Auto-resize all columns to fit content, except Message column
+  for (let col = 1; col <= headers.length; col++) {
+    if (col !== 7) { // Skip Message column (now column 7)
+      sheet.autoResizeColumn(col);
+    }
+  }
 
-  // Add data validation for Status column (column 9)
+  // Message column (column 7): fixed width with wrap text enabled
+  sheet.setColumnWidth(7, 400);  // Message - wider to show more content
+  const messageColumn = sheet.getRange(2, 7, 1000, 1);
+  messageColumn.setWrap(true);
+
+  // Add data validation for Status column (now column 1)
   const statusValues = ['New', 'In Review', 'Job Created', 'Declined', 'Spam'];
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(statusValues, true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 9, 1000, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 1, 1000, 1).setDataValidation(statusRule);
 
   // Add conditional formatting for Status column
   addSubmissionStatusFormatting(sheet);
@@ -3451,7 +3440,7 @@ function setupSubmissionsSheet(ss) {
  * Add conditional formatting for Submission Status column with brand colors
  */
 function addSubmissionStatusFormatting(sheet) {
-  const statusColumn = 9; // Status column
+  const statusColumn = 1; // Status column (now column A)
   const range = sheet.getRange(2, statusColumn, 1000, 1);
 
   // Clear existing conditional formatting rules for this column
@@ -3704,15 +3693,15 @@ function getAvailableSubmissions() {
   const allData = submissionsSheet.getDataRange().getValues();
   const headers = allData[0];
 
-  // Find column indices
-  const submissionNumCol = 0; // Column A
-  const timestampCol = 1; // Column B
+  // Find column indices dynamically from headers
+  const submissionNumCol = headers.indexOf('Submission #');
+  const timestampCol = headers.indexOf('Timestamp');
   const nameColIndex = headers.indexOf('Name');
   const emailColIndex = headers.indexOf('Email');
   const statusColIndex = headers.indexOf('Status');
 
   // Fallback if columns not found
-  if (nameColIndex === -1 || statusColIndex === -1) {
+  if (submissionNumCol === -1 || nameColIndex === -1 || statusColIndex === -1) {
     Logger.log('[PERF] getAvailableSubmissions() - Required columns not found, using fallback');
     return getAvailableSubmissionsFallback(existingJobSubmissions);
   }
@@ -3765,13 +3754,15 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
 
   for (let i = 1; i < submissionsData.length; i++) {
     const row = submissionsData[i];
-    const submissionNum = row[0];
-    const status = row[headers.indexOf('Status')] || row[8];
+    const submissionNumCol = headers.indexOf('Submission #');
+    const submissionNum = row[submissionNumCol !== -1 ? submissionNumCol : 1];
+    const status = row[headers.indexOf('Status')] || row[0];
 
     if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
-      const name = row[headers.indexOf('Name')] || row[2];
-      const email = row[headers.indexOf('Email')] || row[3];
-      const timestamp = row[1];
+      const name = row[headers.indexOf('Name')] || row[3];
+      const email = row[headers.indexOf('Email')] || row[4];
+      const timestampCol = headers.indexOf('Timestamp');
+      const timestamp = row[timestampCol !== -1 ? timestampCol : 2];
 
       submissions.push({
         number: submissionNum,
@@ -4734,11 +4725,12 @@ function updateSubmissionStatus(submissionNumber, status) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const statusCol = headers.indexOf('Status');
+  const submissionNumCol = headers.indexOf('Submission #');
 
-  if (statusCol < 0) return;
+  if (statusCol < 0 || submissionNumCol < 0) return;
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === submissionNumber) {
+    if (data[i][submissionNumCol] === submissionNumber) {
       sheet.getRange(i + 1, statusCol + 1).setValue(status);
       return;
     }
@@ -6942,6 +6934,7 @@ function refreshDashboard() {
         jobNumber: jobNum,
         client: row[headers.indexOf('Client Name')],
         description: (row[headers.indexOf('Job Description')] || '').substring(0, 30),
+        quotedAmount: formatCurrency(row[headers.indexOf('Total (incl GST)')] || 0),
         daysRemaining: row[headers.indexOf('Days Remaining')],
         slaStatus: row[headers.indexOf('SLA Status')],
         status: status
@@ -6980,6 +6973,11 @@ function refreshDashboard() {
     const subData = submissionsSheet.getDataRange().getValues();
     const subHeaders = subData[0];
     const statusCol = subHeaders.indexOf('Status');
+    const submissionNumCol = subHeaders.indexOf('Submission #');
+    const timestampCol = subHeaders.indexOf('Timestamp');
+    const nameCol = subHeaders.indexOf('Name');
+    const emailCol = subHeaders.indexOf('Email');
+    const messageCol = subHeaders.indexOf('Message');
 
     // Get new/unactioned submissions
     const newSubmissions = [];
@@ -6987,11 +6985,11 @@ function refreshDashboard() {
       const status = subData[i][statusCol];
       if (!status || status === 'New' || status === '') {
         newSubmissions.push({
-          submissionNum: subData[i][0],
-          timestamp: subData[i][1],
-          name: subData[i][2],
-          email: subData[i][3],
-          message: (subData[i][5] || '').substring(0, 40)
+          submissionNum: subData[i][submissionNumCol],
+          timestamp: subData[i][timestampCol],
+          name: subData[i][nameCol],
+          email: subData[i][emailCol],
+          message: (subData[i][messageCol] || '').substring(0, 40)
         });
       }
     }
@@ -7022,21 +7020,22 @@ function refreshDashboard() {
   }
 
   // === POPULATE ACTIVE JOBS (Right side, rows 6-15) ===
-  dashboard.getRange(6, 9, 10, 6).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+  dashboard.getRange(6, 9, 10, 7).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
 
   for (let i = 0; i < Math.min(activeJobs.length, 10); i++) {
     const job = activeJobs[i];
-    dashboard.getRange(6 + i, 9, 1, 6).setValues([[
+    dashboard.getRange(6 + i, 9, 1, 7).setValues([[
       job.jobNumber,
       job.client,
       job.description,
+      job.quotedAmount,
       job.daysRemaining,
       job.slaStatus,
       job.status
     ]]).setFontSize(9);
 
     // Color code SLA status
-    const slaCell = dashboard.getRange(6 + i, 13);
+    const slaCell = dashboard.getRange(6 + i, 14);
     if (job.slaStatus === 'OVERDUE') {
       slaCell.setBackground('#ffcccc').setFontColor('#cc0000').setFontWeight('bold');
     } else if (job.slaStatus === 'AT RISK') {
