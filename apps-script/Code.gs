@@ -10216,7 +10216,14 @@ function sendAllTestEmails() {
     // 3. Quote Email
     Logger.log('Sending test email 3: Quote');
     const quoteHtml = generateQuoteEmailHtml({
-      job: testJobData,
+      jobNumber: testJobData['Job #'],
+      clientName: testJobData['Client Name'],
+      jobDescription: testJobData['Job Description'],
+      subtotal: '$' + testJobData['Quote Amount (excl GST)'],
+      gst: '$' + testJobData['GST'],
+      total: '$' + testJobData['Total (incl GST)'],
+      turnaround: testJobData['Estimated Turnaround'],
+      validUntil: testJobData['Quote Valid Until'],
       bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
       bankName: getSetting('Bank Name') || 'Test Bank',
       isGSTRegistered: getSetting('GST Registered') === 'Yes',
@@ -10242,8 +10249,10 @@ function sendAllTestEmails() {
     // 4. Status Update - In Progress
     Logger.log('Sending test email 4: Status Update - In Progress');
     const inProgressHtml = generateStatusUpdateEmailHtml({
-      job: testJobData,
-      newStatus: JOB_STATUS.IN_PROGRESS,
+      jobNumber: testJobData['Job #'],
+      clientName: testJobData['Client Name'],
+      status: JOB_STATUS.IN_PROGRESS,
+      businessName: getSetting('Business Name') || 'CartCure',
       wasOnHold: false,
       daysOnHold: 0
     });
@@ -10267,8 +10276,10 @@ function sendAllTestEmails() {
     // 5. Status Update - On Hold
     Logger.log('Sending test email 5: Status Update - On Hold');
     const onHoldHtml = generateStatusUpdateEmailHtml({
-      job: testJobData,
-      newStatus: JOB_STATUS.ON_HOLD,
+      jobNumber: testJobData['Job #'],
+      clientName: testJobData['Client Name'],
+      status: JOB_STATUS.ON_HOLD,
+      businessName: getSetting('Business Name') || 'CartCure',
       explanation: 'Waiting for client to provide product images and updated content.'
     });
     GmailApp.sendEmail(
@@ -10291,8 +10302,10 @@ function sendAllTestEmails() {
     // 6. Status Update - Completed
     Logger.log('Sending test email 6: Status Update - Completed');
     const completedHtml = generateStatusUpdateEmailHtml({
-      job: testJobData,
-      newStatus: JOB_STATUS.COMPLETED
+      jobNumber: testJobData['Job #'],
+      clientName: testJobData['Client Name'],
+      status: JOB_STATUS.COMPLETED,
+      businessName: getSetting('Business Name') || 'CartCure'
     });
     GmailApp.sendEmail(
       testEmail,
