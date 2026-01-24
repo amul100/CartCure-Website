@@ -659,6 +659,9 @@
             console.error('✗ Contact form not found! Cannot attach handler.');
         }
 
+        // Load testimonials
+        loadTestimonials();
+
         // Log initialization in dev mode
         if (!IS_PRODUCTION) {
             console.log('CartCure Contact Form initialized with security features');
@@ -667,6 +670,135 @@
             console.log('- Max Audio Duration: ' + SecurityConfig.AUDIO.MAX_DURATION_SECONDS + 's');
             console.log('- Max Audio Size: ' + (SecurityConfig.AUDIO.MAX_FILE_SIZE_BYTES / 1024 / 1024) + 'MB');
         }
+    }
+
+    // ========================================================================
+    // TESTIMONIALS
+    // ========================================================================
+
+    /**
+     * Load testimonials from Google Sheets API
+     */
+    function loadTestimonials() {
+        const testimonialGrid = document.getElementById('testimonialGrid');
+        if (!testimonialGrid) return;
+
+        // Fetch testimonials from API
+        fetch(SCRIPT_URL + '?action=getTestimonials')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.testimonials && data.testimonials.length > 0) {
+                    renderTestimonials(data.testimonials);
+                } else {
+                    // Show fallback testimonials if none approved yet
+                    renderFallbackTestimonials();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading testimonials:', error);
+                // Show fallback testimonials on error
+                renderFallbackTestimonials();
+            });
+    }
+
+    /**
+     * Render testimonials to the page
+     */
+    function renderTestimonials(testimonials) {
+        const testimonialGrid = document.getElementById('testimonialGrid');
+        if (!testimonialGrid) return;
+
+        // Clear loading message
+        testimonialGrid.innerHTML = '';
+
+        // Render each testimonial (max 6 for display)
+        testimonials.slice(0, 6).forEach(testimonial => {
+            const initials = getInitials(testimonial.name);
+            const subtitle = [testimonial.business, testimonial.location]
+                .filter(x => x)
+                .join(', ');
+            const stars = '★'.repeat(testimonial.rating) + '☆'.repeat(5 - testimonial.rating);
+
+            const card = document.createElement('div');
+            card.className = 'testimonial-card';
+            card.innerHTML = `
+                <div class="testimonial-header">
+                    <div class="testimonial-avatar">${escapeHtml(initials)}</div>
+                    <div class="testimonial-info">
+                        <h4>${escapeHtml(testimonial.name)}</h4>
+                        <p>${escapeHtml(subtitle)}</p>
+                    </div>
+                </div>
+                <div class="testimonial-content">
+                    "${escapeHtml(testimonial.testimonial)}"
+                </div>
+                <div class="testimonial-rating">${stars}</div>
+            `;
+            testimonialGrid.appendChild(card);
+        });
+
+        // Animate cards in
+        testimonialGrid.querySelectorAll('.testimonial-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = `all 0.4s ease ${index * 0.1}s`;
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 50);
+        });
+    }
+
+    /**
+     * Render fallback testimonials when API fails or no approved testimonials
+     */
+    function renderFallbackTestimonials() {
+        const fallbackTestimonials = [
+            {
+                name: 'Sarah Mitchell',
+                business: 'Fashion Boutique Owner',
+                location: 'Auckland',
+                rating: 5,
+                testimonial: 'I needed my product images resized urgently before a big sale. CartCure had it done in 2 days and it looks professional. So much easier than trying to figure it out myself!'
+            },
+            {
+                name: 'James Chen',
+                business: 'Electronics Store',
+                location: 'Wellington',
+                rating: 5,
+                testimonial: 'Quick turnaround on fixing broken links and updating our contact form. Great communication throughout and the price was exactly as quoted. Highly recommend!'
+            },
+            {
+                name: 'Lisa Thompson',
+                business: 'Home Decor Shop',
+                location: 'Christchurch',
+                rating: 5,
+                testimonial: 'Added automated email confirmations for my customers in just 3 days. The voice note option made it so easy to explain what I needed. Will definitely use again!'
+            }
+        ];
+        renderTestimonials(fallbackTestimonials);
+    }
+
+    /**
+     * Get initials from a name
+     */
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(' ');
+        if (parts.length === 1) {
+            return parts[0].charAt(0).toUpperCase();
+        }
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Initialize on DOM ready

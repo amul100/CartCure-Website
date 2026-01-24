@@ -13,9 +13,9 @@
 <body>
     <header id="header">
         <nav>
-            <div class="logo">
+            <a href="index.html" class="logo">
                 <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
-            </div>
+            </a>
             <ul class="nav-links" id="navLinks">
                 <li><a href="#services">Services</a></li>
                 <li><a href="#how-it-works">How It Works</a></li>
@@ -210,49 +210,9 @@
                 <h2 class="section-title">What Our Clients Say</h2>
                 <p class="section-subtitle">Real feedback from NZ business owners</p>
             </div>
-            <div class="testimonial-grid">
-                <div class="testimonial-card">
-                    <div class="testimonial-header">
-                        <div class="testimonial-avatar">SM</div>
-                        <div class="testimonial-info">
-                            <h4>Sarah Mitchell</h4>
-                            <p>Fashion Boutique Owner, Auckland</p>
-                        </div>
-                    </div>
-                    <div class="testimonial-content">
-                        "I needed my product images resized urgently before a big sale. CartCure had it done in 2 days
-                        and it looks professional. So much easier than trying to figure it out myself!"
-                    </div>
-                    <div class="testimonial-rating">★★★★★</div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-header">
-                        <div class="testimonial-avatar">JC</div>
-                        <div class="testimonial-info">
-                            <h4>James Chen</h4>
-                            <p>Electronics Store, Wellington</p>
-                        </div>
-                    </div>
-                    <div class="testimonial-content">
-                        "Quick turnaround on fixing broken links and updating our contact form. Great communication
-                        throughout and the price was exactly as quoted. Highly recommend!"
-                    </div>
-                    <div class="testimonial-rating">★★★★★</div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-header">
-                        <div class="testimonial-avatar">LT</div>
-                        <div class="testimonial-info">
-                            <h4>Lisa Thompson</h4>
-                            <p>Home Decor Shop, Christchurch</p>
-                        </div>
-                    </div>
-                    <div class="testimonial-content">
-                        "Added automated email confirmations for my customers in just 3 days. The voice note option made
-                        it so easy to explain what I needed. Will definitely use again!"
-                    </div>
-                    <div class="testimonial-rating">★★★★★</div>
-                </div>
+            <div class="testimonial-grid" id="testimonialGrid">
+                <!-- Testimonials loaded dynamically from Google Sheets -->
+                <div class="testimonial-loading">Loading testimonials...</div>
             </div>
         </div>
     </section>

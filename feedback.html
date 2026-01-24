@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Your Feedback | CartCure</title>
+    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .feedback-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 8rem 2rem 4rem;
+            background: var(--paper-white);
+        }
+
+        .feedback-content {
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            color: var(--ink-black);
+        }
+
+        .feedback-content h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--ink-black);
+        }
+
+        .feedback-subtitle {
+            color: var(--ink-gray);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--accent-green);
+            color: var(--paper-white);
+            text-decoration: none;
+            border: 3px solid var(--ink-black);
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .feedback-form {
+            background: var(--paper-cream);
+            padding: 2rem;
+            border: 2px solid var(--paper-border);
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--ink-black);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-family: 'Georgia', serif;
+            border: 2px solid var(--paper-border);
+            background: var(--paper-white);
+            color: var(--ink-black);
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rating-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+        }
+
+        .rating-group input {
+            display: none;
+        }
+
+        .rating-group label {
+            font-size: 2rem;
+            color: var(--paper-border);
+            cursor: pointer;
+            transition: color 0.2s;
+            margin-bottom: 0;
+        }
+
+        .rating-group label:hover,
+        .rating-group label:hover ~ label,
+        .rating-group input:checked ~ label {
+            color: #f5c518;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--accent-green);
+            color: var(--paper-white);
+            border: 3px solid var(--ink-black);
+            cursor: pointer;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .submit-button:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .form-note {
+            font-size: 0.85rem;
+            color: var(--ink-gray);
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
+        .field-hint {
+            font-size: 0.8rem;
+            color: var(--ink-gray);
+            margin-top: 0.25rem;
+        }
+
+        .success-message {
+            background: #e6f4ea;
+            border: 2px solid #2d5d3f;
+            padding: 2rem;
+            text-align: center;
+            display: none;
+        }
+
+        .success-message h2 {
+            color: #2d5d3f;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-message p {
+            color: var(--ink-gray);
+        }
+
+        .error-message {
+            background: #fce8e6;
+            border: 2px solid #c53929;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: #c53929;
+            display: none;
+        }
+
+        .info-box {
+            background: #e8f4fd;
+            border: 2px solid #4a90d9;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: #2c5aa0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <nav>
+            <a href="index.html" class="logo">
+                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+            </a>
+        </nav>
+    </header>
+
+    <div class="feedback-container">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="feedback-content">
+            <h1>Share Your Feedback</h1>
+            <p class="feedback-subtitle">We'd love to hear about your experience with CartCure</p>
+
+            <div class="info-box">
+                To submit feedback, you'll need your job reference number (e.g., J-MAPLE-427). This was included in your emails from us.
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="success-message" id="successMessage">
+                <h2>Thank You!</h2>
+                <p>Your feedback has been submitted and will be reviewed shortly.</p>
+                <a href="index.html" class="back-link" style="margin-top: 1.5rem;">&larr; Back to Home</a>
+            </div>
+
+            <form class="feedback-form" id="feedbackForm">
+                <div class="form-group">
+                    <label for="feedbackJob">Job Reference Number *</label>
+                    <input type="text" id="feedbackJob" name="jobNumber" required maxlength="50" placeholder="J-MAPLE-427" style="text-transform: uppercase;">
+                    <p class="field-hint">Find this in your emails from CartCure</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackName">Your Name *</label>
+                    <input type="text" id="feedbackName" name="name" required maxlength="100" placeholder="John Smith">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="feedbackBusiness">Business Name</label>
+                        <input type="text" id="feedbackBusiness" name="business" maxlength="150" placeholder="My Awesome Store">
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackLocation">Location</label>
+                        <input type="text" id="feedbackLocation" name="location" maxlength="100" placeholder="Auckland">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackEmail">Email (optional, not displayed)</label>
+                    <input type="email" id="feedbackEmail" name="email" maxlength="254" placeholder="john@example.co.nz">
+                </div>
+
+                <div class="form-group">
+                    <label>Your Rating *</label>
+                    <div class="rating-group">
+                        <input type="radio" id="star5" name="rating" value="5" checked>
+                        <label for="star5" title="5 stars">&#9733;</label>
+                        <input type="radio" id="star4" name="rating" value="4">
+                        <label for="star4" title="4 stars">&#9733;</label>
+                        <input type="radio" id="star3" name="rating" value="3">
+                        <label for="star3" title="3 stars">&#9733;</label>
+                        <input type="radio" id="star2" name="rating" value="2">
+                        <label for="star2" title="2 stars">&#9733;</label>
+                        <input type="radio" id="star1" name="rating" value="1">
+                        <label for="star1" title="1 star">&#9733;</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackText">Your Testimonial *</label>
+                    <textarea id="feedbackText" name="testimonial" required maxlength="1000" placeholder="Tell us about your experience with CartCure..."></textarea>
+                </div>
+
+                <button type="submit" class="submit-button" id="submitButton">Submit Feedback</button>
+
+                <p class="form-note">* Required fields. Your testimonial may be displayed on our website after review. One feedback submission allowed per job.</p>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="index.html#services">Services</a>
+                <a href="index.html#how-it-works">How It Works</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
+
+            const form = document.getElementById('feedbackForm');
+            const submitButton = document.getElementById('submitButton');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const jobInput = document.getElementById('feedbackJob');
+
+            // Auto-uppercase job reference
+            jobInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+
+            // Pre-fill job number from URL parameter if present
+            const urlParams = new URLSearchParams(window.location.search);
+            const jobFromUrl = urlParams.get('job');
+            if (jobFromUrl) {
+                jobInput.value = jobFromUrl.toUpperCase();
+            }
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const jobNumber = jobInput.value.trim();
+                if (!jobNumber) {
+                    errorMessage.textContent = 'Please enter your job reference number.';
+                    errorMessage.style.display = 'block';
+                    jobInput.focus();
+                    return;
+                }
+
+                // Disable button
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+                errorMessage.style.display = 'none';
+
+                // Gather form data
+                const formData = {
+                    action: 'submitTestimonial',
+                    name: document.getElementById('feedbackName').value.trim(),
+                    business: document.getElementById('feedbackBusiness').value.trim(),
+                    location: document.getElementById('feedbackLocation').value.trim(),
+                    email: document.getElementById('feedbackEmail').value.trim(),
+                    jobNumber: jobNumber,
+                    rating: document.querySelector('input[name="rating"]:checked').value,
+                    testimonial: document.getElementById('feedbackText').value.trim()
+                };
+
+                try {
+                    // Use cors mode to get the actual response
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        form.style.display = 'none';
+                        successMessage.style.display = 'block';
+                    } else {
+                        errorMessage.textContent = result.message || 'Sorry, there was an error. Please try again.';
+                        errorMessage.style.display = 'block';
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Submit Feedback';
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    // Fallback: assume success if we can't read response (CORS)
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

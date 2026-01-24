@@ -249,7 +249,8 @@
         <li><a href="#part9"><strong>Part 9:</strong> Tips for Success</a></li>
         <li><a href="#part10"><strong>Part 10:</strong> Hard Reset - Fresh Start</a></li>
         <li><a href="#part11"><strong>Part 11:</strong> Submissions Sheet - Status Tracking</a></li>
-        <li><a href="#part12"><strong>Part 12:</strong> Performance Optimizations</a></li>
+        <li><a href="#part12"><strong>Part 12:</strong> Testimonials Sheet - Customer Feedback</a></li>
+        <li><a href="#part13"><strong>Part 13:</strong> Performance Optimizations</a></li>
     </ul>
 </div>
 
@@ -367,13 +368,14 @@
 </ol>
 
 <div class="success">
-    <strong>This creates/updates five sheets:</strong>
+    <strong>This creates/updates six sheets:</strong>
     <ul>
         <li><strong>Dashboard</strong> - Your daily workflow view</li>
         <li><strong>Jobs</strong> - All job tracking data</li>
         <li><strong>Invoice Log</strong> - Invoice records</li>
         <li><strong>Settings</strong> - Your business configuration</li>
         <li><strong>Submissions</strong> - Form submissions with status tracking</li>
+        <li><strong>Testimonials</strong> - Customer feedback awaiting approval</li>
     </ul>
 </div>
 
@@ -1628,7 +1630,117 @@ Unpaid → Invoiced → Paid
 
 <div class="page-break"></div>
 
-<h1 id="part12">Part 12: Performance Optimizations</h1>
+<h1 id="part12">Part 12: Testimonials Sheet - Customer Feedback</h1>
+
+<div class="info">
+    <strong>New Feature:</strong> The Testimonials sheet allows you to collect, review, and approve customer feedback for display on the CartCure website.
+</div>
+
+<h2>Overview</h2>
+
+<p>Customer testimonials are collected through the feedback form at <code>cartcure.co.nz/feedback.html</code>. All submissions are stored in the <strong>Testimonials</strong> sheet where you can review and approve them for public display.</p>
+
+<h2>How It Works</h2>
+
+<ol>
+    <li><strong>Customer submits feedback</strong> via the feedback form on your website</li>
+    <li><strong>Testimonial saved</strong> to the Testimonials sheet (unchecked by default)</li>
+    <li><strong>Email notification</strong> sent to admin email about new testimonial</li>
+    <li><strong>You review</strong> the testimonial and check "Show on Website" if approved</li>
+    <li><strong>Website updates</strong> automatically to show approved testimonials</li>
+</ol>
+
+<h2>Testimonial Columns</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Column</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Show on Website</strong></td>
+            <td>Checkbox - Check to display this testimonial on the website</td>
+        </tr>
+        <tr>
+            <td>Submitted</td>
+            <td>Date/time the feedback was submitted</td>
+        </tr>
+        <tr>
+            <td>Name</td>
+            <td>Customer's name (displayed on website)</td>
+        </tr>
+        <tr>
+            <td>Business</td>
+            <td>Business name/type (displayed on website)</td>
+        </tr>
+        <tr>
+            <td>Location</td>
+            <td>City/region (displayed on website)</td>
+        </tr>
+        <tr>
+            <td>Rating</td>
+            <td>1-5 star rating</td>
+        </tr>
+        <tr>
+            <td>Testimonial</td>
+            <td>The actual feedback text (displayed on website)</td>
+        </tr>
+        <tr>
+            <td>Job Number</td>
+            <td>Optional link to the related job</td>
+        </tr>
+        <tr>
+            <td>Email</td>
+            <td>Customer email (for internal reference only, NOT displayed)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Approving Testimonials</h2>
+
+<h3>To Approve a Testimonial:</h3>
+<ol>
+    <li>Open the <strong>Testimonials</strong> sheet</li>
+    <li>Review the testimonial content</li>
+    <li>If appropriate, check the <strong>Show on Website</strong> checkbox</li>
+    <li>The row will turn light green when approved</li>
+    <li>The website will automatically display the testimonial</li>
+</ol>
+
+<div class="warning">
+    <strong>Important:</strong> Only approved testimonials (checked "Show on Website") appear on your website. Always review content before approving to ensure it's appropriate and genuine.
+</div>
+
+<h3>To Remove a Testimonial from Website:</h3>
+<ol>
+    <li>Uncheck the <strong>Show on Website</strong> checkbox</li>
+    <li>The testimonial will no longer display on the website</li>
+    <li>The data remains in the sheet for your records</li>
+</ol>
+
+<h2>Feedback Form & Security</h2>
+
+<p>Customers submit feedback at: <code>cartcure.co.nz/feedback.html</code></p>
+
+<h3>Security Features:</h3>
+<ul>
+    <li><strong>Job number required</strong> - Customers must enter a valid job reference number</li>
+    <li><strong>One testimonial per job</strong> - Prevents duplicate/spam submissions</li>
+    <li><strong>Server-side validation</strong> - Job number is verified against the Jobs sheet</li>
+</ul>
+
+<h3>Automatic Feedback Link:</h3>
+<p>When you mark a job as "Completed", the status update email automatically includes a "Share Your Feedback" button with the job number pre-filled.</p>
+
+<div class="success">
+    <strong>No action needed!</strong> Customers receive the feedback link automatically when their job is completed. The job number is pre-filled in the URL.</div>
+
+<div class="page-break"></div>
+
+<h1 id="part13">Part 13: Performance Optimizations</h1>
 
 <div class="success">
     <strong>✨ New in January 2025:</strong> The system has been significantly optimized to reduce lag and improve responsiveness when working with jobs, invoices, and submissions.

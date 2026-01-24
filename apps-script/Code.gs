@@ -129,6 +129,14 @@ function doPost(e) {
       Logger.log('submissionNumber received: ' + data.submissionNumber);
     }
 
+    // Check for action parameter to handle different form types
+    const action = data.action || '';
+
+    // Handle testimonial submission
+    if (action === 'submitTestimonial') {
+      return handleTestimonialSubmission(data);
+    }
+
     const origin = e.parameter.origin || '';
 
     // Security validations
@@ -207,6 +215,15 @@ function doPost(e) {
  * Handle GET requests (testing/health check)
  */
 function doGet(e) {
+  // Check for action parameter to handle different API endpoints
+  const action = e.parameter.action || '';
+
+  // Handle testimonials API endpoint
+  if (action === 'getTestimonials') {
+    return getApprovedTestimonials();
+  }
+
+  // Default response - health check
   return ContentService
     .createTextOutput(JSON.stringify({
       status: 'ok',
@@ -214,6 +231,240 @@ function doGet(e) {
       timestamp: new Date().toISOString()
     }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Get all approved testimonials for display on the website
+ * Returns testimonials where "Show on Website" checkbox is TRUE
+ */
+function getApprovedTestimonials() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+
+    if (!sheet) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          testimonials: []
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          testimonials: []
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Get all data (excluding header)
+    const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+
+    // Filter to only approved testimonials (column 1 = TRUE) and format for website
+    const approvedTestimonials = data
+      .filter(row => row[0] === true)
+      .map(row => ({
+        name: row[2] || 'Anonymous',           // Name
+        business: row[3] || '',                 // Business
+        location: row[4] || '',                 // Location
+        rating: parseInt(row[5]) || 5,          // Rating (default 5)
+        testimonial: row[6] || ''               // Testimonial text
+      }))
+      .filter(t => t.testimonial.trim() !== ''); // Only include non-empty testimonials
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        testimonials: approvedTestimonials
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('Error fetching testimonials: ' + error.message);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: 'Failed to load testimonials',
+        testimonials: []
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle testimonial form submission
+ * Requires valid job number and limits to one testimonial per job
+ */
+function handleTestimonialSubmission(data) {
+  try {
+    // Validate required fields
+    const name = (data.name || '').trim();
+    const testimonial = (data.testimonial || '').trim();
+    const jobNumber = (data.jobNumber || '').trim().toUpperCase();
+    const email = (data.email || '').trim();
+
+    if (!name || !testimonial) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Name and testimonial are required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Job number is required
+    if (!jobNumber) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Job reference number is required to submit feedback'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+
+    // Validate that job number exists in Jobs sheet
+    const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+    if (!jobsSheet) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Unable to verify job reference. Please try again later.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const jobsData = jobsSheet.getDataRange().getValues();
+    const jobNumberColIndex = jobsData[0].indexOf('Job Number');
+    if (jobNumberColIndex === -1) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Unable to verify job reference. Please try again later.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check if job exists
+    const jobExists = jobsData.slice(1).some(row => {
+      const cellValue = (row[jobNumberColIndex] || '').toString().toUpperCase();
+      return cellValue === jobNumber;
+    });
+
+    if (!jobExists) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Job reference not found. Please check your job number and try again.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check if testimonial already exists for this job
+    let testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+    if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
+      const testimonialData = testimonialsSheet.getDataRange().getValues();
+      const jobColIndex = testimonialData[0].indexOf('Job Number');
+      if (jobColIndex !== -1) {
+        const alreadySubmitted = testimonialData.slice(1).some(row => {
+          const cellValue = (row[jobColIndex] || '').toString().toUpperCase();
+          return cellValue === jobNumber;
+        });
+
+        if (alreadySubmitted) {
+          return ContentService
+            .createTextOutput(JSON.stringify({
+              success: false,
+              message: 'Feedback has already been submitted for this job. Thank you!'
+            }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    // Sanitize inputs
+    const sanitizedData = {
+      showOnWebsite: false,  // Always unchecked - needs manual approval
+      submitted: new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }),
+      name: escapeHtml(name.substring(0, 100)),
+      business: escapeHtml((data.business || '').trim().substring(0, 150)),
+      location: escapeHtml((data.location || '').trim().substring(0, 100)),
+      rating: Math.min(5, Math.max(1, parseInt(data.rating) || 5)),
+      testimonial: escapeHtml(testimonial.substring(0, 1000)),
+      jobNumber: jobNumber.substring(0, 50),
+      email: email.substring(0, 254)
+    };
+
+    // Create Testimonials sheet if it doesn't exist
+    if (!testimonialsSheet) {
+      setupTestimonialsSheet(ss, false);
+      testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+    }
+
+    // Append the testimonial
+    testimonialsSheet.appendRow([
+      sanitizedData.showOnWebsite,
+      sanitizedData.submitted,
+      sanitizedData.name,
+      sanitizedData.business,
+      sanitizedData.location,
+      sanitizedData.rating.toString(),
+      sanitizedData.testimonial,
+      sanitizedData.jobNumber,
+      sanitizedData.email
+    ]);
+
+    // Send notification email to admin
+    if (CONFIG.ADMIN_EMAIL) {
+      const subject = 'New Testimonial Submitted - ' + sanitizedData.name + ' [' + sanitizedData.jobNumber + ']';
+      const body = `A new testimonial has been submitted and is awaiting your approval.
+
+Job Reference: ${sanitizedData.jobNumber}
+Name: ${sanitizedData.name}
+Business: ${sanitizedData.business || 'Not provided'}
+Location: ${sanitizedData.location || 'Not provided'}
+Rating: ${'★'.repeat(sanitizedData.rating)}${'☆'.repeat(5 - sanitizedData.rating)}
+
+Testimonial:
+"${sanitizedData.testimonial}"
+
+To approve this testimonial for display on the website:
+1. Open the CartCure spreadsheet
+2. Go to the Testimonials tab
+3. Check the "Show on Website" checkbox
+
+Submitted: ${sanitizedData.submitted}`;
+
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: subject,
+        body: body
+      });
+    }
+
+    Logger.log('Testimonial submitted for job ' + sanitizedData.jobNumber + ' by: ' + sanitizedData.name);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Thank you for your feedback! Your testimonial will be reviewed shortly.'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('Error saving testimonial: ' + error.message);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sorry, there was an error submitting your testimonial. Please try again.'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 /**
@@ -1590,7 +1841,8 @@ const SHEETS = {
   INVOICES: 'Invoice Log',
   SETTINGS: 'Settings',
   DASHBOARD: 'Dashboard',
-  ANALYTICS: 'Analytics'
+  ANALYTICS: 'Analytics',
+  TESTIMONIALS: 'Testimonials'
 };
 
 // Job Status Constants
@@ -1871,6 +2123,13 @@ function backupSheetData(ss) {
     Logger.log('Backed up settings data');
   }
 
+  // Back up Testimonials data
+  const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+  if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
+    backup.testimonials = testimonialsSheet.getRange(2, 1, testimonialsSheet.getLastRow() - 1, testimonialsSheet.getLastColumn()).getValues();
+    Logger.log('Backed up ' + backup.testimonials.length + ' testimonial rows');
+  }
+
   return backup;
 }
 
@@ -1953,6 +2212,15 @@ function restoreSheetData(ss, backup) {
       // Restore backed up settings
       settingsSheet.getRange(1, 1, backup.settings.length, backup.settings[0].length).setValues(backup.settings);
       Logger.log('Restored settings data');
+    }
+  }
+
+  // Restore Testimonials data
+  if (backup.testimonials && backup.testimonials.length > 0) {
+    const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+    if (testimonialsSheet) {
+      testimonialsSheet.getRange(2, 1, backup.testimonials.length, backup.testimonials[0].length).setValues(backup.testimonials);
+      Logger.log('Restored ' + backup.testimonials.length + ' testimonial rows');
     }
   }
 }
@@ -2039,8 +2307,13 @@ function setupSheets(clearData) {
     logDebug('  3d COMPLETE: Submissions sheet done');
     logAllSheets('AFTER setupSubmissionsSheet()');
 
+    logDebug('  3e: Creating Testimonials sheet...');
+    setupTestimonialsSheet(ss, clearData);
+    logDebug('  3e COMPLETE: Testimonials sheet done');
+    logAllSheets('AFTER setupTestimonialsSheet()');
+
     // Create Dashboard and Analytics without moving yet
-    logDebug('  3e: Creating Dashboard sheet...');
+    logDebug('  3f: Creating Dashboard sheet...');
     let dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
     logDebug('    getSheetByName(DASHBOARD) returned: ' + (dashboardSheet ? 'Sheet ID ' + dashboardSheet.getSheetId() : 'null'));
     if (!dashboardSheet) {
@@ -2052,7 +2325,7 @@ function setupSheets(clearData) {
     }
     logAllSheets('AFTER Dashboard creation');
 
-    logDebug('  3f: Creating Analytics sheet...');
+    logDebug('  3g: Creating Analytics sheet...');
     let analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
     logDebug('    getSheetByName(ANALYTICS) returned: ' + (analyticsSheet ? 'Sheet ID ' + analyticsSheet.getSheetId() : 'null'));
     if (!analyticsSheet) {
@@ -3809,6 +4082,131 @@ function addSubmissionStatusFormatting(sheet) {
  */
 function updateSubmissionsSheet(ss) {
   setupSubmissionsSheet(ss);
+}
+
+/**
+ * Set up the Testimonials sheet for storing and approving customer feedback
+ * @param {Spreadsheet} ss - The spreadsheet object
+ * @param {boolean} clearData - Whether to clear existing data
+ */
+function setupTestimonialsSheet(ss, clearData) {
+  let sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.TESTIMONIALS);
+    Logger.log('Created new Testimonials sheet');
+  } else if (clearData) {
+    sheet.clear();
+    Logger.log('Cleared Testimonials sheet');
+  } else {
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      Logger.log('Testimonials sheet exists with ' + (lastRow - 1) + ' testimonials - preserving data');
+    }
+  }
+
+  // Define headers
+  const headers = [
+    'Show on Website',  // Checkbox - TRUE to display on website
+    'Submitted',        // Timestamp
+    'Name',             // Customer name
+    'Business',         // Business name/type
+    'Location',         // City/Region
+    'Rating',           // 1-5 stars
+    'Testimonial',      // The feedback text
+    'Job Number',       // Optional - link to job
+    'Email'             // Customer email (for internal reference only)
+  ];
+
+  // Set headers if sheet is empty or was cleared
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  // Apply paper-like background
+  applyPaperBackground(sheet);
+
+  // Format header row with brand styling
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors for existing data
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataArea.setFontFamily('Arial');
+  dataArea.setFontSize(10);
+  dataArea.setFontColor(SHEET_COLORS.inkBlack);
+  dataArea.setVerticalAlignment('middle');
+
+  // Freeze header row
+  sheet.setFrozenRows(1);
+
+  // Set column widths
+  const columnWidths = [
+    110,  // Show on Website (checkbox)
+    140,  // Submitted
+    120,  // Name
+    150,  // Business
+    100,  // Location
+    60,   // Rating
+    400,  // Testimonial (wider)
+    100,  // Job Number
+    180   // Email
+  ];
+  for (let col = 1; col <= headers.length; col++) {
+    sheet.setColumnWidth(col, columnWidths[col - 1] || 100);
+  }
+
+  // Enable wrap text for Testimonial column (column 7)
+  const testimonialColumn = sheet.getRange(2, 7, 1000, 1);
+  testimonialColumn.setWrap(true);
+
+  // Add checkbox data validation for "Show on Website" column (column 1)
+  const checkboxRule = SpreadsheetApp.newDataValidation()
+    .requireCheckbox()
+    .build();
+  sheet.getRange(2, 1, 1000, 1).setDataValidation(checkboxRule);
+
+  // Add rating data validation (1-5)
+  const ratingRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['1', '2', '3', '4', '5'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 6, 1000, 1).setDataValidation(ratingRule);
+
+  // Add conditional formatting for approved testimonials (green background when checked)
+  const rules = sheet.getConditionalFormatRules();
+  const approvedRange = sheet.getRange(2, 1, 1000, headers.length);
+
+  const approvedRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$A2=TRUE')
+    .setBackground('#e6f4ea')  // Light green
+    .setRanges([approvedRange])
+    .build();
+
+  rules.push(approvedRule);
+  sheet.setConditionalFormatRules(rules);
+
+  // Enable filtering for all columns
+  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+  try {
+    dataRange.createFilter();
+  } catch (e) {
+    // Filter may already exist
+    Logger.log('Filter already exists or could not be created: ' + e.message);
+  }
+
+  // Protect the header row from accidental edits
+  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
+  protection.setDescription('Protected header row');
+  protection.setWarningOnly(true);
+
+  Logger.log('Testimonials sheet setup completed successfully');
 }
 
 // ============================================================================
@@ -5778,6 +6176,19 @@ function generateQuoteEmailHtml(data) {
                 </td>
               </tr>
 
+              <!-- Prepare Your Store -->
+              <tr>
+                <td style="padding: 0 40px 25px 40px;">
+                  <div style="background-color: ${colors.paperCream}; border: 1px solid ${colors.paperBorder}; padding: 15px;">
+                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-weight: bold;">Before we begin:</p>
+                    <p style="margin: 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
+                      We recommend creating a backup of your theme and setting up a staff account for us.
+                      <a href="https://cartcure.co.nz/how-to.html" style="color: ${colors.brandGreen};">View our step-by-step guide</a>
+                    </p>
+                  </div>
+                </td>
+              </tr>
+
               <!-- Payment Info -->
               ${data.bankAccount ? `
               <tr>
@@ -5862,6 +6273,14 @@ HOW TO ACCEPT
 
 Simply reply to this email with "Approved" and we'll get started right away!
 
+───────────────────────────────────────────────────
+BEFORE WE BEGIN
+───────────────────────────────────────────────────
+
+We recommend creating a backup of your theme and setting up a staff
+account for us. View our step-by-step guide:
+https://cartcure.co.nz/how-to.html
+
 ${data.bankAccount ? `
 ───────────────────────────────────────────────────
 PAYMENT DETAILS (for your reference)
@@ -5936,6 +6355,18 @@ function generateStatusUpdateEmailHtml(data) {
       statusContent = `
         <p>Excellent news! We've completed the work on your job.</p>
         <p>We'll be in touch shortly with the final details and invoice.</p>
+        <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px;">
+            <strong>How was your experience?</strong>
+          </p>
+          <p style="margin: 0 0 15px 0; color: ${colors.inkGray}; font-size: 14px;">
+            We'd love to hear your feedback!
+          </p>
+          <a href="https://cartcure.co.nz/feedback.html?job=${encodeURIComponent(data.jobNumber)}"
+             style="display: inline-block; background-color: ${colors.brandGreen}; color: #ffffff; padding: 12px 30px; text-decoration: none; font-size: 14px; font-weight: bold; border: 2px solid ${colors.inkBlack};">
+            Share Your Feedback
+          </a>
+        </div>
       `;
       break;
     case 'Cancelled':
@@ -6041,7 +6472,7 @@ function generateStatusUpdateEmailPlainText(data) {
       statusMessage += '\n\nNote: The 7-day SLA timer is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
       break;
     case 'Completed':
-      statusMessage = 'Excellent news! We\'ve completed the work on your job.\n\nWe\'ll be in touch shortly with the final details and invoice.';
+      statusMessage = 'Excellent news! We\'ve completed the work on your job.\n\nWe\'ll be in touch shortly with the final details and invoice.\n\n───────────────────────────────────────────────────\nHOW WAS YOUR EXPERIENCE?\n───────────────────────────────────────────────────\n\nWe\'d love to hear your feedback!\nShare your experience: https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(data.jobNumber);
       break;
     case 'Cancelled':
       statusMessage = 'Your job has been cancelled as requested.\n\nIf you have any questions or would like to discuss this further, please don\'t hesitate to reach out.';

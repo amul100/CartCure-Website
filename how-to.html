@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How-To Guides | CartCure</title>
+    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .privacy-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 8rem 3rem 4rem;
+            background: var(--paper-white);
+        }
+
+        .privacy-content {
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            color: var(--ink-black);
+        }
+
+        .privacy-content h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--ink-black);
+            border-bottom: 3px solid var(--paper-border);
+            padding-bottom: 1rem;
+        }
+
+        .privacy-content h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent-green);
+        }
+
+        .privacy-content h3 {
+            font-size: 1.3rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--ink-black);
+        }
+
+        .privacy-content p {
+            margin-bottom: 1rem;
+        }
+
+        .privacy-content ul,
+        .privacy-content ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .privacy-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .privacy-content strong {
+            color: var(--accent-green);
+        }
+
+        .privacy-content a {
+            color: var(--accent-green);
+            text-decoration: underline;
+        }
+
+        .last-updated {
+            font-style: italic;
+            color: var(--ink-gray);
+            margin-bottom: 2rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--accent-green);
+            color: var(--paper-white);
+            text-decoration: none;
+            border: 3px solid var(--ink-black);
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .highlight-box {
+            background: var(--paper-cream);
+            border-left: 4px solid var(--accent-green);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .step-box {
+            background: var(--paper-cream);
+            border: 2px solid var(--paper-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .step-box h4 {
+            color: var(--accent-green);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .guide-nav {
+            background: var(--paper-cream);
+            border: 2px solid var(--paper-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .guide-nav h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        .guide-nav ul {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <nav>
+            <a href="index.html" class="logo">
+                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+            </a>
+        </nav>
+    </header>
+
+    <div class="privacy-container">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="privacy-content">
+            <h1>How-To Guides</h1>
+            <p class="last-updated">Helpful guides to prepare your Shopify store for our services</p>
+
+            <div class="guide-nav">
+                <h3>On This Page</h3>
+                <ul>
+                    <li><a href="#backups">How to Create a Backup of Your Theme</a></li>
+                    <li><a href="#staff-account">How to Create a Staff Account for CartCure</a></li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>Why These Steps Matter:</strong> Before we begin work on your store, we strongly recommend creating a backup and setting up a staff account. This protects your data and ensures we have the access we need to complete your project safely.</p>
+            </div>
+
+            <h2 id="backups">How to Create a Backup of Your Theme</h2>
+            <p>Creating a backup of your Shopify theme ensures you can restore your store to its current state if needed. We recommend doing this before any changes are made to your store.</p>
+
+            <h3>Method 1: Duplicate Your Theme (Recommended)</h3>
+            <p>This is the quickest and easiest way to create a backup:</p>
+
+            <div class="step-box">
+                <h4>Step 1: Go to Online Store</h4>
+                <p>From your Shopify admin, click <strong>Online Store</strong> in the left sidebar, then click <strong>Themes</strong>.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 2: Find Your Current Theme</h4>
+                <p>Your current (live) theme will be shown at the top under "Current theme".</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 3: Duplicate the Theme</h4>
+                <p>Click the <strong>...</strong> (three dots) button next to your theme name, then select <strong>Duplicate</strong>.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 4: Rename the Backup</h4>
+                <p>Once duplicated, click the <strong>...</strong> button on the copy and select <strong>Rename</strong>. Give it a name like "Backup - [Today's Date]" so you can easily identify it later.</p>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>Tip:</strong> The duplicate will appear in your "Theme library" section below your current theme. Keep it there until your project is complete and you're happy with the changes.</p>
+            </div>
+
+            <h3>Method 2: Download Your Theme Files</h3>
+            <p>For an extra layer of protection, you can also download your theme files to your computer:</p>
+
+            <div class="step-box">
+                <h4>Step 1: Go to Themes</h4>
+                <p>From your Shopify admin, go to <strong>Online Store</strong> &rarr; <strong>Themes</strong>.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 2: Download the Theme</h4>
+                <p>Click the <strong>...</strong> button next to your theme, then select <strong>Download theme file</strong>.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 3: Save the File</h4>
+                <p>Shopify will email you a download link. Save this .zip file to your computer in a safe location.</p>
+            </div>
+
+            <hr style="margin: 3rem 0; border: 1px solid var(--paper-border);">
+
+            <h2 id="staff-account">How to Create a Staff Account for CartCure</h2>
+            <p>Creating a staff account gives us the access we need to work on your store, while keeping your main login secure. You can easily remove this access once the project is complete.</p>
+
+            <div class="highlight-box">
+                <p><strong>Why use a staff account?</strong> Staff accounts are more secure than sharing your main login. They have limited permissions, can be monitored, and can be instantly revoked when the work is done.</p>
+            </div>
+
+            <h3>Creating the Staff Account</h3>
+
+            <div class="step-box">
+                <h4>Step 1: Go to Settings</h4>
+                <p>From your Shopify admin, click <strong>Settings</strong> (gear icon) in the bottom left corner.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 2: Open Users and Permissions</h4>
+                <p>Click <strong>Users and permissions</strong> from the settings menu.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 3: Add Staff</h4>
+                <p>Click the <strong>Add staff</strong> button.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 4: Enter CartCure Details</h4>
+                <p>Enter the following information:</p>
+                <ul>
+                    <li><strong>First name:</strong> CartCure</li>
+                    <li><strong>Last name:</strong> Support</li>
+                    <li><strong>Email:</strong> info@cartcure.co.nz</li>
+                </ul>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 5: Set Permissions</h4>
+                <p>Select the permissions we'll need. For most projects, we recommend:</p>
+                <ul>
+                    <li><strong>Home:</strong> View</li>
+                    <li><strong>Products:</strong> View and edit (if product changes are needed)</li>
+                    <li><strong>Online Store:</strong> View and edit themes, pages, navigation, blog posts</li>
+                    <li><strong>Settings:</strong> View (if we need to check settings)</li>
+                </ul>
+                <p>If you're unsure, you can grant full access and we'll only use what we need.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 6: Send Invitation</h4>
+                <p>Click <strong>Send invite</strong>. We'll receive an email to accept the invitation and can then access your store.</p>
+            </div>
+
+            <h3>Removing Access After the Project</h3>
+            <p>Once your project is complete and you're happy with the work:</p>
+
+            <div class="step-box">
+                <h4>Step 1: Go to Users and Permissions</h4>
+                <p>From Settings, click <strong>Users and permissions</strong>.</p>
+            </div>
+
+            <div class="step-box">
+                <h4>Step 2: Remove the Staff Account</h4>
+                <p>Find "CartCure Support" in the list, click on it, then click <strong>Remove staff</strong>.</p>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>Important:</strong> We recommend removing staff access within a week of project completion. This is a good security practice for any third-party access to your store.</p>
+            </div>
+
+            <hr style="margin: 3rem 0; border: 1px solid var(--paper-border);">
+
+            <h2>Need Help?</h2>
+            <p>If you have trouble with any of these steps, don't worry! Just let us know when you submit your request and we can guide you through the process or suggest alternative access methods.</p>
+
+            <div class="highlight-box">
+                <p><strong>Contact Us:</strong> info@cartcure.co.nz<br>
+                <strong>Website:</strong> <a href="https://cartcure.co.nz">cartcure.co.nz</a></p>
+            </div>
+
+            <a href="index.html" class="back-link" style="margin-top: 2rem;">&larr; Back to Home</a>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="index.html#services">Services</a>
+                <a href="index.html#how-it-works">How It Works</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">🇳🇿 Proudly serving New Zealand small businesses</p>
+        </div>
+    </footer>
+</body>
+
+</html>
