@@ -412,7 +412,8 @@ function handleTestimonialSubmission(data) {
     debugLog.push('Jobs sheet found: YES');
 
     const jobsData = jobsSheet.getDataRange().getValues();
-    const jobNumberColIndex = jobsData[0].indexOf('Job Number');
+    // Column is named "Job #" not "Job Number"
+    const jobNumberColIndex = jobsData[0].indexOf('Job #');
     debugLog.push('Row count: ' + jobsData.length);
     debugLog.push('Headers: ' + jobsData[0].join(', '));
     debugLog.push('Job Number column index: ' + jobNumberColIndex);
