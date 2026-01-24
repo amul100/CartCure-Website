@@ -5125,7 +5125,7 @@ function getInvoicesByStatus(statusFilter = []) {
   const startTime = new Date().getTime();
 
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICE_LOG);
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
 
   if (!invoiceSheet) {
     Logger.log('[PERF] getInvoicesByStatus() - Invoice Log sheet not found');
@@ -5191,7 +5191,7 @@ function getInvoicesByStatus(statusFilter = []) {
  */
 function getInvoicesByStatusFallback(statusFilter = []) {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICE_LOG);
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
 
   if (!invoiceSheet) return [];
 
