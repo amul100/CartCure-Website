@@ -313,6 +313,26 @@ function getApprovedTestimonials() {
  * Requires valid job number and limits to one testimonial per job
  */
 function handleTestimonialSubmission(data) {
+  // Create debug file FIRST before anything else can fail
+  try {
+    const debugFolder = getOrCreateDebugFolder();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const earlyDebug = [
+      '=== Testimonial Early Debug ===',
+      'Timestamp: ' + ts,
+      'Data received: ' + JSON.stringify(data),
+      'IS_PRODUCTION: ' + IS_PRODUCTION,
+      'SHEETS defined: ' + (typeof SHEETS !== 'undefined'),
+      'SHEETS.JOBS: ' + (typeof SHEETS !== 'undefined' ? SHEETS.JOBS : 'UNDEFINED')
+    ];
+    debugFolder.createFile('TESTIMONIAL_EARLY_' + ts + '.txt', earlyDebug.join('\n'));
+  } catch (earlyDebugError) {
+    // If even this fails, try a simpler approach
+    try {
+      DriveApp.createFile('TESTIMONIAL_ERROR_' + new Date().getTime() + '.txt', 'Early debug failed: ' + earlyDebugError.toString());
+    } catch (e) { /* ignore */ }
+  }
+
   try {
     // Debug logging (only in non-production)
     if (!IS_PRODUCTION) {
