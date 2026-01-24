@@ -1842,7 +1842,8 @@ const SHEETS = {
   SETTINGS: 'Settings',
   DASHBOARD: 'Dashboard',
   ANALYTICS: 'Analytics',
-  TESTIMONIALS: 'Testimonials'
+  TESTIMONIALS: 'Testimonials',
+  ACTIVITY_LOG: 'Activity Log'
 };
 
 // Job Status Constants
@@ -1947,7 +1948,10 @@ function onOpen() {
       .addItem('Start Work on Job', 'showStartWorkDialog')
       .addItem('Mark Job Complete', 'showCompleteJobDialog')
       .addItem('Put Job On Hold', 'showOnHoldDialog')
-      .addItem('Cancel Job', 'showCancelJobDialog'))
+      .addItem('Cancel Job', 'showCancelJobDialog')
+      .addSeparator()
+      .addItem('View Activity Log', 'viewJobActivityLog')
+      .addItem('Add Activity Note', 'addManualActivityNote'))
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('Send Quote', 'showSendQuoteDialog')
       .addItem('Send Quote Reminder', 'showQuoteReminderDialog')
@@ -1960,6 +1964,10 @@ function onOpen() {
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
+      .addSeparator()
+      .addItem('📧 Enable Email Activity Logging (Hourly)', 'setupEmailScanTrigger')
+      .addItem('📧 Disable Email Activity Logging', 'removeEmailScanTrigger')
+      .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs')
       .addSeparator()
       .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions'))
     .addToUi();
@@ -1989,6 +1997,14 @@ function onEdit(e) {
     if (e.value === 'TRUE') {
       range.setValue(false);
       refreshAnalytics();
+    }
+  }
+
+  // Check if edit was on Activity Log sheet, cell I1 (refresh checkbox for email scan)
+  if (sheet.getName() === SHEETS.ACTIVITY_LOG && range.getA1Notation() === 'I1') {
+    if (e.value === 'TRUE') {
+      range.setValue(false);
+      scanSentEmailsForJobs();
     }
   }
 }
@@ -2314,8 +2330,13 @@ function setupSheets(clearData) {
     logDebug('  3e COMPLETE: Testimonials sheet done');
     logAllSheets('AFTER setupTestimonialsSheet()');
 
+    logDebug('  3f: Creating Activity Log sheet...');
+    setupActivityLogSheet(ss, clearData);
+    logDebug('  3f COMPLETE: Activity Log sheet done');
+    logAllSheets('AFTER setupActivityLogSheet()');
+
     // Create Dashboard and Analytics without moving yet
-    logDebug('  3f: Creating Dashboard sheet...');
+    logDebug('  3h: Creating Dashboard sheet...');
     let dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
     logDebug('    getSheetByName(DASHBOARD) returned: ' + (dashboardSheet ? 'Sheet ID ' + dashboardSheet.getSheetId() : 'null'));
     if (!dashboardSheet) {
@@ -2327,7 +2348,7 @@ function setupSheets(clearData) {
     }
     logAllSheets('AFTER Dashboard creation');
 
-    logDebug('  3g: Creating Analytics sheet...');
+    logDebug('  3i: Creating Analytics sheet...');
     let analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
     logDebug('    getSheetByName(ANALYTICS) returned: ' + (analyticsSheet ? 'Sheet ID ' + analyticsSheet.getSheetId() : 'null'));
     if (!analyticsSheet) {
@@ -4211,6 +4232,490 @@ function setupTestimonialsSheet(ss, clearData) {
   Logger.log('Testimonials sheet setup completed successfully');
 }
 
+/**
+ * Setup the Activity Log sheet for tracking all job-related activities
+ * This sheet stores emails sent, status changes, and other audit trail items
+ */
+function setupActivityLogSheet(ss, clearData) {
+  if (!ss) {
+    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  }
+
+  let sheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.ACTIVITY_LOG);
+    Logger.log('Created new Activity Log sheet');
+  } else if (clearData) {
+    sheet.clear();
+    Logger.log('Cleared Activity Log sheet');
+  } else {
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      Logger.log('Activity Log sheet exists with ' + (lastRow - 1) + ' entries - preserving data');
+    }
+  }
+
+  // Define headers
+  const headers = [
+    'Timestamp',        // When the activity occurred
+    'Job #',            // Related job number (e.g., J-001)
+    'Activity Type',    // Email Sent, Status Change, Note Added, etc.
+    'Subject/Summary',  // Email subject or brief description
+    'Details',          // Full details or email snippet
+    'From/To',          // Email addresses involved
+    'Logged By'         // Auto or Manual
+  ];
+
+  // Set headers if sheet is empty or was cleared
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  // Apply paper-like background
+  applyPaperBackground(sheet);
+
+  // Format header row with brand styling
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors for existing data
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataArea.setFontFamily('Arial');
+  dataArea.setFontSize(10);
+  dataArea.setFontColor(SHEET_COLORS.inkBlack);
+  dataArea.setVerticalAlignment('middle');
+
+  // Freeze header row
+  sheet.setFrozenRows(1);
+
+  // Set column widths
+  const columnWidths = [
+    150,  // Timestamp
+    80,   // Job #
+    120,  // Activity Type
+    250,  // Subject/Summary
+    350,  // Details
+    200,  // From/To
+    80    // Logged By
+  ];
+  for (let col = 1; col <= headers.length; col++) {
+    sheet.setColumnWidth(col, columnWidths[col - 1] || 100);
+  }
+
+  // Enable wrap text for Details column (column 5)
+  const detailsColumn = sheet.getRange(2, 5, 1000, 1);
+  detailsColumn.setWrap(true);
+
+  // Enable filtering for all columns
+  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+  try {
+    dataRange.createFilter();
+  } catch (e) {
+    // Filter may already exist
+    Logger.log('Filter already exists or could not be created: ' + e.message);
+  }
+
+  // Protect the header row from accidental edits
+  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
+  protection.setDescription('Protected header row');
+  protection.setWarningOnly(true);
+
+  // Add refresh checkbox for manual email scan (column I)
+  const refreshLabelCell = sheet.getRange('H1');
+  refreshLabelCell.setValue('Scan Emails →');
+  refreshLabelCell.setFontWeight('bold');
+  refreshLabelCell.setFontSize(9);
+  refreshLabelCell.setFontColor(SHEET_COLORS.navy);
+  refreshLabelCell.setHorizontalAlignment('right');
+  refreshLabelCell.setVerticalAlignment('middle');
+  sheet.setColumnWidth(8, 100);
+
+  const refreshCheckbox = sheet.getRange('I1');
+  refreshCheckbox.insertCheckboxes();
+  refreshCheckbox.setValue(false);
+  refreshCheckbox.setBackground('#E8F5E9');
+  refreshCheckbox.setBorder(true, true, true, true, false, false, '#4CAF50', SpreadsheetApp.BorderStyle.SOLID);
+  sheet.setColumnWidth(9, 30);
+
+  Logger.log('Activity Log sheet setup completed successfully');
+}
+
+/**
+ * Log an activity to the Activity Log sheet
+ * @param {string} jobNumber - The job number (e.g., "J-001")
+ * @param {string} activityType - Type of activity (e.g., "Email Sent", "Status Change")
+ * @param {string} summary - Brief description or email subject
+ * @param {string} details - Full details (optional)
+ * @param {string} fromTo - Email addresses or parties involved (optional)
+ * @param {string} loggedBy - "Auto" or "Manual" (defaults to "Auto")
+ */
+function logJobActivity(jobNumber, activityType, summary, details, fromTo, loggedBy) {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+
+    // Create sheet if it doesn't exist
+    if (!sheet) {
+      setupActivityLogSheet(ss, false);
+      sheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+    }
+
+    const timestamp = new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
+
+    const rowData = [
+      timestamp,
+      jobNumber || '',
+      activityType || '',
+      summary || '',
+      details || '',
+      fromTo || '',
+      loggedBy || 'Auto'
+    ];
+
+    // Append to the sheet
+    sheet.appendRow(rowData);
+
+    Logger.log('Activity logged for job ' + jobNumber + ': ' + activityType);
+    return true;
+  } catch (error) {
+    Logger.log('Error logging activity: ' + error.message);
+    return false;
+  }
+}
+
+/**
+ * Scan inbox for job-related emails that were BCC'd to cartcuredrive@gmail.com
+ *
+ * SETUP: Since the main email is Microsoft 365 (info@cartcure.co.nz), Apps Script
+ * cannot access that mailbox directly. Instead, BCC all client emails to
+ * cartcuredrive@gmail.com (hidden from clients) and this function will scan
+ * that inbox for job-tagged emails.
+ *
+ * Run this on a time-based trigger (e.g., every 15 minutes)
+ */
+function scanSentEmailsForJobs() {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+
+    // Get last scan timestamp from settings (or default to 24 hours ago)
+    let lastScanTime = new Date();
+    lastScanTime.setHours(lastScanTime.getHours() - 24); // Default: last 24 hours
+
+    if (settingsSheet) {
+      const settingsData = settingsSheet.getDataRange().getValues();
+      for (let i = 0; i < settingsData.length; i++) {
+        if (settingsData[i][0] === 'Last Email Scan') {
+          const savedTime = new Date(settingsData[i][1]);
+          if (!isNaN(savedTime.getTime())) {
+            lastScanTime = savedTime;
+          }
+          break;
+        }
+      }
+    }
+
+    // Search for emails with job tags received in inbox (via BCC from MS365)
+    // These are emails sent FROM info@cartcure.co.nz that were BCC'd here
+    // Pattern: (J-XXX) in subject line, from CartCure email
+    const searchQuery = 'after:' + Math.floor(lastScanTime.getTime() / 1000) + ' subject:"(J-" from:cartcure';
+    const threads = GmailApp.search(searchQuery, 0, 50); // Limit to 50 threads per scan
+
+    let emailsLogged = 0;
+    const processedMessageIds = getProcessedMessageIds();
+
+    for (let i = 0; i < threads.length; i++) {
+      const messages = threads[i].getMessages();
+
+      for (let j = 0; j < messages.length; j++) {
+        const message = messages[j];
+        const messageId = message.getId();
+
+        // Skip if already processed
+        if (processedMessageIds.has(messageId)) {
+          continue;
+        }
+
+        const subject = message.getSubject();
+        const date = message.getDate();
+        const from = message.getFrom();
+
+        // Only process messages after last scan time
+        if (date < lastScanTime) continue;
+
+        // Extract job number from subject using pattern (J-XXX)
+        const jobMatch = subject.match(/\(J-(\d+)\)/i);
+        if (!jobMatch) continue;
+
+        const jobNumber = 'J-' + jobMatch[1];
+        const toRecipients = message.getTo();
+        const snippet = message.getPlainBody().substring(0, 200) + '...';
+
+        // Log the email activity
+        logJobActivity(
+          jobNumber,
+          'Email Sent',
+          subject,
+          snippet,
+          'From: ' + from + ' | To: ' + toRecipients,
+          'Auto'
+        );
+
+        // Mark as processed
+        saveProcessedMessageId(messageId);
+        emailsLogged++;
+      }
+    }
+
+    // Update last scan timestamp
+    updateLastScanTimestamp();
+
+    Logger.log('Email scan complete. Logged ' + emailsLogged + ' new emails.');
+    return emailsLogged;
+
+  } catch (error) {
+    Logger.log('Error scanning sent emails: ' + error.message);
+    return 0;
+  }
+}
+
+/**
+ * Get set of already-processed message IDs from script properties
+ */
+function getProcessedMessageIds() {
+  const props = PropertiesService.getScriptProperties();
+  const stored = props.getProperty('processedEmailIds');
+  if (stored) {
+    try {
+      return new Set(JSON.parse(stored));
+    } catch (e) {
+      return new Set();
+    }
+  }
+  return new Set();
+}
+
+/**
+ * Save a processed message ID to prevent duplicate logging
+ */
+function saveProcessedMessageId(messageId) {
+  const props = PropertiesService.getScriptProperties();
+  const ids = getProcessedMessageIds();
+  ids.add(messageId);
+
+  // Keep only the last 500 IDs to prevent property size limits
+  const idsArray = Array.from(ids);
+  if (idsArray.length > 500) {
+    idsArray.splice(0, idsArray.length - 500);
+  }
+
+  props.setProperty('processedEmailIds', JSON.stringify(idsArray));
+}
+
+/**
+ * Update the last scan timestamp in settings
+ */
+function updateLastScanTimestamp() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  let settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
+
+  if (!settingsSheet) return;
+
+  const settingsData = settingsSheet.getDataRange().getValues();
+  let rowFound = false;
+
+  for (let i = 0; i < settingsData.length; i++) {
+    if (settingsData[i][0] === 'Last Email Scan') {
+      settingsSheet.getRange(i + 1, 2).setValue(new Date().toISOString());
+      rowFound = true;
+      break;
+    }
+  }
+
+  // Add the setting if not found
+  if (!rowFound) {
+    const lastRow = settingsSheet.getLastRow();
+    settingsSheet.getRange(lastRow + 1, 1).setValue('Last Email Scan');
+    settingsSheet.getRange(lastRow + 1, 2).setValue(new Date().toISOString());
+  }
+}
+
+/**
+ * Setup time-based trigger to automatically scan emails
+ * Run this once to enable automatic email logging
+ */
+function setupEmailScanTrigger() {
+  // Delete any existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'scanSentEmailsForJobs') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+
+  // Create new trigger to run every hour
+  ScriptApp.newTrigger('scanSentEmailsForJobs')
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  Logger.log('Email scan trigger created - will run every hour');
+
+  // Also run immediately
+  scanSentEmailsForJobs();
+}
+
+/**
+ * Remove the email scan trigger
+ */
+function removeEmailScanTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let removed = 0;
+
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'scanSentEmailsForJobs') {
+      ScriptApp.deleteTrigger(triggers[i]);
+      removed++;
+    }
+  }
+
+  Logger.log('Removed ' + removed + ' email scan trigger(s)');
+}
+
+/**
+ * View activity log for a specific job (called from menu or sidebar)
+ */
+function viewJobActivityLog() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Prompt for job number
+  const response = ui.prompt(
+    'View Activity Log',
+    'Enter the job number (e.g., J-001):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  let jobNumber = response.getResponseText().trim().toUpperCase();
+
+  // Normalize job number format
+  if (!jobNumber.startsWith('J-')) {
+    jobNumber = 'J-' + jobNumber;
+  }
+
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const activitySheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+
+  if (!activitySheet || activitySheet.getLastRow() <= 1) {
+    ui.alert('No Activity Found', 'No activity log entries exist yet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Find all activities for this job
+  const data = activitySheet.getDataRange().getValues();
+  const activities = [];
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === jobNumber) {
+      activities.push({
+        timestamp: data[i][0],
+        type: data[i][2],
+        summary: data[i][3],
+        details: data[i][4],
+        fromTo: data[i][5]
+      });
+    }
+  }
+
+  if (activities.length === 0) {
+    ui.alert('No Activity Found', 'No activity log entries found for ' + jobNumber + '.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Build activity summary
+  let summary = 'Activity Log for ' + jobNumber + '\n';
+  summary += '═'.repeat(40) + '\n\n';
+
+  activities.forEach(function(activity, index) {
+    summary += (index + 1) + '. [' + activity.type + '] ' + activity.timestamp + '\n';
+    summary += '   ' + activity.summary + '\n';
+    if (activity.fromTo) {
+      summary += '   ' + activity.fromTo + '\n';
+    }
+    summary += '\n';
+  });
+
+  // Show in alert (limited to first 10 for readability)
+  const displayActivities = activities.slice(0, 10);
+  let displaySummary = 'Activity Log for ' + jobNumber + ' (' + activities.length + ' total entries)\n\n';
+
+  displayActivities.forEach(function(activity, index) {
+    displaySummary += '• ' + activity.timestamp + '\n';
+    displaySummary += '  ' + activity.type + ': ' + activity.summary.substring(0, 50) + (activity.summary.length > 50 ? '...' : '') + '\n\n';
+  });
+
+  if (activities.length > 10) {
+    displaySummary += '... and ' + (activities.length - 10) + ' more entries.\nView the Activity Log sheet for full details.';
+  }
+
+  ui.alert('Activity Log', displaySummary, ui.ButtonSet.OK);
+}
+
+/**
+ * Manually add an activity note for a job
+ */
+function addManualActivityNote() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Get job number
+  const jobResponse = ui.prompt(
+    'Add Activity Note',
+    'Enter the job number (e.g., J-001):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (jobResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  let jobNumber = jobResponse.getResponseText().trim().toUpperCase();
+  if (!jobNumber.startsWith('J-')) {
+    jobNumber = 'J-' + jobNumber;
+  }
+
+  // Get the note
+  const noteResponse = ui.prompt(
+    'Add Activity Note',
+    'Enter your note for ' + jobNumber + ':',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (noteResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const note = noteResponse.getResponseText().trim();
+  if (!note) {
+    ui.alert('Error', 'Note cannot be empty.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Log the activity
+  logJobActivity(jobNumber, 'Manual Note', note, '', '', 'Manual');
+
+  ui.alert('Note Added', 'Activity note added for ' + jobNumber + '.', ui.ButtonSet.OK);
+}
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -5983,12 +6488,23 @@ function sendQuoteEmail(jobNumber) {
     MailApp.sendEmail({
       to: clientEmail,
       cc: 'info@cartcure.co.nz',
+      bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       body: plainBody,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
     });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Quote sent: ' + formatCurrency(totalAmount) + (isGSTRegistered ? ' (incl GST)' : ''),
+      'To: ' + clientEmail,
+      'Auto'
+    );
 
     // Update job status
     updateJobField(jobNumber, 'Status', JOB_STATUS.QUOTED);
@@ -6576,12 +7092,23 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
     MailApp.sendEmail({
       to: clientEmail,
       cc: ccEmail,
+      bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       body: plainBody,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
     });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Status update: ' + newStatus,
+      'To: ' + clientEmail,
+      'Auto'
+    );
 
     Logger.log('Status update email sent for ' + jobNumber + ' (status: ' + newStatus + ') to ' + clientEmail + ' (CC: ' + ccEmail + ')');
     return true;
@@ -6648,11 +7175,22 @@ function sendQuoteReminder(jobNumber) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
     });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Quote reminder sent',
+      'To: ' + clientEmail,
+      'Auto'
+    );
 
     ui.alert('Reminder Sent', 'Quote reminder sent to ' + clientEmail, ui.ButtonSet.OK);
     Logger.log('Quote reminder sent for ' + jobNumber);
@@ -7154,11 +7692,22 @@ function sendInvoiceEmail(invoiceNumber) {
     MailApp.sendEmail({
       to: clientEmail,
       cc: 'info@cartcure.co.nz',
+      bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
     });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Invoice sent: ' + formatCurrency(totalAmount),
+      'To: ' + clientEmail,
+      'Auto'
+    );
 
     // OPTIMIZATION: Batch update invoice fields (2 calls → 1)
     updateInvoiceFields(invoiceNumber, {

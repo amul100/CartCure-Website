@@ -251,6 +251,7 @@
         <li><a href="#part11"><strong>Part 11:</strong> Submissions Sheet - Status Tracking</a></li>
         <li><a href="#part12"><strong>Part 12:</strong> Testimonials Sheet - Customer Feedback</a></li>
         <li><a href="#part13"><strong>Part 13:</strong> Performance Optimizations</a></li>
+        <li><a href="#part14"><strong>Part 14:</strong> Activity Log - Audit Trail</a></li>
     </ul>
 </div>
 
@@ -2096,6 +2097,158 @@ Unpaid → Invoiced → Paid
 
 <div class="info">
     <strong>Note:</strong> Current optimizations provide 60-85% improvement—these future enhancements would offer diminishing returns and are only considered if additional performance needs arise.
+</div>
+
+<h1 id="part14">Part 14: Activity Log - Audit Trail</h1>
+
+<div class="success">
+    <strong>New Feature:</strong> Automatic tracking of all job-related emails and activities for a complete audit trail.
+</div>
+
+<h2>Overview</h2>
+
+<p>The Activity Log automatically tracks all communications and changes for each job, providing a complete audit trail. This includes:</p>
+
+<ul>
+    <li><strong>Emails sent</strong> - Automatically logged when you send emails with job tags like <code>(J-001)</code></li>
+    <li><strong>Status changes</strong> - When job status updates (optional)</li>
+    <li><strong>Manual notes</strong> - Notes you add manually for important activities</li>
+</ul>
+
+<h2>How Email Logging Works</h2>
+
+<p>Since the main email (info@cartcure.co.nz) is a Microsoft 365 account, Apps Script cannot access it directly. Instead, the system scans the <code>cartcuredrive@gmail.com</code> inbox for emails that were BCC'd there.</p>
+
+<div class="warning">
+    <strong>Important - BCC Setup Required:</strong> When sending job-related emails from Outlook, you must BCC <code>cartcuredrive@gmail.com</code> on the email. This BCC is hidden from the client but allows the system to log the email automatically.
+</div>
+
+<h3>Quick BCC Workflow</h3>
+<ol>
+    <li>Compose your email to the client</li>
+    <li>Include the job tag in the subject: <code>(J-001)</code></li>
+    <li>Add <code>cartcuredrive@gmail.com</code> to the BCC field</li>
+    <li>Send the email</li>
+</ol>
+
+<div class="example">
+    <strong>Example:</strong> You send an email to client@example.com with subject "Quote for website fix (J-001)" and BCC cartcuredrive@gmail.com. The system will automatically detect and log this to J-001's activity history within 15 minutes.
+</div>
+
+<div class="info">
+    <strong>Tip:</strong> In Outlook, you can create a Quick Step or template that automatically adds the BCC address, so you don't have to remember each time.
+</div>
+
+<h3>What Gets Logged</h3>
+
+<table>
+    <tr>
+        <th>Field</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>Timestamp</td>
+        <td>When the activity occurred</td>
+    </tr>
+    <tr>
+        <td>Job #</td>
+        <td>The job number (e.g., J-001)</td>
+    </tr>
+    <tr>
+        <td>Activity Type</td>
+        <td>Email Sent, Manual Note, Status Change, etc.</td>
+    </tr>
+    <tr>
+        <td>Subject/Summary</td>
+        <td>Email subject line or note summary</td>
+    </tr>
+    <tr>
+        <td>Details</td>
+        <td>First 200 characters of email body</td>
+    </tr>
+    <tr>
+        <td>From/To</td>
+        <td>Email recipients</td>
+    </tr>
+    <tr>
+        <td>Logged By</td>
+        <td>Auto (system) or Manual (you added it)</td>
+    </tr>
+</table>
+
+<h2>Enabling Email Activity Logging</h2>
+
+<p>To enable automatic email logging:</p>
+
+<ol>
+    <li>Open your Google Sheets job management spreadsheet</li>
+    <li>Click <strong>CartCure > Setup > Enable Email Activity Logging</strong></li>
+    <li>Grant Gmail access when prompted (first time only)</li>
+    <li>The system will immediately scan recent emails and set up automatic scanning every 15 minutes</li>
+</ol>
+
+<div class="warning">
+    <strong>Important:</strong> For emails to be logged automatically, they must contain a job tag in the format <code>(J-XXX)</code> in the subject line. For example: "Re: Quote for your project (J-001)"
+</div>
+
+<h2>Disabling Email Logging</h2>
+
+<p>To stop automatic email scanning:</p>
+
+<ol>
+    <li>Click <strong>CartCure > Setup > Disable Email Activity Logging</strong></li>
+</ol>
+
+<p>This removes the automatic trigger. Existing activity log entries are preserved.</p>
+
+<h2>Viewing a Job's Activity Log</h2>
+
+<p>To view all activities for a specific job:</p>
+
+<ol>
+    <li>Click <strong>CartCure > Jobs > View Activity Log</strong></li>
+    <li>Enter the job number (e.g., J-001 or just 001)</li>
+    <li>A summary of all activities will be displayed</li>
+</ol>
+
+<p>For the complete history, view the <strong>Activity Log</strong> sheet directly and filter by Job #.</p>
+
+<h2>Adding Manual Notes</h2>
+
+<p>For activities that aren't email-based (phone calls, meetings, etc.):</p>
+
+<ol>
+    <li>Click <strong>CartCure > Jobs > Add Activity Note</strong></li>
+    <li>Enter the job number</li>
+    <li>Type your note (e.g., "Phone call with client - confirmed requirements")</li>
+</ol>
+
+<h2>Activity Log Sheet</h2>
+
+<p>The Activity Log sheet is automatically created when you run Setup/Repair Sheets. It contains all logged activities across all jobs.</p>
+
+<h3>Using Filters</h3>
+
+<p>The sheet supports filtering, which is useful for:</p>
+
+<ul>
+    <li><strong>Filter by Job #</strong> - See all activities for one job</li>
+    <li><strong>Filter by Activity Type</strong> - See only emails, or only manual notes</li>
+    <li><strong>Filter by Date</strong> - See activities within a date range</li>
+</ul>
+
+<h2>Best Practices</h2>
+
+<ul>
+    <li><strong>Always include job tags in email subjects</strong> - Use the format <code>(J-XXX)</code> so emails are automatically tracked</li>
+    <li><strong>Always BCC cartcuredrive@gmail.com</strong> - This is required for automatic email logging from MS365</li>
+    <li><strong>Add manual notes for non-email activities</strong> - Keep a complete record of phone calls, meetings, etc.</li>
+    <li><strong>Check the Activity Log before client calls</strong> - Quick refresher on what's happened with their job</li>
+    <li><strong>Set up an Outlook Quick Step</strong> - Automate adding the BCC so you don't forget</li>
+</ul>
+
+<div class="info">
+    <strong>Note:</strong> The email scanner checks the cartcuredrive@gmail.com inbox for BCC'd emails from your MS365 account. Client replies sent directly to info@cartcure.co.nz won't be logged automatically - add manual notes for important client responses.
 </div>
 
 <hr>
