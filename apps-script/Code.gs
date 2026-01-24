@@ -239,7 +239,9 @@ function doGet(e) {
 
   // Handle testimonials API endpoint
   if (action === 'getTestimonials') {
-    return getApprovedTestimonials();
+    const fiveStarOnly = e.parameter.fiveStarOnly === 'true';
+    const limit = e.parameter.limit ? parseInt(e.parameter.limit, 10) : null;
+    return getApprovedTestimonials(fiveStarOnly, limit);
   }
 
   // Default response - health check
@@ -255,8 +257,10 @@ function doGet(e) {
 /**
  * Get all approved testimonials for display on the website
  * Returns testimonials where "Show on Website" checkbox is TRUE
+ * @param {boolean} fiveStarOnly - If true, only return 5-star testimonials
+ * @param {number|null} limit - Maximum number of testimonials to return (null for all)
  */
-function getApprovedTestimonials() {
+function getApprovedTestimonials(fiveStarOnly, limit) {
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
     const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
@@ -284,7 +288,7 @@ function getApprovedTestimonials() {
     const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
 
     // Filter to only approved testimonials (column 1 = TRUE) and format for website
-    const approvedTestimonials = data
+    let approvedTestimonials = data
       .filter(row => row[0] === true)
       .map(row => {
         const ratingValue = Number(row[5]);
@@ -297,6 +301,16 @@ function getApprovedTestimonials() {
         };
       })
       .filter(t => t.testimonial.trim() !== ''); // Only include non-empty testimonials
+
+    // Filter to 5-star only if requested
+    if (fiveStarOnly) {
+      approvedTestimonials = approvedTestimonials.filter(t => t.rating === 5);
+    }
+
+    // Apply limit if specified
+    if (limit && limit > 0) {
+      approvedTestimonials = approvedTestimonials.slice(0, limit);
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({

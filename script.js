@@ -752,21 +752,32 @@
 
     /**
      * Load testimonials from Google Sheets API
+     * @param {boolean} fiveStarOnly - If true, only fetch 5-star testimonials
+     * @param {number|null} limit - Maximum number to fetch (null for all)
      */
-    function loadTestimonials() {
+    function loadTestimonials(fiveStarOnly = true, limit = 6) {
         const testimonialGrid = document.getElementById('testimonialGrid');
         if (!testimonialGrid) return;
+
+        // Build API URL with parameters
+        let apiUrl = SCRIPT_URL + '?action=getTestimonials';
+        if (fiveStarOnly) {
+            apiUrl += '&fiveStarOnly=true';
+        }
+        if (limit) {
+            apiUrl += '&limit=' + limit;
+        }
 
         // Fetch testimonials from API with timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
-        fetch(SCRIPT_URL + '?action=getTestimonials', { signal: controller.signal })
+        fetch(apiUrl, { signal: controller.signal })
             .then(response => response.json())
             .then(data => {
                 clearTimeout(timeoutId);
                 if (data.success && data.testimonials && data.testimonials.length > 0) {
-                    renderTestimonials(data.testimonials);
+                    renderTestimonials(data.testimonials, limit);
                 } else {
                     // Show "Coming Soon" message if no testimonials approved yet
                     renderComingSoon();
@@ -786,16 +797,18 @@
 
     /**
      * Render testimonials to the page
+     * @param {Array} testimonials - Array of testimonial objects
+     * @param {number|null} limit - If set, show "See all" button (indicates homepage view)
      */
-    function renderTestimonials(testimonials) {
+    function renderTestimonials(testimonials, limit) {
         const testimonialGrid = document.getElementById('testimonialGrid');
         if (!testimonialGrid) return;
 
         // Clear loading message
         testimonialGrid.innerHTML = '';
 
-        // Render each testimonial (max 6 for display)
-        testimonials.slice(0, 6).forEach(testimonial => {
+        // Render each testimonial
+        testimonials.forEach(testimonial => {
             const initials = getInitials(testimonial.name);
             const subtitle = [testimonial.business, testimonial.location]
                 .filter(x => x)
@@ -819,6 +832,16 @@
             `;
             testimonialGrid.appendChild(card);
         });
+
+        // Add "See all testimonials" button on homepage (when limit is set)
+        if (limit && testimonials.length > 0) {
+            const seeAllContainer = document.createElement('div');
+            seeAllContainer.className = 'see-all-testimonials';
+            seeAllContainer.innerHTML = `
+                <a href="testimonials.html" class="see-all-button">See All Testimonials</a>
+            `;
+            testimonialGrid.parentNode.appendChild(seeAllContainer);
+        }
 
         // Animate cards in
         testimonialGrid.querySelectorAll('.testimonial-card').forEach((card, index) => {
