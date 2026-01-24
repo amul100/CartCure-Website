@@ -63,12 +63,21 @@
 
     // Human-readable word list for submission numbers (easy to remember, say, and type)
     const SUBMISSION_WORDS = [
+        // Original words (48)
         'MAPLE', 'RIVER', 'CORAL', 'FROST', 'AMBER', 'CLOUD', 'STONE', 'BLOOM',
         'SPARK', 'OCEAN', 'CEDAR', 'DAWN', 'FLAME', 'PEARL', 'STORM', 'LUNAR',
         'GROVE', 'HAVEN', 'PEAK', 'TIDE', 'FERN', 'BLAZE', 'DUSK', 'SILK',
         'MINT', 'SAGE', 'FLINT', 'CREST', 'PINE', 'CLIFF', 'MOSS', 'OPAL',
         'REED', 'BROOK', 'GLOW', 'WREN', 'IRIS', 'EMBER', 'SWIFT', 'HAZE',
-        'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL'
+        'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL',
+        // Additional words (50+)
+        'ASPEN', 'BRIAR', 'COVE', 'DELTA', 'ECHO', 'FJORD', 'GLADE', 'HAWK',
+        'JADE', 'KELP', 'LOTUS', 'MARSH', 'NOVA', 'ORBIT', 'PETAL', 'QUARTZ',
+        'RIDGE', 'SHORE', 'TERRA', 'UNITY', 'VIVID', 'WISP', 'XENON', 'YUCCA',
+        'ZEPHYR', 'ALDER', 'BISON', 'CRANE', 'DRIFT', 'EAGLE', 'FINCH', 'GARNET',
+        'HOLLY', 'IVORY', 'JASPER', 'KITE', 'LYNX', 'MISTY', 'NORTH', 'OLIVE',
+        'PRISM', 'QUEST', 'RAVEN', 'SOLAR', 'TULIP', 'UMBRA', 'VAPOR', 'WILLOW',
+        'ZINC', 'ARCTIC', 'BASALT', 'COBALT', 'DUNE', 'FALCON', 'GOLDEN', 'HARBOR'
     ];
 
     // ========================================================================

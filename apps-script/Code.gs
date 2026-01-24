@@ -89,12 +89,21 @@ const BLOCKED_PATTERNS = [
 
 // Human-readable word list for submission numbers (must match client-side list)
 const SUBMISSION_WORDS = [
+  // Original words (48)
   'MAPLE', 'RIVER', 'CORAL', 'FROST', 'AMBER', 'CLOUD', 'STONE', 'BLOOM',
   'SPARK', 'OCEAN', 'CEDAR', 'DAWN', 'FLAME', 'PEARL', 'STORM', 'LUNAR',
   'GROVE', 'HAVEN', 'PEAK', 'TIDE', 'FERN', 'BLAZE', 'DUSK', 'SILK',
   'MINT', 'SAGE', 'FLINT', 'CREST', 'PINE', 'CLIFF', 'MOSS', 'OPAL',
   'REED', 'BROOK', 'GLOW', 'WREN', 'IRIS', 'EMBER', 'SWIFT', 'HAZE',
-  'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL'
+  'BIRCH', 'LARK', 'VALE', 'HELM', 'FAWN', 'TRAIL', 'SHADE', 'QUILL',
+  // Additional words (50+)
+  'ASPEN', 'BRIAR', 'COVE', 'DELTA', 'ECHO', 'FJORD', 'GLADE', 'HAWK',
+  'JADE', 'KELP', 'LOTUS', 'MARSH', 'NOVA', 'ORBIT', 'PETAL', 'QUARTZ',
+  'RIDGE', 'SHORE', 'TERRA', 'UNITY', 'VIVID', 'WISP', 'XENON', 'YUCCA',
+  'ZEPHYR', 'ALDER', 'BISON', 'CRANE', 'DRIFT', 'EAGLE', 'FINCH', 'GARNET',
+  'HOLLY', 'IVORY', 'JASPER', 'KITE', 'LYNX', 'MISTY', 'NORTH', 'OLIVE',
+  'PRISM', 'QUEST', 'RAVEN', 'SOLAR', 'TULIP', 'UMBRA', 'VAPOR', 'WILLOW',
+  'ZINC', 'ARCTIC', 'BASALT', 'COBALT', 'DUNE', 'FALCON', 'GOLDEN', 'HARBOR'
 ];
 
 // ============================================================================
@@ -2168,6 +2177,7 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
+      .addItem('📐 Auto-fit Column Widths', 'autoFitAllColumns')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
       .addSeparator()
       .addItem('📧 Enable Email Activity Logging (Hourly)', 'setupEmailScanTrigger')
@@ -2314,6 +2324,57 @@ function showSetupDialog() {
   if (response === ui.Button.YES) {
     setupSheets(false); // false = preserve data
   }
+}
+
+/**
+ * Auto-fit column widths for all sheets to fit their content (with UI feedback)
+ */
+function autoFitAllColumns() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ui = SpreadsheetApp.getUi();
+
+  const fittedCount = autoFitColumnsInternal(ss);
+
+  ui.alert(
+    '✅ Columns Resized',
+    'Auto-fitted column widths for ' + fittedCount + ' sheets:\n\n' +
+    '• Submissions\n• Jobs\n• Invoices\n• Settings\n• Testimonials\n• Activity Log\n\n' +
+    'Note: Dashboard and Analytics sheets use fixed layouts.',
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * Internal function to auto-fit column widths (no UI)
+ * @param {Spreadsheet} ss - The spreadsheet object
+ * @returns {number} Number of sheets that were fitted
+ */
+function autoFitColumnsInternal(ss) {
+  // Sheets to auto-fit (exclude Dashboard and Analytics which have custom layouts)
+  const sheetsToFit = [
+    SHEETS.SUBMISSIONS,
+    SHEETS.JOBS,
+    SHEETS.INVOICES,
+    SHEETS.SETTINGS,
+    SHEETS.TESTIMONIALS,
+    SHEETS.ACTIVITY_LOG
+  ];
+
+  let fittedCount = 0;
+
+  for (const sheetName of sheetsToFit) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (sheet) {
+      const lastColumn = sheet.getLastColumn();
+      if (lastColumn > 0) {
+        // Auto-resize all columns to fit content
+        sheet.autoResizeColumns(1, lastColumn);
+        fittedCount++;
+      }
+    }
+  }
+
+  return fittedCount;
 }
 
 /**
@@ -2662,6 +2723,11 @@ function setupSheets(clearData) {
     } else {
       logDebug('Step 8: SKIPPED (clearData=false)');
     }
+
+    // Step 9: Auto-fit column widths
+    logDebug('Step 9: Auto-fitting column widths...');
+    autoFitColumnsInternal(ss);
+    logDebug('Step 9 COMPLETE');
 
     logAllSheets('FINAL STATE');
     logDebug('========== SETUP SHEETS SUCCESS ==========');
@@ -6143,20 +6209,46 @@ function createJobFromSubmission(submissionNumber) {
     return;
   }
 
-  // Check if job already exists for this submission
+  // Check if jobs already exist for this submission
   const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  let existingJobCount = 0;
+  let existingJobNumbers = [];
+
   if (jobsSheet) {
     const jobsData = jobsSheet.getDataRange().getValues();
     for (let i = 1; i < jobsData.length; i++) {
       if (jobsData[i][1] === submissionNumber) {
-        ui.alert('Already Exists', 'A job already exists for this submission: ' + jobsData[i][0], ui.ButtonSet.OK);
-        return;
+        existingJobCount++;
+        existingJobNumbers.push(jobsData[i][0]);
       }
     }
   }
 
-  // Use submission number as job number, replacing CC prefix with J
-  const jobNumber = submissionNumber.replace(/^CC-/, 'J-');
+  // Warn user if jobs already exist for this submission, but allow them to proceed
+  if (existingJobCount > 0) {
+    const jobWord = existingJobCount === 1 ? 'job' : 'jobs';
+    const response = ui.alert(
+      'Warning: Existing Jobs',
+      existingJobCount + ' ' + jobWord + ' for this submission already exist:\n' +
+      existingJobNumbers.join(', ') + '\n\n' +
+      'Do you want to create another job for this submission?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      return;
+    }
+  }
+
+  // Generate job number - add suffix if jobs already exist for this submission
+  let jobNumber;
+  if (existingJobCount === 0) {
+    // First job: J-XXX (same as submission number with J prefix)
+    jobNumber = submissionNumber.replace(/^CC-/, 'J-');
+  } else {
+    // Additional jobs: J-XXX-2, J-XXX-3, etc.
+    jobNumber = submissionNumber.replace(/^CC-/, 'J-') + '-' + (existingJobCount + 1);
+  }
 
   // Extract submission data
   const name = submissionRow[headers.indexOf('Name')] || submissionRow[2];
