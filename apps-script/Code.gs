@@ -2201,11 +2201,13 @@ function onOpen() {
       .addItem('⏰ Enable Auto Invoice Reminders', 'setupAutoEmailTriggers')
       .addItem('⏰ Disable Auto Invoice Reminders', 'removeAutoEmailTriggers')
       .addSeparator()
-      .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions')
-      .addItem('🧪 Create 20 Test Testimonials', 'createTestTestimonials')
-      .addItem('🧪 Create Test Job for Testimonials', 'createTestJobForTestimonials')
-      .addItem('🧹 Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')
-      .addItem('📧 Send All Test Emails', 'sendAllTestEmails'))
+      .addSubMenu(ui.createMenu('🧪 Tests')
+        .addItem('Create 10 Test Submissions', 'createTestSubmissions')
+        .addItem('Create 20 Test Testimonials', 'createTestTestimonials')
+        .addItem('Create Test Job for Testimonials', 'createTestJobForTestimonials')
+        .addItem('Send All Test Emails', 'sendAllTestEmails')
+        .addSeparator()
+        .addItem('Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')))
     .addToUi();
 
   // Enable auto-refresh by default if not already enabled
