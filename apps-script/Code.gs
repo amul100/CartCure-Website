@@ -10318,7 +10318,7 @@ function createTestJobForTestimonials() {
       'Client Email': 'test@example.com',
       'Store URL': 'https://test-store.myshopify.com',
       'Job Description': 'Test job for testimonial testing - can be deleted',
-      'Category': 'Testing',
+      'Category': 'Other',
       'Status': JOB_STATUS.COMPLETED,
       'Quote Amount (excl GST)': '50.00',
       'GST': '7.50',
