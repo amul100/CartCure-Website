@@ -314,13 +314,33 @@ function getApprovedTestimonials() {
  */
 function handleTestimonialSubmission(data) {
   try {
+    // Debug logging (only in non-production)
+    if (!IS_PRODUCTION) {
+      Logger.log('=== Testimonial Submission Debug ===');
+      Logger.log('Raw data object: ' + JSON.stringify(data));
+      Logger.log('data.name: ' + data.name);
+      Logger.log('data.testimonial: ' + (data.testimonial ? data.testimonial.substring(0, 50) + '...' : 'undefined'));
+      Logger.log('data.jobNumber: ' + data.jobNumber);
+      Logger.log('typeof data: ' + typeof data);
+      Logger.log('Object keys: ' + Object.keys(data).join(', '));
+    }
+
     // Validate required fields
     const name = (data.name || '').trim();
     const testimonial = (data.testimonial || '').trim();
     const jobNumber = (data.jobNumber || '').trim().toUpperCase();
     const email = (data.email || '').trim();
 
+    if (!IS_PRODUCTION) {
+      Logger.log('Parsed name: "' + name + '" (length: ' + name.length + ')');
+      Logger.log('Parsed testimonial length: ' + testimonial.length);
+      Logger.log('Parsed jobNumber: "' + jobNumber + '"');
+    }
+
     if (!name || !testimonial) {
+      if (!IS_PRODUCTION) {
+        Logger.log('VALIDATION FAILED - name empty: ' + !name + ', testimonial empty: ' + !testimonial);
+      }
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,

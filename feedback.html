@@ -313,6 +313,13 @@
 
             const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
 
+            // Debug mode - set to false for production
+            const DEBUG = true;
+
+            function debugLog(...args) {
+                if (DEBUG) console.log('[Feedback Debug]', ...args);
+            }
+
             const form = document.getElementById('feedbackForm');
             const submitButton = document.getElementById('submitButton');
             const successMessage = document.getElementById('successMessage');
@@ -359,8 +366,14 @@
                     testimonial: document.getElementById('feedbackText').value.trim()
                 };
 
+                debugLog('Form data being sent:', formData);
+                debugLog('Name field value:', formData.name);
+                debugLog('Name field length:', formData.name.length);
+                debugLog('JSON body:', JSON.stringify(formData));
+
                 try {
                     // Use cors mode to get the actual response
+                    debugLog('Sending POST to:', SCRIPT_URL);
                     const response = await fetch(SCRIPT_URL, {
                         method: 'POST',
                         headers: {
@@ -369,7 +382,9 @@
                         body: JSON.stringify(formData)
                     });
 
+                    debugLog('Response status:', response.status);
                     const result = await response.json();
+                    debugLog('Response result:', result);
 
                     if (result.success) {
                         form.style.display = 'none';
@@ -382,6 +397,7 @@
                     }
 
                 } catch (error) {
+                    debugLog('Fetch error:', error);
                     console.error('Error:', error);
                     // Fallback: assume success if we can't read response (CORS)
                     form.style.display = 'none';
