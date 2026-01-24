@@ -733,6 +733,40 @@ section {
     font-style: italic;
 }
 
+.testimonials-coming-soon {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--paper-white);
+    border: 3px dashed var(--paper-border);
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 4px 4px 0px rgba(45, 93, 63, 0.08);
+}
+
+.testimonials-coming-soon .coming-soon-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.testimonials-coming-soon h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink-black);
+    margin-bottom: 0.75rem;
+    font-family: 'Georgia', serif;
+}
+
+.testimonials-coming-soon p {
+    font-size: 1rem;
+    color: var(--ink-gray);
+    line-height: 1.7;
+    max-width: 450px;
+    margin: 0 auto;
+    font-family: 'Georgia', serif;
+}
+
 .testimonial-card {
     background: var(--paper-white);
     padding: 2rem;

@@ -726,6 +726,17 @@
     <li>Enter reference number (optional)</li>
 </ol>
 
+<div class="success">
+    <strong>Automatic Receipt Email:</strong> When you mark an invoice as paid, a professional payment receipt is automatically emailed to the client (BCC to cartcuredrive@gmail.com). The receipt includes:
+    <ul>
+        <li>Payment confirmation with invoice and job details</li>
+        <li>Payment method and reference</li>
+        <li>Complete pricing breakdown (with GST if registered)</li>
+        <li><strong>"Leave a Review" button</strong> - Links to the feedback form with job number pre-filled</li>
+    </ul>
+    This encourages satisfied customers to leave testimonials while the positive experience is fresh!
+</div>
+
 <div class="page-break"></div>
 
 <h1>Part 3: Automated Email Notifications</h1>
@@ -780,6 +791,11 @@
             <td><strong>Invoice Sent</strong></td>
             <td>Invoice INV-WORD-XXX for Job J-WORD-XXX</td>
             <td>Professional invoice with payment details and due date</td>
+        </tr>
+        <tr>
+            <td><strong>Payment Receipt</strong></td>
+            <td>Payment Receipt - INV-WORD-XXX from CartCure</td>
+            <td>Payment confirmation with receipt details + "Leave a Review" button linking to feedback form</td>
         </tr>
     </tbody>
 </table>
@@ -2110,7 +2126,7 @@ Unpaid → Invoiced → Paid
 <p>The Activity Log automatically tracks all communications and changes for each job, providing a complete audit trail. This includes:</p>
 
 <ul>
-    <li><strong>Emails sent</strong> - Automatically logged when you send emails with job tags like <code>(J-001)</code></li>
+    <li><strong>Emails sent</strong> - Automatically logged when you send emails with job tags like <code>(J-MAPLE-001)</code></li>
     <li><strong>Status changes</strong> - When job status updates (optional)</li>
     <li><strong>Manual notes</strong> - Notes you add manually for important activities</li>
 </ul>
@@ -2126,13 +2142,13 @@ Unpaid → Invoiced → Paid
 <h3>Quick BCC Workflow</h3>
 <ol>
     <li>Compose your email to the client</li>
-    <li>Include the job tag in the subject: <code>(J-001)</code></li>
+    <li>Include the job tag in the subject: <code>(J-MAPLE-001)</code></li>
     <li>Add <code>cartcuredrive@gmail.com</code> to the BCC field</li>
     <li>Send the email</li>
 </ol>
 
 <div class="example">
-    <strong>Example:</strong> You send an email to client@example.com with subject "Quote for website fix (J-001)" and BCC cartcuredrive@gmail.com. The system will automatically detect and log this to J-001's activity history within 15 minutes.
+    <strong>Example:</strong> You send an email to client@example.com with subject "Quote for website fix (J-MAPLE-001)" and BCC cartcuredrive@gmail.com. The system will automatically detect and log this to J-MAPLE-001's activity history within 15 minutes.
 </div>
 
 <div class="info">
@@ -2152,7 +2168,7 @@ Unpaid → Invoiced → Paid
     </tr>
     <tr>
         <td>Job #</td>
-        <td>The job number (e.g., J-001)</td>
+        <td>The job number (e.g., J-MAPLE-001)</td>
     </tr>
     <tr>
         <td>Activity Type</td>
@@ -2188,7 +2204,7 @@ Unpaid → Invoiced → Paid
 </ol>
 
 <div class="warning">
-    <strong>Important:</strong> For emails to be logged automatically, they must contain a job tag in the format <code>(J-XXX)</code> in the subject line. For example: "Re: Quote for your project (J-001)"
+    <strong>Important:</strong> For emails to be logged automatically, they must contain a job tag in the format <code>(J-WORD-XXX)</code> in the subject line. For example: "Re: Quote for your project (J-MAPLE-001)"
 </div>
 
 <h2>Disabling Email Logging</h2>

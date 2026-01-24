@@ -40,7 +40,8 @@ const SecurityConfig = {
         EMAIL_REGEX: /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
 
         // Strict URL validation (HTTP/HTTPS only, no javascript:, data:, file: protocols)
-        URL_REGEX: /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/,
+        // Allows any subdomain (not just www), validates domain characters properly
+        URL_REGEX: /^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)?$/,
 
         // Allowed URL protocols
         ALLOWED_PROTOCOLS: ['http:', 'https:'],
@@ -127,15 +128,20 @@ const SecurityConfig = {
     }
 };
 
-// Freeze the configuration to prevent modifications
-Object.freeze(SecurityConfig);
-Object.freeze(SecurityConfig.RATE_LIMIT);
-Object.freeze(SecurityConfig.AUDIO);
-Object.freeze(SecurityConfig.VALIDATION);
-Object.freeze(SecurityConfig.DOM_PURIFY);
-Object.freeze(SecurityConfig.CSP);
-Object.freeze(SecurityConfig.ERRORS);
-Object.freeze(SecurityConfig.SUCCESS);
+// Deep freeze helper to freeze nested arrays and objects
+function deepFreeze(obj) {
+    Object.freeze(obj);
+    Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+            deepFreeze(value);
+        }
+    });
+    return obj;
+}
+
+// Freeze the entire configuration deeply to prevent any modifications
+deepFreeze(SecurityConfig);
 
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {

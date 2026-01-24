@@ -270,13 +270,16 @@ function getApprovedTestimonials() {
     // Filter to only approved testimonials (column 1 = TRUE) and format for website
     const approvedTestimonials = data
       .filter(row => row[0] === true)
-      .map(row => ({
-        name: row[2] || 'Anonymous',           // Name
-        business: row[3] || '',                 // Business
-        location: row[4] || '',                 // Location
-        rating: parseInt(row[5]) || 5,          // Rating (default 5)
-        testimonial: row[6] || ''               // Testimonial text
-      }))
+      .map(row => {
+        const ratingValue = Number(row[5]);
+        return {
+          name: row[2] || 'Anonymous',           // Name
+          business: row[3] || '',                 // Business
+          location: row[4] || '',                 // Location
+          rating: (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) ? ratingValue : 5,
+          testimonial: row[6] || ''               // Testimonial text
+        };
+      })
       .filter(t => t.testimonial.trim() !== ''); // Only include non-empty testimonials
 
     return ContentService
@@ -391,13 +394,14 @@ function handleTestimonialSubmission(data) {
     }
 
     // Sanitize inputs
+    const ratingValue = Number(data.rating);
     const sanitizedData = {
       showOnWebsite: false,  // Always unchecked - needs manual approval
       submitted: new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }),
       name: escapeHtml(name.substring(0, 100)),
       business: escapeHtml((data.business || '').trim().substring(0, 150)),
       location: escapeHtml((data.location || '').trim().substring(0, 100)),
-      rating: Math.min(5, Math.max(1, parseInt(data.rating) || 5)),
+      rating: (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) ? Math.floor(ratingValue) : 5,
       testimonial: escapeHtml(testimonial.substring(0, 1000)),
       jobNumber: jobNumber.substring(0, 50),
       email: email.substring(0, 254)
@@ -4448,11 +4452,19 @@ function scanSentEmailsForJobs() {
         // Only process messages after last scan time
         if (date < lastScanTime) continue;
 
-        // Extract job number from subject using pattern (J-XXX)
-        const jobMatch = subject.match(/\(J-(\d+)\)/i);
-        if (!jobMatch) continue;
+        // Extract job number from subject using pattern (J-WORD-XXX) or legacy (J-XXX)
+        // New format: J-MAPLE-001, Legacy format: J-123
+        const newFormatMatch = subject.match(/\((J-[A-Z]{3,6}-\d{3})\)/i);
+        const legacyFormatMatch = subject.match(/\(J-(\d+)\)/i);
 
-        const jobNumber = 'J-' + jobMatch[1];
+        let jobNumber;
+        if (newFormatMatch) {
+          jobNumber = newFormatMatch[1].toUpperCase();
+        } else if (legacyFormatMatch) {
+          jobNumber = 'J-' + legacyFormatMatch[1];
+        } else {
+          continue;
+        }
         const toRecipients = message.getTo();
         const snippet = message.getPlainBody().substring(0, 200) + '...';
 
@@ -4596,7 +4608,7 @@ function viewJobActivityLog() {
   // Prompt for job number
   const response = ui.prompt(
     'View Activity Log',
-    'Enter the job number (e.g., J-001):',
+    'Enter the job number (e.g., J-MAPLE-001):',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -4678,7 +4690,7 @@ function addManualActivityNote() {
   // Get job number
   const jobResponse = ui.prompt(
     'Add Activity Note',
-    'Enter the job number (e.g., J-001):',
+    'Enter the job number (e.g., J-MAPLE-001):',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -5082,14 +5094,23 @@ function getJobsByStatusFallback(statusFilter = []) {
   const headers = data[0];
   const jobs = [];
 
+  // Find column indices - require them to exist
+  const statusColIdx = headers.indexOf('Status');
+  const clientNameColIdx = headers.indexOf('Client Name');
+  const storeUrlColIdx = headers.indexOf('Store URL');
+
+  if (statusColIdx === -1) {
+    Logger.log('Warning: Status column not found in Jobs sheet');
+  }
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const jobNum = row[0];
-    const status = row[headers.indexOf('Status')] || row[8];
+    const status = statusColIdx >= 0 ? row[statusColIdx] : '';
 
     if (jobNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
-      const clientName = row[headers.indexOf('Client Name')] || row[3];
-      const storeUrl = row[headers.indexOf('Store URL')] || row[5];
+      const clientName = clientNameColIdx >= 0 ? row[clientNameColIdx] : '';
+      const storeUrl = storeUrlColIdx >= 0 ? row[storeUrlColIdx] : '';
 
       jobs.push({
         number: jobNum,
@@ -5199,15 +5220,25 @@ function getInvoicesByStatusFallback(statusFilter = []) {
   const headers = data[0];
   const invoices = [];
 
+  // Find column indices - require them to exist
+  const statusColIdx = headers.indexOf('Status');
+  const jobNumColIdx = headers.indexOf('Job Number');
+  const clientNameColIdx = headers.indexOf('Client Name');
+  const totalColIdx = headers.indexOf('Total');
+
+  if (statusColIdx === -1) {
+    Logger.log('Warning: Status column not found in Invoices sheet');
+  }
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const invoiceNum = row[0];
-    const status = row[headers.indexOf('Status')] || row[10];
+    const status = statusColIdx >= 0 ? row[statusColIdx] : '';
 
     if (invoiceNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
-      const jobNum = row[1];
-      const clientName = row[2];
-      const total = row[9];
+      const jobNum = jobNumColIdx >= 0 ? row[jobNumColIdx] : row[1];
+      const clientName = clientNameColIdx >= 0 ? row[clientNameColIdx] : row[2];
+      const total = totalColIdx >= 0 ? row[totalColIdx] : 0;
 
       invoices.push({
         number: invoiceNum,
@@ -7617,11 +7648,23 @@ function sendInvoiceEmail(invoiceNumber) {
   const total = invoice['Total'];
   const dueDate = invoice['Due Date'];
 
+  // Validate required fields
+  if (!clientEmail) {
+    ui.alert('Missing Email', 'No email address found for this invoice. Please update the client email first.', ui.ButtonSet.OK);
+    return;
+  }
+
+  if (!clientName) {
+    ui.alert('Missing Client Name', 'No client name found for this invoice. Please update the client name first.', ui.ButtonSet.OK);
+    return;
+  }
+
   const subject = 'Invoice ' + invoiceNumber + ' from CartCure';
 
-  // Build pricing section
+  // Build pricing section - validate GST is a number
+  const gstValue = parseFloat(gst);
   let pricingHtml = '';
-  if (isGSTRegistered && parseFloat(gst) > 0) {
+  if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingHtml = `
       <p><strong>Amount (excl GST):</strong> $${amount}</p>
       <p><strong>GST (15%):</strong> $${gst}</p>
@@ -8118,12 +8161,227 @@ function showPaymentMethodDialog(invoiceNumber) {
 }
 
 /**
+ * Send payment receipt email to client
+ * Includes receipt details and a link to leave a review/testimonial
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} method - Payment method used
+ * @param {string} reference - Payment reference (optional)
+ */
+function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    Logger.log('Cannot send receipt - invoice not found: ' + invoiceNumber);
+    return false;
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const clientEmail = invoice['Client Email'];
+  const jobNumber = invoice['Job #'];
+  const amount = invoice['Amount (excl GST)'];
+  const gst = invoice['GST'];
+  const total = invoice['Total'];
+  const paidDate = formatNZDate(new Date());
+
+  if (!clientEmail) {
+    Logger.log('Cannot send receipt - no email address for invoice: ' + invoiceNumber);
+    return false;
+  }
+
+  const subject = 'Payment Receipt - ' + invoiceNumber + ' from CartCure';
+
+  // Paperlike theme colors (matching other emails)
+  const colors = {
+    brandGreen: '#2d5d3f',
+    brandGreenLight: '#3a7a52',
+    paperWhite: '#f9f7f3',
+    paperCream: '#faf8f4',
+    paperBorder: '#d4cfc3',
+    inkBlack: '#2b2b2b',
+    inkGray: '#5a5a5a',
+    inkLight: '#8a8a8a'
+  };
+
+  // Build pricing section - validate GST is a number
+  const gstValue = parseFloat(gst);
+  let pricingHtml = '';
+  if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
+    pricingHtml = `
+      <tr>
+        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Amount (excl GST)</td>
+        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${amount}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">GST (15%)</td>
+        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${gst}</td>
+      </tr>
+      <tr style="border-top: 2px solid ${colors.paperBorder};">
+        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total Paid</td>
+        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${total}</td>
+      </tr>
+    `;
+  } else {
+    pricingHtml = `
+      <tr>
+        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total Paid</td>
+        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${total}</td>
+      </tr>
+    `;
+  }
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: ${colors.paperWhite}; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+              <!-- Header -->
+              <tr>
+                <td style="padding: 30px 40px; background-color: ${colors.brandGreen}; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
+                    PAYMENT RECEIPT
+                  </h1>
+                  <p style="margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                    ${invoiceNumber}
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px;">
+                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
+                    Hi ${clientName},
+                  </p>
+                  <p style="margin: 0 0 25px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
+                    Thank you for your payment! This email confirms that we've received your payment for the completed work.
+                  </p>
+
+                  <!-- Receipt Details Box -->
+                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px; margin: 25px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Job Reference</td>
+                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">${jobNumber}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Invoice Number</td>
+                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoiceNumber}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Payment Date</td>
+                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${paidDate}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Payment Method</td>
+                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${method}</td>
+                      </tr>
+                      ${reference ? `
+                      <tr>
+                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Reference</td>
+                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${reference}</td>
+                      </tr>
+                      ` : ''}
+                      <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 1px solid ${colors.paperBorder};"></td></tr>
+                      ${pricingHtml}
+                    </table>
+                  </div>
+
+                  <p style="margin: 25px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
+                    Thank you for choosing CartCure for your Shopify store needs. We truly appreciate your business!
+                  </p>
+
+                  <!-- Review Request Section -->
+                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px; margin: 30px 0; text-align: center;">
+                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-size: 18px; font-weight: bold;">
+                      How was your experience?
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
+                      We'd love to hear your feedback! Your review helps us improve<br>and helps other store owners find us.
+                    </p>
+                    <a href="https://cartcure.co.nz/feedback.html?job=${encodeURIComponent(jobNumber)}"
+                       style="display: inline-block; background-color: ${colors.brandGreen}; color: #ffffff; padding: 14px 35px; text-decoration: none; font-size: 15px; font-weight: bold; border: 2px solid ${colors.inkBlack};">
+                      Leave a Review
+                    </a>
+                  </div>
+
+                  <p style="margin: 20px 0 0 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
+                    If you have any questions, just reply to this email.
+                  </p>
+                  <p style="margin: 20px 0 0 0; color: ${colors.inkBlack}; font-size: 16px;">
+                    Thanks again!<br>
+                    <strong>The CartCure Team</strong>
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder}; text-align: center;">
+                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px;">
+                    ${businessName} | Quick Shopify Fixes for NZ Businesses<br>
+                    ${isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : ''}
+                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen};">cartcure.co.nz</a>
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Payment receipt sent: ' + formatCurrency(total),
+      'To: ' + clientEmail,
+      'Auto'
+    );
+
+    Logger.log('Payment receipt sent to ' + clientEmail + ' for invoice ' + invoiceNumber);
+    return true;
+  } catch (error) {
+    Logger.log('Error sending payment receipt: ' + error.message);
+    return false;
+  }
+}
+
+/**
  * Mark an invoice as paid
  */
 /**
  * Mark invoice as paid - PERFORMANCE OPTIMIZED
  * OLD: 3 invoice updates + 4 job updates = 7 sheet loads
  * NEW: 1 batch invoice update + 1 batch job update = 2 sheet loads (71% reduction)
+ * Also sends payment receipt email to client
  */
 function markInvoicePaid(invoiceNumber, method, reference) {
   const ui = SpreadsheetApp.getUi();
@@ -8152,10 +8410,14 @@ function markInvoicePaid(invoiceNumber, method, reference) {
     'Payment Reference': reference
   });
 
+  // Send payment receipt email to client
+  const receiptSent = sendPaymentReceiptEmail(invoiceNumber, method, reference);
+
   ui.alert('Payment Recorded',
     'Invoice ' + invoiceNumber + ' marked as Paid!\n\n' +
     'Method: ' + method + '\n' +
-    (reference ? 'Reference: ' + reference : ''),
+    (reference ? 'Reference: ' + reference + '\n' : '') +
+    (receiptSent ? '\nPayment receipt sent to client.' : '\nNote: Could not send receipt email.'),
     ui.ButtonSet.OK
   );
 

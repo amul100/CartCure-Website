@@ -15,6 +15,21 @@
     'use strict';
 
     // ========================================================================
+    // DEPENDENCY VALIDATION
+    // ========================================================================
+
+    // Verify required libraries are loaded
+    if (typeof SecurityConfig === 'undefined') {
+        console.error('CartCure Error: SecurityConfig not loaded. Check that security-config.js is included before script.js');
+        return;
+    }
+
+    if (typeof DOMPurify === 'undefined') {
+        console.error('CartCure Error: DOMPurify not loaded. Check CDN connection or include DOMPurify library.');
+        return;
+    }
+
+    // ========================================================================
     // PRIVATE VARIABLES
     // ========================================================================
 
@@ -64,41 +79,53 @@
      * Check if user has exceeded rate limit
      */
     function checkRateLimit() {
-        const submissions = JSON.parse(
-            localStorage.getItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY) || '[]'
-        );
+        try {
+            const submissions = JSON.parse(
+                localStorage.getItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY) || '[]'
+            );
 
-        const now = Date.now();
-        const recentSubmissions = submissions.filter(
-            timestamp => (now - timestamp) < SecurityConfig.RATE_LIMIT.WINDOW_MS
-        );
+            const now = Date.now();
+            const recentSubmissions = submissions.filter(
+                timestamp => (now - timestamp) < SecurityConfig.RATE_LIMIT.WINDOW_MS
+            );
 
-        if (recentSubmissions.length >= SecurityConfig.RATE_LIMIT.MAX_SUBMISSIONS_PER_HOUR) {
-            return false; // Rate limit exceeded
+            if (recentSubmissions.length >= SecurityConfig.RATE_LIMIT.MAX_SUBMISSIONS_PER_HOUR) {
+                return false; // Rate limit exceeded
+            }
+
+            return true; // OK to submit
+        } catch (e) {
+            // localStorage unavailable (private browsing) or data corrupted
+            // Allow submission but log warning
+            console.warn('Rate limit check failed, allowing submission:', e.message);
+            return true;
         }
-
-        return true; // OK to submit
     }
 
     /**
      * Record a new submission for rate limiting
      */
     function recordSubmission() {
-        const submissions = JSON.parse(
-            localStorage.getItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY) || '[]'
-        );
+        try {
+            const submissions = JSON.parse(
+                localStorage.getItem(SecurityConfig.RATE_LIMIT.TRACKING_KEY) || '[]'
+            );
 
-        const now = Date.now();
-        const recentSubmissions = submissions.filter(
-            timestamp => (now - timestamp) < SecurityConfig.RATE_LIMIT.WINDOW_MS
-        );
+            const now = Date.now();
+            const recentSubmissions = submissions.filter(
+                timestamp => (now - timestamp) < SecurityConfig.RATE_LIMIT.WINDOW_MS
+            );
 
-        recentSubmissions.push(now);
+            recentSubmissions.push(now);
 
-        localStorage.setItem(
-            SecurityConfig.RATE_LIMIT.TRACKING_KEY,
-            JSON.stringify(recentSubmissions)
-        );
+            localStorage.setItem(
+                SecurityConfig.RATE_LIMIT.TRACKING_KEY,
+                JSON.stringify(recentSubmissions)
+            );
+        } catch (e) {
+            // localStorage unavailable (private browsing) or quota exceeded
+            console.warn('Could not record submission for rate limiting:', e.message);
+        }
     }
 
     // ========================================================================
@@ -166,6 +193,10 @@
      * Validate audio MIME type
      */
     function validateAudioType(blob) {
+        // Check if blob.type exists and is a string
+        if (!blob.type || typeof blob.type !== 'string') {
+            return false;
+        }
         return SecurityConfig.AUDIO.ALLOWED_MIME_TYPES.some(type =>
             blob.type.startsWith(type.split(';')[0])
         );
@@ -178,33 +209,37 @@
     /**
      * Mobile menu toggle
      */
-    elements.menuToggle.addEventListener('click', () => {
-        elements.navLinks.classList.toggle('active');
-        const spans = elements.menuToggle.querySelectorAll('span');
+    if (elements.menuToggle && elements.navLinks) {
+        elements.menuToggle.addEventListener('click', () => {
+            elements.navLinks.classList.toggle('active');
+            const spans = elements.menuToggle.querySelectorAll('span');
 
-        if (elements.navLinks.classList.contains('active')) {
-            spans[0].style.transform = 'rotate(45deg) translateY(8px)';
-            spans[1].style.opacity = '0';
-            spans[2].style.transform = 'rotate(-45deg) translateY(-8px)';
-        } else {
-            spans[0].style.transform = '';
-            spans[1].style.opacity = '1';
-            spans[2].style.transform = '';
-        }
-    });
+            if (elements.navLinks.classList.contains('active')) {
+                spans[0].style.transform = 'rotate(45deg) translateY(8px)';
+                spans[1].style.opacity = '0';
+                spans[2].style.transform = 'rotate(-45deg) translateY(-8px)';
+            } else {
+                spans[0].style.transform = '';
+                spans[1].style.opacity = '1';
+                spans[2].style.transform = '';
+            }
+        });
+    }
 
     /**
      * Close mobile menu on link click
      */
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', () => {
-            elements.navLinks.classList.remove('active');
-            const spans = elements.menuToggle.querySelectorAll('span');
-            spans[0].style.transform = '';
-            spans[1].style.opacity = '1';
-            spans[2].style.transform = '';
+    if (elements.navLinks && elements.menuToggle) {
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                elements.navLinks.classList.remove('active');
+                const spans = elements.menuToggle.querySelectorAll('span');
+                spans[0].style.transform = '';
+                spans[1].style.opacity = '1';
+                spans[2].style.transform = '';
+            });
         });
-    });
+    }
 
     /**
      * Header scroll effect
@@ -222,6 +257,7 @@
      */
     function scrollToServices() {
         const servicesSection = document.getElementById('services');
+        if (!servicesSection) return;
         const headerOffset = 90;
         const elementPosition = servicesSection.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
@@ -241,13 +277,15 @@
     /**
      * Start/stop voice recording
      */
-    elements.voiceButton.addEventListener('click', async () => {
-        if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-            await startRecording();
-        } else {
-            stopRecording();
-        }
-    });
+    if (elements.voiceButton) {
+        elements.voiceButton.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+    }
 
     /**
      * Start audio recording
@@ -319,6 +357,18 @@
             }, 1000);
 
         } catch (error) {
+            // Clean up any partial recording state on error
+            clearInterval(recordingInterval);
+            mediaRecorder = null;
+            audioChunks = [];
+            recordingSeconds = 0;
+            if (elements.voiceButton) {
+                elements.voiceButton.classList.remove('recording');
+                elements.voiceButton.textContent = '🎤 Record Voice Note';
+            }
+            if (elements.recordingTimer) {
+                elements.recordingTimer.textContent = '';
+            }
             handleError('Microphone access denied. Please check browser permissions.', error);
         }
     }
@@ -329,10 +379,14 @@
     function stopRecording() {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
-            elements.voiceButton.classList.remove('recording');
-            elements.voiceButton.textContent = '🎤 Record Voice Note';
+            if (elements.voiceButton) {
+                elements.voiceButton.classList.remove('recording');
+                elements.voiceButton.textContent = '🎤 Record Voice Note';
+            }
             clearInterval(recordingInterval);
-            elements.recordingTimer.textContent = '';
+            if (elements.recordingTimer) {
+                elements.recordingTimer.textContent = '';
+            }
         }
     }
 
@@ -351,11 +405,13 @@
     /**
      * Delete recorded audio
      */
-    elements.deleteAudio.addEventListener('click', () => {
-        elements.audioPreview.classList.remove('active');
-        elements.audioPlayer.src = '';
-        cleanupRecording();
-    });
+    if (elements.deleteAudio) {
+        elements.deleteAudio.addEventListener('click', () => {
+            if (elements.audioPreview) elements.audioPreview.classList.remove('active');
+            if (elements.audioPlayer) elements.audioPlayer.src = '';
+            cleanupRecording();
+        });
+    }
 
     // ========================================================================
     // FORM SUBMISSION
@@ -366,6 +422,15 @@
      */
     async function handleSubmit(e) {
         e.preventDefault();
+
+        // Get button reference early and disable immediately to prevent double-submit
+        const button = e.target.querySelector('.submit-button');
+        if (!button) return;
+
+        // Check if already submitting
+        if (button.disabled) return;
+
+        const originalText = button.textContent;
 
         // Check HTML5 validation
         if (!e.target.checkValidity()) {
@@ -437,9 +502,7 @@
             return;
         }
 
-        const button = e.target.querySelector('.submit-button');
-        const originalText = button.textContent;
-
+        // Disable button and show sending state
         button.textContent = 'Sending...';
         button.disabled = true;
         button.style.opacity = '0.7';
@@ -685,21 +748,30 @@
         const testimonialGrid = document.getElementById('testimonialGrid');
         if (!testimonialGrid) return;
 
-        // Fetch testimonials from API
-        fetch(SCRIPT_URL + '?action=getTestimonials')
+        // Fetch testimonials from API with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+        fetch(SCRIPT_URL + '?action=getTestimonials', { signal: controller.signal })
             .then(response => response.json())
             .then(data => {
+                clearTimeout(timeoutId);
                 if (data.success && data.testimonials && data.testimonials.length > 0) {
                     renderTestimonials(data.testimonials);
                 } else {
-                    // Show fallback testimonials if none approved yet
-                    renderFallbackTestimonials();
+                    // Show "Coming Soon" message if no testimonials approved yet
+                    renderComingSoon();
                 }
             })
             .catch(error => {
-                console.error('Error loading testimonials:', error);
-                // Show fallback testimonials on error
-                renderFallbackTestimonials();
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    console.warn('Testimonials fetch timed out, showing coming soon');
+                } else {
+                    console.error('Error loading testimonials:', error);
+                }
+                // Show "Coming Soon" on error (better than fake testimonials)
+                renderComingSoon();
             });
     }
 
@@ -752,33 +824,31 @@
     }
 
     /**
-     * Render fallback testimonials when API fails or no approved testimonials
+     * Render "Coming Soon" message when no approved testimonials exist
      */
-    function renderFallbackTestimonials() {
-        const fallbackTestimonials = [
-            {
-                name: 'Sarah Mitchell',
-                business: 'Fashion Boutique Owner',
-                location: 'Auckland',
-                rating: 5,
-                testimonial: 'I needed my product images resized urgently before a big sale. CartCure had it done in 2 days and it looks professional. So much easier than trying to figure it out myself!'
-            },
-            {
-                name: 'James Chen',
-                business: 'Electronics Store',
-                location: 'Wellington',
-                rating: 5,
-                testimonial: 'Quick turnaround on fixing broken links and updating our contact form. Great communication throughout and the price was exactly as quoted. Highly recommend!'
-            },
-            {
-                name: 'Lisa Thompson',
-                business: 'Home Decor Shop',
-                location: 'Christchurch',
-                rating: 5,
-                testimonial: 'Added automated email confirmations for my customers in just 3 days. The voice note option made it so easy to explain what I needed. Will definitely use again!'
-            }
-        ];
-        renderTestimonials(fallbackTestimonials);
+    function renderComingSoon() {
+        const testimonialGrid = document.getElementById('testimonialGrid');
+        if (!testimonialGrid) return;
+
+        testimonialGrid.innerHTML = `
+            <div class="testimonials-coming-soon">
+                <div class="coming-soon-icon">💬</div>
+                <h3>Testimonials Coming Soon</h3>
+                <p>We're just getting started! Check back soon to see what our clients have to say about their experience with CartCure.</p>
+            </div>
+        `;
+
+        // Animate in
+        const comingSoon = testimonialGrid.querySelector('.testimonials-coming-soon');
+        if (comingSoon) {
+            comingSoon.style.opacity = '0';
+            comingSoon.style.transform = 'translateY(20px)';
+            comingSoon.style.transition = 'all 0.5s ease';
+            setTimeout(() => {
+                comingSoon.style.opacity = '1';
+                comingSoon.style.transform = 'translateY(0)';
+            }, 50);
+        }
     }
 
     /**
