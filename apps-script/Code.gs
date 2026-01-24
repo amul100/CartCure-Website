@@ -5546,12 +5546,13 @@ function createJobFromSubmission(submissionNumber) {
 
   const submissionsData = submissionsSheet.getDataRange().getValues();
   const headers = submissionsData[0];
+  const submissionNumCol = headers.indexOf('Submission #');
 
   let submissionRow = null;
   let submissionRowIndex = -1;
 
   for (let i = 1; i < submissionsData.length; i++) {
-    if (submissionsData[i][0] === submissionNumber) {
+    if (submissionsData[i][submissionNumCol] === submissionNumber) {
       submissionRow = submissionsData[i];
       submissionRowIndex = i + 1; // 1-indexed for sheet operations
       break;
