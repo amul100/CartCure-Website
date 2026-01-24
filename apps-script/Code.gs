@@ -5901,9 +5901,6 @@ function markQuoteAccepted(jobNumber) {
     'Due Date': formatNZDate(dueDate)
   });
 
-  // Update submission status
-  updateSubmissionStatus(job['Submission #'], 'Accepted');
-
   ui.alert('Quote Accepted',
     'Job ' + jobNumber + ' marked as Accepted!\n\n' +
     'SLA Clock Started:\n' +
@@ -6014,9 +6011,6 @@ function startWorkOnJob(jobNumber) {
     daysOnHold: daysOnHold
   });
 
-  // Update submission status
-  updateSubmissionStatus(job['Submission #'], 'In Progress');
-
   ui.alert('Work Started', 'Job ' + jobNumber + ' is now In Progress.\n\nClient has been notified.', ui.ButtonSet.OK);
 
   Logger.log('Work started on ' + jobNumber);
@@ -6074,9 +6068,6 @@ function markJobComplete(jobNumber) {
 
   // Send email notification
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.COMPLETED);
-
-  // Update submission status
-  updateSubmissionStatus(job['Submission #'], 'Completed');
 
   const generateInvoice = ui.alert(
     'Job Complete',
