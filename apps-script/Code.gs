@@ -7690,7 +7690,7 @@ function sendInvoiceEmail(invoiceNumber) {
       jobNumber,
       'Email Sent',
       subject,
-      'Invoice sent: ' + formatCurrency(totalAmount),
+      'Invoice sent: ' + formatCurrency(total),
       'To: ' + clientEmail,
       'Auto'
     );
