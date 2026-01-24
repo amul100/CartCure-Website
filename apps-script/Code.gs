@@ -2402,15 +2402,16 @@ function setupSheets(clearData) {
       SHEETS.SETTINGS
     ];
 
-    for (let i = 0; i < sheetOrder.length; i++) {
+    // Move sheets in reverse order to position 1, so they stack correctly
+    for (let i = sheetOrder.length - 1; i >= 0; i--) {
       const sheetName = sheetOrder[i];
       const sheet = ss.getSheetByName(sheetName);
       if (sheet) {
-        logDebug('  Moving ' + sheetName + ' to position ' + (i + 1) + '...');
+        logDebug('  Moving ' + sheetName + ' to position 1...');
         ss.setActiveSheet(sheet);
-        ss.moveActiveSheet(i + 1);
+        ss.moveActiveSheet(1);
         SpreadsheetApp.flush();
-        logDebug('  ' + sheetName + ' moved to position ' + (i + 1));
+        logDebug('  ' + sheetName + ' moved to position 1');
       } else {
         logDebug('  WARNING: ' + sheetName + ' sheet not found, skipping');
       }
