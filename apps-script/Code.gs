@@ -4453,14 +4453,10 @@ function setupTestimonialsSheet(ss, clearData) {
  * @param {number} row - The row number to apply validation to
  */
 function applyTestimonialRowValidation(sheet, row) {
-  // Add checkbox validation for "Show on Website" column (column 1)
+  // Add checkbox for "Show on Website" column (column 1)
+  // Using insertCheckboxes() which is the proper way to create a checkbox
   const checkboxCell = sheet.getRange(row, 1);
-  const checkboxRule = SpreadsheetApp.newDataValidation()
-    .requireCheckbox()
-    .build();
-  checkboxCell.setDataValidation(checkboxRule);
-  // Set the value to false (unchecked) - this ensures it displays as a checkbox, not text
-  checkboxCell.setValue(false);
+  checkboxCell.insertCheckboxes();
 
   // Add rating validation (1-5) for column 6
   const ratingRule = SpreadsheetApp.newDataValidation()
