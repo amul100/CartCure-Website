@@ -6485,7 +6485,6 @@ function sendQuoteEmail(jobNumber) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
-      cc: 'info@cartcure.co.nz',
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       body: plainBody,
@@ -6510,7 +6509,7 @@ function sendQuoteEmail(jobNumber) {
     updateJobField(jobNumber, 'Quote Valid Until', formatNZDate(validUntil));
 
     ui.alert('Quote Sent',
-      'Quote sent successfully to ' + clientEmail + ' (CC: info@cartcure.co.nz)!\n\n' +
+      'Quote sent successfully to ' + clientEmail + '!\n\n' +
       'Amount: ' + formatCurrency(totalAmount) + (isGSTRegistered ? ' (incl GST)' : '') + '\n' +
       'Valid until: ' + formatNZDate(validUntil),
       ui.ButtonSet.OK
@@ -7067,7 +7066,6 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
   // Get settings
   const businessName = getSetting('Business Name') || 'CartCure';
   const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
-  const ccEmail = 'info@cartcure.co.nz';
 
   // Build email data
   const emailData = {
@@ -7089,7 +7087,6 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
-      cc: ccEmail,
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       body: plainBody,
@@ -7108,7 +7105,7 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
       'Auto'
     );
 
-    Logger.log('Status update email sent for ' + jobNumber + ' (status: ' + newStatus + ') to ' + clientEmail + ' (CC: ' + ccEmail + ')');
+    Logger.log('Status update email sent for ' + jobNumber + ' (status: ' + newStatus + ') to ' + clientEmail);
     return true;
 
   } catch (error) {
@@ -7689,7 +7686,6 @@ function sendInvoiceEmail(invoiceNumber) {
   try {
     MailApp.sendEmail({
       to: clientEmail,
-      cc: 'info@cartcure.co.nz',
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       htmlBody: htmlBody,
@@ -7716,7 +7712,7 @@ function sendInvoiceEmail(invoiceNumber) {
     // Update job payment status
     updateJobField(jobNumber, 'Payment Status', PAYMENT_STATUS.INVOICED);
 
-    ui.alert('Invoice Sent', 'Invoice sent to ' + clientEmail + ' (CC: info@cartcure.co.nz)', ui.ButtonSet.OK);
+    ui.alert('Invoice Sent', 'Invoice sent to ' + clientEmail, ui.ButtonSet.OK);
     Logger.log('Invoice ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
     Logger.log('Error sending invoice: ' + error.message);
