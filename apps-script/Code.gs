@@ -53,6 +53,7 @@ const CONFIG = {
   MAX_AUDIO_SIZE_MB: 10,
 
   // Rate limiting
+  RATE_LIMIT_ENABLED: false, // Set to true to enable rate limiting in production
   MAX_SUBMISSIONS_PER_HOUR: 5,
   RATE_LIMIT_WINDOW_MS: 3600000, // 1 hour
 
@@ -154,11 +155,12 @@ function doPost(e) {
     // - Cleans up old timestamps (>1 hour) on each check
     // - Returns 429-style error if limit exceeded
     //
-    // TO DISABLE FOR TESTING: Comment out the checkServerRateLimit() call below
+    // TO DISABLE: Set CONFIG.RATE_LIMIT_ENABLED = false
     // =========================================================================
     const emailForRateLimit = (data.email || '').trim().toLowerCase();
-    // TEMPORARILY DISABLED FOR TESTING
-    // checkServerRateLimit(emailForRateLimit);
+    if (CONFIG.RATE_LIMIT_ENABLED) {
+      checkServerRateLimit(emailForRateLimit);
+    }
 
     // Input validation and sanitization
     const sanitizedData = validateAndSanitizeInput(data);
@@ -176,8 +178,9 @@ function doPost(e) {
     sendUserConfirmationEmail(sanitizedData);
 
     // Record successful submission for rate limiting
-    // TEMPORARILY DISABLED FOR TESTING
-    // recordServerSubmission(emailForRateLimit);
+    if (CONFIG.RATE_LIMIT_ENABLED) {
+      recordServerSubmission(emailForRateLimit);
+    }
 
     // Return success response
     return ContentService

@@ -44,7 +44,7 @@
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
 
     // Production mode flag (set to true for production)
-    const IS_PRODUCTION = true;
+    const IS_PRODUCTION = false; // TEMPORARILY DISABLED FOR DEBUGGING
 
     // Human-readable word list for submission numbers (easy to remember, say, and type)
     const SUBMISSION_WORDS = [
