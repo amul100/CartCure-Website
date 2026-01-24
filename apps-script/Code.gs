@@ -494,8 +494,34 @@ function handleTestimonialSubmission(data) {
 
     // Create Testimonials sheet if it doesn't exist
     if (!testimonialsSheet) {
+      if (!IS_PRODUCTION) {
+        const debugFolder = getOrCreateDebugFolder();
+        debugFolder.createFile('TESTIMONIAL_SHEET_CREATE_' + new Date().getTime() + '.txt', 'Creating testimonials sheet...');
+      }
       setupTestimonialsSheet(ss, false);
       testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+    }
+
+    // Debug: Log what we're about to append
+    if (!IS_PRODUCTION) {
+      const debugFolder = getOrCreateDebugFolder();
+      const appendDebug = [
+        '=== Testimonial Append Debug ===',
+        'Timestamp: ' + new Date().toISOString(),
+        'Sheet exists: ' + (testimonialsSheet !== null),
+        'Sheet name: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL'),
+        'Data to append:',
+        '  showOnWebsite: ' + sanitizedData.showOnWebsite,
+        '  submitted: ' + sanitizedData.submitted,
+        '  name: ' + sanitizedData.name,
+        '  business: ' + sanitizedData.business,
+        '  location: ' + sanitizedData.location,
+        '  rating: ' + sanitizedData.rating,
+        '  testimonial: ' + sanitizedData.testimonial.substring(0, 50) + '...',
+        '  jobNumber: ' + sanitizedData.jobNumber,
+        '  email: ' + sanitizedData.email
+      ];
+      debugFolder.createFile('TESTIMONIAL_APPEND_' + new Date().getTime() + '.txt', appendDebug.join('\n'));
     }
 
     // Append the testimonial
@@ -510,6 +536,12 @@ function handleTestimonialSubmission(data) {
       sanitizedData.jobNumber,
       sanitizedData.email
     ]);
+
+    // Debug: Confirm append completed
+    if (!IS_PRODUCTION) {
+      const debugFolder = getOrCreateDebugFolder();
+      debugFolder.createFile('TESTIMONIAL_APPENDED_' + new Date().getTime() + '.txt', 'Row appended successfully. Last row: ' + testimonialsSheet.getLastRow());
+    }
 
     // Send notification email to admin
     if (CONFIG.ADMIN_EMAIL) {
