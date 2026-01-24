@@ -2387,39 +2387,33 @@ function setupSheets(clearData) {
 
     logAllSheets('AFTER temp sheet deletion');
 
-    // Step 5: Now move Dashboard and Analytics to correct positions
+    // Step 5: Move all sheets to correct positions
+    // Desired order: Dashboard, Submissions, Jobs, Invoice Log, Testimonials, Analytics, Activity Log, Settings
     logDebug('Step 5: Moving sheets to correct positions...');
 
-    logDebug('  5a: Moving Dashboard to position 1...');
-    dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
-    logDebug('    Re-fetched Dashboard: ' + (dashboardSheet ? 'ID ' + dashboardSheet.getSheetId() + ', Index ' + dashboardSheet.getIndex() : 'null'));
-    if (dashboardSheet) {
-      logDebug('    setActiveSheet(Dashboard)...');
-      ss.setActiveSheet(dashboardSheet);
-      logDebug('    moveActiveSheet(1)...');
-      ss.moveActiveSheet(1);
-      logDebug('    flush()...');
-      SpreadsheetApp.flush();
-      logDebug('  5a COMPLETE: Dashboard moved');
-    } else {
-      logDebug('  5a ERROR: Dashboard sheet is null!');
-    }
+    const sheetOrder = [
+      SHEETS.DASHBOARD,
+      SHEETS.SUBMISSIONS,
+      SHEETS.JOBS,
+      SHEETS.INVOICES,
+      SHEETS.TESTIMONIALS,
+      SHEETS.ANALYTICS,
+      SHEETS.ACTIVITY_LOG,
+      SHEETS.SETTINGS
+    ];
 
-    logAllSheets('AFTER Dashboard move');
-
-    logDebug('  5b: Moving Analytics to position 2...');
-    analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
-    logDebug('    Re-fetched Analytics: ' + (analyticsSheet ? 'ID ' + analyticsSheet.getSheetId() + ', Index ' + analyticsSheet.getIndex() : 'null'));
-    if (analyticsSheet) {
-      logDebug('    setActiveSheet(Analytics)...');
-      ss.setActiveSheet(analyticsSheet);
-      logDebug('    moveActiveSheet(2)...');
-      ss.moveActiveSheet(2);
-      logDebug('    flush()...');
-      SpreadsheetApp.flush();
-      logDebug('  5b COMPLETE: Analytics moved');
-    } else {
-      logDebug('  5b ERROR: Analytics sheet is null!');
+    for (let i = 0; i < sheetOrder.length; i++) {
+      const sheetName = sheetOrder[i];
+      const sheet = ss.getSheetByName(sheetName);
+      if (sheet) {
+        logDebug('  Moving ' + sheetName + ' to position ' + (i + 1) + '...');
+        ss.setActiveSheet(sheet);
+        ss.moveActiveSheet(i + 1);
+        SpreadsheetApp.flush();
+        logDebug('  ' + sheetName + ' moved to position ' + (i + 1));
+      } else {
+        logDebug('  WARNING: ' + sheetName + ' sheet not found, skipping');
+      }
     }
 
     logDebug('Step 5 COMPLETE');
