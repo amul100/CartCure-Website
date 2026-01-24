@@ -2432,7 +2432,6 @@ function setupJobsSheet(ss, clearData) {
   // Format header row with brand styling
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
-  headerRange.setWrap(true);
 
   // Apply subtle border to header
   applyBorders(headerRange, true, false);
@@ -2459,9 +2458,40 @@ function setupJobsSheet(ss, clearData) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Auto-resize all columns to fit content
+  // Set column widths based on header content (no wrap, fixed widths)
+  const jobsColumnWidths = [
+    60,   // Job #
+    90,   // Submission #
+    100,  // Created Date
+    120,  // Client Name
+    180,  // Client Email
+    150,  // Store URL
+    200,  // Job Description
+    100,  // Category
+    100,  // Status
+    130,  // Quote Amount (excl GST)
+    60,   // GST
+    100,  // Total (incl GST)
+    110,  // Quote Sent Date
+    110,  // Quote Valid Until
+    120,  // Quote Accepted Date
+    120,  // Days Since Accepted
+    100,  // Days Remaining
+    80,   // SLA Status
+    130,  // Estimated Turnaround
+    90,   // Due Date
+    110,  // Actual Start Date
+    140,  // Actual Completion Date
+    110,  // Payment Status
+    100,  // Payment Date
+    110,  // Payment Method
+    120,  // Payment Reference
+    80,   // Invoice #
+    150,  // Notes
+    110   // Last Updated
+  ];
   for (let col = 1; col <= headers.length; col++) {
-    sheet.autoResizeColumn(col);
+    sheet.setColumnWidth(col, jobsColumnWidths[col - 1] || 100);
   }
 
   // Add data validation for Category (column 8)
@@ -2706,9 +2736,25 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   sheet.setFrozenRows(1);
 
-  // Auto-resize all columns to fit content
+  // Set column widths based on header content (no wrap, fixed widths)
+  const invoiceColumnWidths = [
+    80,   // Invoice #
+    60,   // Job #
+    120,  // Client Name
+    180,  // Client Email
+    100,  // Invoice Date
+    90,   // Due Date
+    120,  // Amount (excl GST)
+    60,   // GST
+    80,   // Total
+    80,   // Status
+    90,   // Sent Date
+    90,   // Paid Date
+    130,  // Payment Reference
+    150   // Notes
+  ];
   for (let col = 1; col <= headers.length; col++) {
-    sheet.autoResizeColumn(col);
+    sheet.setColumnWidth(col, invoiceColumnWidths[col - 1] || 100);
   }
 
   // Add data validation for Status
@@ -2859,10 +2905,10 @@ function setupSettingsSheet(ss, clearData) {
   const tableRange = sheet.getRange(1, 1, defaultSettings.length, 3);
   applyBorders(tableRange, true, true);
 
-  // Auto-resize all columns to fit content
-  for (let col = 1; col <= 3; col++) {
-    sheet.autoResizeColumn(col);
-  }
+  // Set column widths (fixed widths for settings)
+  sheet.setColumnWidth(1, 180);  // Setting Name
+  sheet.setColumnWidth(2, 200);  // Value
+  sheet.setColumnWidth(3, 300);  // Description
 
   sheet.setFrozenRows(1);
 
@@ -3026,13 +3072,24 @@ function formatDashboardSheet(sheet) {
   // Add border to pending quotes table
   applyBorders(sheet.getRange(18, 9, 7, 6), true, false);
 
-  // Auto-resize all columns to fit content
-  for (let col = 1; col <= 15; col++) {
-    if (col !== 8) { // Skip spacer column
-      sheet.autoResizeColumn(col);
-    }
-  }
-  sheet.setColumnWidth(8, 15);   // Spacer column stays fixed
+  // Set fixed column widths for Dashboard
+  // Left section (columns 1-7): Metrics + New Submissions
+  sheet.setColumnWidth(1, 90);   // Submission # / OVERDUE
+  sheet.setColumnWidth(2, 80);   // Date / AT RISK
+  sheet.setColumnWidth(3, 100);  // Name / In Progress
+  sheet.setColumnWidth(4, 150);  // Email / Pending Quote
+  sheet.setColumnWidth(5, 200);  // Message / Quoted
+  sheet.setColumnWidth(6, 80);   // Unpaid $
+  sheet.setColumnWidth(7, 100);  // Revenue MTD
+  sheet.setColumnWidth(8, 15);   // Spacer column
+  // Right section (columns 9-15): Active Jobs + Pending Quotes
+  sheet.setColumnWidth(9, 60);   // Job #
+  sheet.setColumnWidth(10, 100); // Client
+  sheet.setColumnWidth(11, 150); // Description
+  sheet.setColumnWidth(12, 80);  // Amount
+  sheet.setColumnWidth(13, 70);  // Days Left / Waiting
+  sheet.setColumnWidth(14, 80);  // SLA / Valid Until
+  sheet.setColumnWidth(15, 80);  // Status / Action
 
   // Set row heights for compactness
   for (let i = 1; i <= 30; i++) {
@@ -3185,14 +3242,24 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 11, 7, 4), true, false);
 
-  // Auto-resize all columns to fit content (except spacers)
-  for (let col = 1; col <= 14; col++) {
-    if (col !== 4 && col !== 8) { // Skip spacer columns
-      sheet.autoResizeColumn(col);
-    }
-  }
+  // Set fixed column widths for Analytics
+  // Section 1-2: Key Metrics (columns 1-3)
+  sheet.setColumnWidth(1, 100);  // Metric label
+  sheet.setColumnWidth(2, 80);   // Value
+  sheet.setColumnWidth(3, 80);   // Extra
   sheet.setColumnWidth(4, 20);   // Spacer
+  // Section 3: Monthly Trends (columns 5-7)
+  sheet.setColumnWidth(5, 80);   // Month
+  sheet.setColumnWidth(6, 70);   // Jobs
+  sheet.setColumnWidth(7, 90);   // Revenue
   sheet.setColumnWidth(8, 20);   // Spacer
+  // Section 4-5: Recent Jobs & Completed (columns 9-14)
+  sheet.setColumnWidth(9, 60);   // Job #
+  sheet.setColumnWidth(10, 100); // Client
+  sheet.setColumnWidth(11, 80);  // Status/Category
+  sheet.setColumnWidth(12, 80);  // Amount/Count
+  sheet.setColumnWidth(13, 80);  // Date/Revenue
+  sheet.setColumnWidth(14, 80);  // Days
 
   // Set row heights
   for (let i = 1; i <= 45; i++) {
@@ -3633,15 +3700,23 @@ function setupSubmissionsSheet(ss) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Auto-resize all columns to fit content, except Message column
+  // Set column widths (fixed widths based on header content + padding)
+  const submissionsColumnWidths = [
+    70,   // Status
+    100,  // Submission #
+    140,  // Timestamp
+    120,  // Name
+    180,  // Email
+    150,  // Store URL
+    350,  // Message (wider, with wrap)
+    100,  // Has Voice Note
+    150   // Voice Note Link
+  ];
   for (let col = 1; col <= headers.length; col++) {
-    if (col !== 7) { // Skip Message column (now column 7)
-      sheet.autoResizeColumn(col);
-    }
+    sheet.setColumnWidth(col, submissionsColumnWidths[col - 1] || 100);
   }
 
-  // Message column (column 7): fixed width with wrap text enabled
-  sheet.setColumnWidth(7, 400);  // Message - wider to show more content
+  // Message column (column 7): enable wrap text only for this column
   const messageColumn = sheet.getRange(2, 7, 1000, 1);
   messageColumn.setWrap(true);
 
