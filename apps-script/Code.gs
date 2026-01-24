@@ -1959,7 +1959,9 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
-      .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog'))
+      .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
+      .addSeparator()
+      .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions'))
     .addToUi();
 
   // Enable auto-refresh by default if not already enabled
@@ -8037,5 +8039,133 @@ function showHardResetDialog() {
   } catch (error) {
     ui.alert('Error During Hard Reset', 'An error occurred: ' + error.toString(), ui.ButtonSet.OK);
     Logger.log('Hard Reset Error: ' + error);
+  }
+}
+
+// ============================================================================
+// TEST DATA GENERATION (For Testing Purposes Only)
+// ============================================================================
+
+/**
+ * Create 10 test submissions for testing purposes
+ * Accessible via: CartCure Menu > Setup > Create 10 Test Submissions
+ */
+function createTestSubmissions() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirm with user before creating test data
+  const response = ui.alert(
+    'Create Test Submissions',
+    'This will create 10 test submissions in the Submissions sheet.\n\nThese are for testing purposes only.\n\nContinue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+    // Create sheet if it doesn't exist
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
+      sheet.appendRow([
+        'Status',
+        'Submission #',
+        'Timestamp',
+        'Name',
+        'Email',
+        'Store URL',
+        'Message',
+        'Has Voice Note',
+        'Voice Note Link'
+      ]);
+    }
+
+    // Sample test data
+    const testNames = [
+      'Sarah Johnson', 'Mike Chen', 'Emma Wilson', 'James Brown', 'Lisa Anderson',
+      'David Lee', 'Rachel Martinez', 'Tom Williams', 'Amy Taylor', 'Chris Davis'
+    ];
+
+    const testEmails = [
+      'sarah@teststore.com', 'mike@shopexample.com', 'emma@boutique.co.nz',
+      'james@retailtest.com', 'lisa@onlinestore.net', 'david@ecommerce.co.nz',
+      'rachel@testshop.com', 'tom@samplestore.com', 'amy@demoshop.co.nz', 'chris@testretail.com'
+    ];
+
+    const testStores = [
+      'https://sarahs-boutique.myshopify.com', 'https://mikes-electronics.myshopify.com',
+      'https://emmas-fashion.myshopify.com', 'https://browns-hardware.myshopify.com',
+      'https://lisas-home-decor.myshopify.com', 'https://lees-gadgets.myshopify.com',
+      'https://rachels-jewelry.myshopify.com', 'https://toms-sports.myshopify.com',
+      'https://amys-crafts.myshopify.com', 'https://davis-outdoors.myshopify.com'
+    ];
+
+    const testMessages = [
+      'Hi, I need help with my product pages. The images are not displaying correctly on mobile devices.',
+      'Looking to add a custom size guide popup to all my clothing products. Can you help?',
+      'My checkout page is loading slowly. Would like to optimize the performance.',
+      'Need to integrate a new shipping calculator for NZ and Australia deliveries.',
+      'Want to add a wishlist feature for my customers. Please provide a quote.',
+      'Having issues with my cart not updating quantities properly. Need this fixed urgently.',
+      'Looking to redesign my homepage with a new hero banner and featured collections.',
+      'Need help setting up Google Analytics 4 tracking on my store.',
+      'Want to add a custom product bundling feature for my store.',
+      'My navigation menu is not working on tablet devices. Can you take a look?'
+    ];
+
+    const statuses = ['New', 'New', 'New', 'In Progress', 'New', 'Completed', 'New', 'New', 'In Progress', 'New'];
+
+    // Generate 10 test submissions
+    let successCount = 0;
+    for (let i = 0; i < 10; i++) {
+      // Generate submission number
+      const randomWord = SUBMISSION_WORDS[Math.floor(Math.random() * SUBMISSION_WORDS.length)];
+      const randomNum = Math.floor(100 + Math.random() * 900);
+      const submissionNumber = 'CC-' + randomWord + '-' + randomNum;
+
+      // Generate timestamp (spread over last 7 days)
+      const daysAgo = Math.floor(Math.random() * 7);
+      const hoursAgo = Math.floor(Math.random() * 24);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+      date.setHours(date.getHours() - hoursAgo);
+      const timestamp = date.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
+
+      // Find first empty row
+      const targetRow = findFirstEmptyRow(sheet);
+
+      // Create row data
+      const rowData = [
+        statuses[i],
+        submissionNumber,
+        timestamp,
+        testNames[i],
+        testEmails[i],
+        testStores[i],
+        testMessages[i],
+        'No',
+        ''
+      ];
+
+      // Write to sheet
+      sheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
+      successCount++;
+    }
+
+    ui.alert(
+      'Test Submissions Created',
+      successCount + ' test submissions have been added to the Submissions sheet.\n\nYou can now test the job management workflow with this data.',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Created ' + successCount + ' test submissions');
+
+  } catch (error) {
+    ui.alert('Error', 'Failed to create test submissions: ' + error.toString(), ui.ButtonSet.OK);
+    Logger.log('Error creating test submissions: ' + error);
   }
 }

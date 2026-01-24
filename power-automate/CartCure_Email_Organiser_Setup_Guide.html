@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartCure Email Organiser - Power Automate Setup Guide</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        h1 {
+            color: #0078d4;
+            border-bottom: 3px solid #0078d4;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #106ebe;
+            margin-top: 40px;
+            border-left: 4px solid #0078d4;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #444;
+            margin-top: 25px;
+        }
+
+        .step {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #0078d4;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .step-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tip {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #c7254e;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 10px 0;
+        }
+
+        .expression {
+            background: #1e1e1e;
+            color: #9cdcfe;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            display: block;
+        }
+
+        ul {
+            padding-left: 25px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .overview-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .overview-box h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .folder-structure {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .folder-structure .folder {
+            color: #dcdcaa;
+        }
+
+        .folder-structure .email {
+            color: #9cdcfe;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #0078d4;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .screenshot-placeholder {
+            background: #e9ecef;
+            border: 2px dashed #adb5bd;
+            padding: 40px;
+            text-align: center;
+            border-radius: 8px;
+            color: #6c757d;
+            margin: 15px 0;
+        }
+
+        .action-card {
+            border: 2px solid #0078d4;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .action-header {
+            background: #0078d4;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+        }
+
+        .action-body {
+            padding: 15px;
+            background: white;
+        }
+
+        .flow-diagram {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: #0078d4;
+            display: block;
+            margin: 10px 0;
+        }
+
+        .flow-box {
+            display: inline-block;
+            background: #e7f3ff;
+            border: 2px solid #0078d4;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: 5px;
+        }
+
+        .toc {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc a {
+            color: #0078d4;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .toc ul {
+            list-style-type: none;
+        }
+
+        .toc li::before {
+            content: ">";
+            color: #0078d4;
+            margin-right: 10px;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .step {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>CartCure Email Organiser</h1>
+    <h2 style="border: none; padding: 0; margin-top: 0;">Power Automate Setup Guide</h2>
+
+    <div class="overview-box">
+        <h3>What This Flow Does</h3>
+        <p>This Power Automate flow automatically organises emails related to CartCure jobs. When an email arrives with a job tag in the subject line (like <code style="background: rgba(255,255,255,0.2); color: white;">(J-001)</code>), the flow:</p>
+        <ul>
+            <li>Extracts the job number from the subject</li>
+            <li>Identifies the client email address</li>
+            <li>Creates a folder structure: <code style="background: rgba(255,255,255,0.2); color: white;">Clients/[client-email]/J-[number]</code></li>
+            <li>Moves the email to the appropriate folder</li>
+        </ul>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#prerequisites">Prerequisites</a></li>
+            <li><a href="#folder-structure">Understanding the Folder Structure</a></li>
+            <li><a href="#create-flow">Creating the Flow</a></li>
+            <li><a href="#step1">Step 1: Set Up the Trigger</a></li>
+            <li><a href="#step2">Step 2: Add the Condition</a></li>
+            <li><a href="#step3">Step 3: Extract the Job Number</a></li>
+            <li><a href="#step4">Step 4: Get the Client Email</a></li>
+            <li><a href="#step5">Step 5: Build the Folder Path</a></li>
+            <li><a href="#step6">Step 6: Check if Folder Exists</a></li>
+            <li><a href="#step7">Step 7: Create Folder if Missing</a></li>
+            <li><a href="#step8">Step 8: Move the Email</a></li>
+            <li><a href="#testing">Testing Your Flow</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+    </div>
+
+    <h2 id="prerequisites">Prerequisites</h2>
+    <div class="step">
+        <p>Before you begin, make sure you have:</p>
+        <ul>
+            <li><strong>Microsoft 365 account</strong> with access to Power Automate</li>
+            <li><strong>Outlook/Office 365 mailbox</strong> (the flow uses Office 365 Outlook connector)</li>
+            <li>A <strong>"Clients" folder</strong> created in your Outlook mailbox (root level)</li>
+        </ul>
+
+        <div class="tip">
+            <strong>Tip:</strong> To create the Clients folder in Outlook, right-click on your mailbox name and select "New Folder", then name it "Clients".
+        </div>
+    </div>
+
+    <h2 id="folder-structure">Understanding the Folder Structure</h2>
+    <div class="step">
+        <p>The flow creates this organised folder structure in your mailbox:</p>
+
+        <div class="folder-structure">
+            <span class="folder">Inbox/</span><br>
+            <span class="folder">Clients/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="folder">client1@example.com/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="folder">J-001/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="email">Quote Request (J-001)</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="email">Re: Quote Request (J-001)</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="folder">J-002/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="email">New Project (J-002)</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="folder">client2@company.com/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="folder">J-003/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="email">Consultation (J-003)</span><br>
+        </div>
+
+        <div class="note">
+            <strong>Note:</strong> For this to work correctly, your Job Management System emails must include the job tag in the format <code>(J-XXX)</code> in the subject line.
+        </div>
+    </div>
+
+    <h2 id="create-flow">Creating the Flow</h2>
+    <div class="step">
+        <span class="step-number">1</span>
+        <span class="step-title">Open Power Automate</span>
+        <ol>
+            <li>Go to <a href="https://make.powerautomate.com" target="_blank">make.powerautomate.com</a></li>
+            <li>Sign in with your Microsoft 365 account</li>
+            <li>Click <strong>"+ Create"</strong> in the left sidebar</li>
+            <li>Select <strong>"Automated cloud flow"</strong></li>
+            <li>Name your flow: <code>CartCure Email Organiser</code></li>
+            <li>Search for and select: <strong>"When a new email arrives (V3)"</strong> from Office 365 Outlook</li>
+            <li>Click <strong>"Create"</strong></li>
+        </ol>
+    </div>
+
+    <h2 id="step1">Step 1: Set Up the Trigger</h2>
+    <div class="step">
+        <div class="action-card">
+            <div class="action-header">Trigger: When a new email arrives (V3)</div>
+            <div class="action-body">
+                <table>
+                    <tr>
+                        <th>Setting</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Folder</td>
+                        <td><code>Inbox</code></td>
+                    </tr>
+                    <tr>
+                        <td>Include Attachments</td>
+                        <td><code>No</code></td>
+                    </tr>
+                    <tr>
+                        <td>Only with Attachments</td>
+                        <td><code>No</code></td>
+                    </tr>
+                    <tr>
+                        <td>Importance</td>
+                        <td><code>Any</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <p>This trigger fires every time a new email arrives in your Inbox.</p>
+    </div>
+
+    <h2 id="step2">Step 2: Add the Condition</h2>
+    <div class="step">
+        <span class="step-number">2</span>
+        <span class="step-title">Check if Subject Contains Job Tag</span>
+
+        <ol>
+            <li>Click <strong>"+ New step"</strong></li>
+            <li>Search for <strong>"Condition"</strong> and select it</li>
+            <li>Configure the condition:</li>
+        </ol>
+
+        <div class="action-card">
+            <div class="action-header">Condition: Check if subject contains job tag</div>
+            <div class="action-body">
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Choose a value (left)</td>
+                        <td>Select <strong>"Subject"</strong> from Dynamic Content</td>
+                    </tr>
+                    <tr>
+                        <td>Operator</td>
+                        <td><code>contains</code></td>
+                    </tr>
+                    <tr>
+                        <td>Choose a value (right)</td>
+                        <td><code>(J-</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="tip">
+            <strong>Tip:</strong> The condition looks for <code>(J-</code> which is the start of your job tag format. This means emails with subjects like "Quote Request (J-001)" or "Re: Project Update (J-045)" will be processed.
+        </div>
+    </div>
+
+    <h2 id="step3">Step 3: Extract the Job Number</h2>
+    <div class="step">
+        <span class="step-number">3</span>
+        <span class="step-title">Add a Compose Action to Extract Job Number</span>
+
+        <p>Inside the <strong>"If yes"</strong> branch of the condition:</p>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong></li>
+            <li>Search for <strong>"Compose"</strong> and select it (under Data Operations)</li>
+            <li>Rename the action to <code>Extract job number</code> (click the three dots > Rename)</li>
+            <li>In the <strong>Inputs</strong> field, click <strong>"Expression"</strong> tab and enter:</li>
+        </ol>
+
+        <div class="expression">first(split(split(triggerBody()?['subject'], '(J-')[1], ')'))</div>
+
+        <p>Click <strong>OK</strong> to insert the expression.</p>
+
+        <div class="note">
+            <strong>How this works:</strong>
+            <ul>
+                <li><code>split(subject, '(J-')[1]</code> - Gets everything after "(J-"</li>
+                <li><code>split(..., ')')[0]</code> - Gets everything before the closing ")"</li>
+                <li><code>first(...)</code> - Takes the first result</li>
+            </ul>
+            Example: "Quote Request (J-001)" extracts "001"
+        </div>
+    </div>
+
+    <h2 id="step4">Step 4: Get the Client Email</h2>
+    <div class="step">
+        <span class="step-number">4</span>
+        <span class="step-title">Add Another Compose Action for Client Email</span>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong> (after the previous compose)</li>
+            <li>Search for <strong>"Compose"</strong> and select it</li>
+            <li>Rename the action to <code>Get Client Email</code></li>
+            <li>In the <strong>Inputs</strong> field, use this expression:</li>
+        </ol>
+
+        <div class="expression">first(triggerBody()?['toRecipients'])?['emailAddress']?['address']</div>
+
+        <div class="note">
+            <strong>Note:</strong> This extracts the first recipient's email address from the "To" field. This represents the client email that was used in the original correspondence.
+        </div>
+
+        <div class="warning">
+            <strong>Important:</strong> If your job emails typically have multiple recipients, you may need to adjust this logic. This expression assumes the primary client is the first recipient.
+        </div>
+    </div>
+
+    <h2 id="step5">Step 5: Build the Folder Path</h2>
+    <div class="step">
+        <span class="step-number">5</span>
+        <span class="step-title">Create the Folder Path String</span>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong></li>
+            <li>Search for <strong>"Compose"</strong> and select it</li>
+            <li>Rename the action to <code>Build Folder Path</code></li>
+            <li>In the <strong>Inputs</strong> field, enter:</li>
+        </ol>
+
+        <p>Click on the input field and type:</p>
+        <div class="expression">Clients/</div>
+
+        <p>Then click <strong>"Dynamic content"</strong> and select <strong>"Outputs"</strong> from "Get Client Email"</p>
+
+        <p>Then type:</p>
+        <div class="expression">/J-</div>
+
+        <p>Then click <strong>"Dynamic content"</strong> and select <strong>"Outputs"</strong> from "Extract job number"</p>
+
+        <p>The final input should look like:</p>
+        <div class="code-block">Clients/@{outputs('Get_Client_Email')}/J-@{outputs('Extract_job_number')}</div>
+
+        <div class="tip">
+            <strong>Alternative method:</strong> You can also use this expression:
+            <div class="expression">concat('Clients/', outputs('Get_Client_Email'), '/J-', outputs('Extract_job_number'))</div>
+        </div>
+    </div>
+
+    <h2 id="step6">Step 6: Check if Folder Exists</h2>
+    <div class="step">
+        <span class="step-number">6</span>
+        <span class="step-title">Try to Get the Folder</span>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong></li>
+            <li>Search for <strong>"Get folder"</strong> (Office 365 Outlook)</li>
+            <li>In the <strong>Folder Id</strong> field, add the output from "Build Folder Path"</li>
+        </ol>
+
+        <div class="action-card">
+            <div class="action-header">Get folder (Office 365 Outlook)</div>
+            <div class="action-body">
+                <table>
+                    <tr>
+                        <th>Setting</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Folder Id</td>
+                        <td>Select <strong>"Outputs"</strong> from "Build Folder Path" in Dynamic Content</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>Important:</strong> After adding this action, you need to configure it to continue even if it fails:
+            <ol>
+                <li>Click the three dots (...) on the action</li>
+                <li>Select <strong>"Configure run after"</strong></li>
+                <li>Check <strong>"has failed"</strong> in addition to "is successful"</li>
+                <li>Click <strong>Done</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <h2 id="step7">Step 7: Create Folder if Missing</h2>
+    <div class="step">
+        <span class="step-number">7</span>
+        <span class="step-title">Add a Condition to Create Folder</span>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong></li>
+            <li>Search for <strong>"Condition"</strong> and select it</li>
+            <li>Configure the condition:</li>
+        </ol>
+
+        <div class="action-card">
+            <div class="action-header">Condition: Check if folder creation needed</div>
+            <div class="action-body">
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Choose a value (left)</td>
+                        <td>Use expression: <code>outputs('Get_folder')?['statusCode']</code></td>
+                    </tr>
+                    <tr>
+                        <td>Operator</td>
+                        <td><code>is equal to</code></td>
+                    </tr>
+                    <tr>
+                        <td>Choose a value (right)</td>
+                        <td><code>404</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <p><strong>In the "If yes" branch:</strong></p>
+        <ol>
+            <li>Click <strong>"Add an action"</strong></li>
+            <li>Search for <strong>"Create folder"</strong> (Office 365 Outlook)</li>
+            <li>In <strong>Mailbox Address</strong>, leave empty or use your email</li>
+            <li>In <strong>Folder Path</strong>, select <strong>"Outputs"</strong> from "Build Folder Path"</li>
+        </ol>
+
+        <div class="tip">
+            <strong>Note:</strong> Power Automate will automatically create parent folders if they don't exist. So if the client folder doesn't exist, it will create both the client folder and the job folder.
+        </div>
+    </div>
+
+    <h2 id="step8">Step 8: Move the Email</h2>
+    <div class="step">
+        <span class="step-number">8</span>
+        <span class="step-title">Move Email to the Job Folder</span>
+
+        <p>Add this action <strong>outside</strong> the folder creation condition (after it completes):</p>
+
+        <ol>
+            <li>Click <strong>"Add an action"</strong> (after the Create Folder condition)</li>
+            <li>Search for <strong>"Move email (V2)"</strong> (Office 365 Outlook)</li>
+            <li>Configure:</li>
+        </ol>
+
+        <div class="action-card">
+            <div class="action-header">Move email (V2) - Office 365 Outlook</div>
+            <div class="action-body">
+                <table>
+                    <tr>
+                        <th>Setting</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Message Id</td>
+                        <td>Select <strong>"Message Id"</strong> from the trigger in Dynamic Content</td>
+                    </tr>
+                    <tr>
+                        <td>Folder</td>
+                        <td>Select <strong>"Outputs"</strong> from "Build Folder Path" in Dynamic Content</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="success">
+            <strong>Almost done!</strong> Your flow is now complete. Click <strong>"Save"</strong> in the top right corner.
+        </div>
+    </div>
+
+    <h2>Complete Flow Overview</h2>
+    <div class="step">
+        <div class="flow-diagram">
+            <div class="flow-box">When a new email arrives</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Condition: Subject contains "(J-"</div>
+            <span class="flow-arrow">V (If Yes)</span>
+            <div class="flow-box">Extract job number</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Get Client Email</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Build Folder Path</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Get folder (check existence)</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Condition: If folder missing, create it</div>
+            <span class="flow-arrow">V</span>
+            <div class="flow-box">Move email to folder</div>
+        </div>
+    </div>
+
+    <h2 id="testing">Testing Your Flow</h2>
+    <div class="step">
+        <h3>Method 1: Send a Test Email</h3>
+        <ol>
+            <li>Send yourself an email with a subject containing a job tag, e.g., <code>Test Email (J-TEST)</code></li>
+            <li>Wait a minute for the flow to trigger</li>
+            <li>Check your <strong>Clients</strong> folder for the new subfolder structure</li>
+        </ol>
+
+        <h3>Method 2: Use Flow Test Mode</h3>
+        <ol>
+            <li>In Power Automate, open your flow</li>
+            <li>Click <strong>"Test"</strong> in the top right</li>
+            <li>Select <strong>"Manually"</strong></li>
+            <li>Click <strong>"Test"</strong></li>
+            <li>Send an email with a job tag to trigger the flow</li>
+            <li>Watch the flow run in real-time to see each step</li>
+        </ol>
+
+        <div class="tip">
+            <strong>Tip:</strong> Use test mode to debug any issues. You can see exactly which step failed and why.
+        </div>
+    </div>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <div class="step">
+        <h3>Common Issues and Solutions</h3>
+
+        <table>
+            <tr>
+                <th>Issue</th>
+                <th>Solution</th>
+            </tr>
+            <tr>
+                <td>Flow doesn't trigger</td>
+                <td>
+                    <ul>
+                        <li>Check the flow is turned on</li>
+                        <li>Verify the trigger is watching the correct folder (Inbox)</li>
+                        <li>Make sure your Office 365 connection is valid</li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Expression errors</td>
+                <td>
+                    <ul>
+                        <li>Double-check you're using the Expression tab, not Dynamic Content</li>
+                        <li>Copy expressions exactly as shown (watch for quotes)</li>
+                        <li>Make sure action names match (use underscores: Extract_job_number)</li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Folder not found errors</td>
+                <td>
+                    <ul>
+                        <li>Make sure the "Clients" folder exists in your mailbox root</li>
+                        <li>Check folder name capitalisation</li>
+                        <li>Configure "Get folder" to run on failure (see Step 6)</li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Email not moving</td>
+                <td>
+                    <ul>
+                        <li>Verify the Message Id is from the trigger (Dynamic Content)</li>
+                        <li>Check run history for specific errors</li>
+                        <li>Ensure your account has permission to move emails</li>
+                    </ul>
+                </td>
+            </tr>
+        </table>
+
+        <h3>Checking Flow Run History</h3>
+        <ol>
+            <li>Go to <a href="https://make.powerautomate.com" target="_blank">Power Automate</a></li>
+            <li>Click <strong>"My flows"</strong></li>
+            <li>Click on your flow name</li>
+            <li>Scroll down to see <strong>"28-day run history"</strong></li>
+            <li>Click on any run to see details and identify failures</li>
+        </ol>
+    </div>
+
+    <h2>Alternative Approach: Simplified Version</h2>
+    <div class="step">
+        <p>If the above flow is too complex, here's a simpler version that skips the folder existence check:</p>
+
+        <div class="warning">
+            <strong>Limitation:</strong> This simplified version may show errors in the run history when trying to create folders that already exist, but the email will still be moved correctly.
+        </div>
+
+        <ol>
+            <li><strong>Trigger:</strong> When a new email arrives</li>
+            <li><strong>Condition:</strong> Subject contains "(J-"</li>
+            <li><strong>Compose (Extract job):</strong> <code class="expression">first(split(split(triggerBody()?['subject'], '(J-')[1], ')'))</code></li>
+            <li><strong>Compose (Client email):</strong> <code class="expression">first(triggerBody()?['toRecipients'])?['emailAddress']?['address']</code></li>
+            <li><strong>Create folder:</strong> Use path <code>Clients/[client email]/J-[job number]</code></li>
+            <li><strong>Move email:</strong> To the newly created folder path</li>
+        </ol>
+
+        <p>Set the "Create folder" action to continue on failure (Configure run after > check "has failed"), and the email will still move correctly.</p>
+    </div>
+
+    <div class="success">
+        <h3>Congratulations!</h3>
+        <p>You've set up the CartCure Email Organiser! From now on, any email with a job tag in the subject will automatically be organised into the appropriate client and job folder.</p>
+    </div>
+
+    <hr style="margin-top: 40px;">
+    <p style="text-align: center; color: #666;">
+        <strong>CartCure Email Organiser Setup Guide</strong><br>
+        Created for CartCure Job Management System<br>
+        For support, contact your system administrator
+    </p>
+</body>
+</html>
