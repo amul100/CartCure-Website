@@ -48,6 +48,35 @@ The guide must stay synchronized with the actual implementation to ensure users 
 
 **Remember**: After updating Code.gs, you must redeploy the Apps Script web app for changes to take effect.
 
+### Error logging pattern:
+When debugging functions that might fail early, add debug file creation at the VERY START of the function, before any other code:
+
+```javascript
+function someFunction(data) {
+  // Create debug file FIRST before anything else can fail
+  try {
+    const debugFolder = getOrCreateDebugFolder();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const earlyDebug = [
+      '=== Function Name Early Debug ===',
+      'Timestamp: ' + ts,
+      'Data received: ' + JSON.stringify(data),
+      'Key variable: ' + someVar
+    ];
+    debugFolder.createFile('FUNCTION_EARLY_' + ts + '.txt', earlyDebug.join('\n'));
+  } catch (earlyDebugError) {
+    // If even this fails, try writing to Drive root
+    try {
+      DriveApp.createFile('ERROR_' + new Date().getTime() + '.txt', 'Debug failed: ' + earlyDebugError.toString());
+    } catch (e) { /* ignore */ }
+  }
+
+  // Rest of function...
+}
+```
+
+This ensures you get a debug file even if the function fails immediately.
+
 ## Git Commands
 ```bash
 # Stage, commit, and push in one command:
