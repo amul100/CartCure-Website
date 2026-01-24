@@ -10048,7 +10048,7 @@ function createTestSubmissions() {
       'My navigation menu is not working on tablet devices. Can you take a look?'
     ];
 
-    const statuses = ['New', 'New', 'New', 'In Progress', 'New', 'Completed', 'New', 'New', 'In Progress', 'New'];
+    const statuses = ['New', 'New', 'New', 'In Review', 'New', 'Job Created', 'New', 'New', 'In Review', 'New'];
 
     // Generate 10 test submissions
     let successCount = 0;
