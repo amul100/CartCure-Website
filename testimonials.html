@@ -175,26 +175,63 @@
 
             // Load all testimonials (no 5-star filter, no limit)
             function loadAllTestimonials() {
+                console.log('[DEBUG] loadAllTestimonials() called');
                 const testimonialGrid = document.getElementById('testimonialGrid');
-                if (!testimonialGrid) return;
+                if (!testimonialGrid) {
+                    console.error('[DEBUG] testimonialGrid element not found!');
+                    return;
+                }
+                console.log('[DEBUG] testimonialGrid found');
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => {
+                    console.error('[DEBUG] Request timed out after 8 seconds');
+                    controller.abort();
+                }, 8000);
+
+                const fetchUrl = SCRIPT_URL + '?action=getTestimonials';
+                console.log('[DEBUG] Fetching from:', fetchUrl);
 
                 // Fetch ALL approved testimonials (no fiveStarOnly, no limit)
-                fetch(SCRIPT_URL + '?action=getTestimonials', { signal: controller.signal })
-                    .then(response => response.json())
+                fetch(fetchUrl, { signal: controller.signal })
+                    .then(response => {
+                        console.log('[DEBUG] Response received');
+                        console.log('[DEBUG] Response status:', response.status);
+                        console.log('[DEBUG] Response ok:', response.ok);
+                        console.log('[DEBUG] Response headers:', [...response.headers.entries()]);
+                        return response.text();
+                    })
+                    .then(text => {
+                        console.log('[DEBUG] Raw response text:', text.substring(0, 500));
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('[DEBUG] JSON parse error:', e);
+                            console.error('[DEBUG] Full response text:', text);
+                            throw new Error('Invalid JSON response');
+                        }
+                    })
                     .then(data => {
                         clearTimeout(timeoutId);
+                        console.log('[DEBUG] Parsed data:', data);
+                        console.log('[DEBUG] data.success:', data.success);
+                        console.log('[DEBUG] data.testimonials:', data.testimonials);
+                        console.log('[DEBUG] testimonials count:', data.testimonials ? data.testimonials.length : 0);
+
                         if (data.success && data.testimonials && data.testimonials.length > 0) {
+                            console.log('[DEBUG] Rendering', data.testimonials.length, 'testimonials');
                             renderTestimonials(data.testimonials);
                         } else {
+                            console.log('[DEBUG] No testimonials found, showing coming soon');
+                            console.log('[DEBUG] data.error:', data.error);
                             renderComingSoon();
                         }
                     })
                     .catch(error => {
                         clearTimeout(timeoutId);
-                        console.error('Error loading testimonials:', error);
+                        console.error('[DEBUG] Fetch error:', error);
+                        console.error('[DEBUG] Error name:', error.name);
+                        console.error('[DEBUG] Error message:', error.message);
                         renderComingSoon();
                     });
             }
