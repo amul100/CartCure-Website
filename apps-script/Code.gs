@@ -1950,89 +1950,207 @@ function setupSheets(clearData) {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const ui = SpreadsheetApp.getUi();
 
+  // Debug log array - will be saved to file
+  const debugLog = [];
+  const logDebug = function(msg) {
+    const timestamp = new Date().toISOString();
+    const logLine = '[' + timestamp + '] ' + msg;
+    debugLog.push(logLine);
+    Logger.log(msg);
+  };
+
+  // Helper to log all sheet info
+  const logAllSheets = function(label) {
+    const sheets = ss.getSheets();
+    logDebug('--- ' + label + ' ---');
+    logDebug('Total sheets: ' + sheets.length);
+    for (let i = 0; i < sheets.length; i++) {
+      const s = sheets[i];
+      logDebug('  [' + i + '] Name: "' + s.getName() + '", ID: ' + s.getSheetId() + ', Index: ' + s.getIndex());
+    }
+    logDebug('---');
+  };
+
   try {
-    Logger.log('Starting setup (clearData=' + clearData + ')...');
+    logDebug('========== SETUP SHEETS START ==========');
+    logDebug('clearData: ' + clearData);
+    logDebug('Spreadsheet ID: ' + CONFIG.SHEET_ID);
+
+    logAllSheets('INITIAL STATE');
 
     // Step 1: Back up data from existing sheets (unless hard reset)
     let backupData = null;
     if (!clearData) {
+      logDebug('Step 1: Backing up data...');
       backupData = backupSheetData(ss);
-      Logger.log('Data backed up successfully');
+      logDebug('Step 1 COMPLETE: Data backed up');
+      if (backupData) {
+        logDebug('  - submissions: ' + (backupData.submissions ? backupData.submissions.length : 0) + ' rows');
+        logDebug('  - jobs: ' + (backupData.jobs ? backupData.jobs.length : 0) + ' rows');
+        logDebug('  - invoices: ' + (backupData.invoices ? backupData.invoices.length : 0) + ' rows');
+        logDebug('  - settings: ' + (backupData.settings ? 'yes' : 'no'));
+      }
+    } else {
+      logDebug('Step 1: SKIPPED (clearData=true)');
     }
 
-    // Step 2: Delete all existing sheets except the first one (Google Sheets requires at least 1 sheet)
+    // Step 2: Delete all existing sheets except the first one
+    logDebug('Step 2: Deleting all sheets...');
     deleteAllSheets(ss);
-    Logger.log('All sheets deleted');
+    logDebug('Step 2 COMPLETE: deleteAllSheets() returned');
+
+    logAllSheets('AFTER deleteAllSheets()');
 
     // Step 3: Create all sheets first (without moving them)
+    logDebug('Step 3: Creating sheets...');
+
+    logDebug('  3a: Creating Jobs sheet...');
     setupJobsSheet(ss, clearData);
+    logDebug('  3a COMPLETE: Jobs sheet done');
+    logAllSheets('AFTER setupJobsSheet()');
+
+    logDebug('  3b: Creating Invoice Log sheet...');
     setupInvoiceLogSheet(ss, clearData);
+    logDebug('  3b COMPLETE: Invoice Log sheet done');
+    logAllSheets('AFTER setupInvoiceLogSheet()');
+
+    logDebug('  3c: Creating Settings sheet...');
     setupSettingsSheet(ss, clearData);
+    logDebug('  3c COMPLETE: Settings sheet done');
+    logAllSheets('AFTER setupSettingsSheet()');
+
+    logDebug('  3d: Creating Submissions sheet...');
     setupSubmissionsSheet(ss);
+    logDebug('  3d COMPLETE: Submissions sheet done');
+    logAllSheets('AFTER setupSubmissionsSheet()');
 
     // Create Dashboard and Analytics without moving yet
+    logDebug('  3e: Creating Dashboard sheet...');
     let dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    logDebug('    getSheetByName(DASHBOARD) returned: ' + (dashboardSheet ? 'Sheet ID ' + dashboardSheet.getSheetId() : 'null'));
     if (!dashboardSheet) {
       dashboardSheet = ss.insertSheet(SHEETS.DASHBOARD);
-      Logger.log('Created Dashboard sheet');
+      logDebug('    insertSheet(DASHBOARD) created: ID ' + dashboardSheet.getSheetId());
     } else {
       dashboardSheet.clear();
+      logDebug('    Cleared existing Dashboard sheet');
     }
+    logAllSheets('AFTER Dashboard creation');
 
+    logDebug('  3f: Creating Analytics sheet...');
     let analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    logDebug('    getSheetByName(ANALYTICS) returned: ' + (analyticsSheet ? 'Sheet ID ' + analyticsSheet.getSheetId() : 'null'));
     if (!analyticsSheet) {
       analyticsSheet = ss.insertSheet(SHEETS.ANALYTICS);
-      Logger.log('Created Analytics sheet');
+      logDebug('    insertSheet(ANALYTICS) created: ID ' + analyticsSheet.getSheetId());
     } else {
       analyticsSheet.clear();
+      logDebug('    Cleared existing Analytics sheet');
     }
+    logAllSheets('AFTER Analytics creation');
 
-    SpreadsheetApp.flush(); // Ensure all sheets are created
+    logDebug('Step 3 COMPLETE: All sheets created');
+    logDebug('Calling SpreadsheetApp.flush()...');
+    SpreadsheetApp.flush();
+    logDebug('flush() complete');
+
+    logAllSheets('AFTER flush()');
 
     // Step 4: Delete temporary sheet now that we have other sheets
+    logDebug('Step 4: Deleting temporary sheet...');
     const tempSheet = ss.getSheetByName('_temp_sheet_');
+    logDebug('  getSheetByName(_temp_sheet_) returned: ' + (tempSheet ? 'Sheet ID ' + tempSheet.getSheetId() : 'null'));
     if (tempSheet) {
+      logDebug('  Deleting _temp_sheet_...');
       ss.deleteSheet(tempSheet);
-      SpreadsheetApp.flush(); // Ensure deletion is complete
-      Logger.log('Deleted temporary sheet');
+      logDebug('  deleteSheet() complete');
+      SpreadsheetApp.flush();
+      logDebug('  flush() complete');
+    } else {
+      logDebug('  No _temp_sheet_ found - skipping deletion');
     }
+    logDebug('Step 4 COMPLETE');
+
+    logAllSheets('AFTER temp sheet deletion');
 
     // Step 5: Now move Dashboard and Analytics to correct positions
-    // Re-fetch sheet references after potential deletion
+    logDebug('Step 5: Moving sheets to correct positions...');
+
+    logDebug('  5a: Moving Dashboard to position 1...');
     dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    logDebug('    Re-fetched Dashboard: ' + (dashboardSheet ? 'ID ' + dashboardSheet.getSheetId() + ', Index ' + dashboardSheet.getIndex() : 'null'));
     if (dashboardSheet) {
+      logDebug('    setActiveSheet(Dashboard)...');
       ss.setActiveSheet(dashboardSheet);
+      logDebug('    moveActiveSheet(1)...');
       ss.moveActiveSheet(1);
+      logDebug('    flush()...');
       SpreadsheetApp.flush();
-      Logger.log('Moved Dashboard to position 1');
+      logDebug('  5a COMPLETE: Dashboard moved');
+    } else {
+      logDebug('  5a ERROR: Dashboard sheet is null!');
     }
 
+    logAllSheets('AFTER Dashboard move');
+
+    logDebug('  5b: Moving Analytics to position 2...');
     analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    logDebug('    Re-fetched Analytics: ' + (analyticsSheet ? 'ID ' + analyticsSheet.getSheetId() + ', Index ' + analyticsSheet.getIndex() : 'null'));
     if (analyticsSheet) {
+      logDebug('    setActiveSheet(Analytics)...');
       ss.setActiveSheet(analyticsSheet);
+      logDebug('    moveActiveSheet(2)...');
       ss.moveActiveSheet(2);
+      logDebug('    flush()...');
       SpreadsheetApp.flush();
-      Logger.log('Moved Analytics to position 2');
+      logDebug('  5b COMPLETE: Analytics moved');
+    } else {
+      logDebug('  5b ERROR: Analytics sheet is null!');
     }
+
+    logDebug('Step 5 COMPLETE');
+    logAllSheets('AFTER all moves');
 
     // Step 6: Apply formatting to Dashboard and Analytics
-    // Re-fetch references after moving
+    logDebug('Step 6: Applying formatting...');
     dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
     analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    logDebug('  Re-fetched Dashboard: ' + (dashboardSheet ? 'ID ' + dashboardSheet.getSheetId() : 'null'));
+    logDebug('  Re-fetched Analytics: ' + (analyticsSheet ? 'ID ' + analyticsSheet.getSheetId() : 'null'));
 
+    logDebug('  6a: formatDashboardSheet()...');
     formatDashboardSheet(dashboardSheet);
+    logDebug('  6a COMPLETE');
+
+    logDebug('  6b: formatAnalyticsSheet()...');
     formatAnalyticsSheet(analyticsSheet);
+    logDebug('  6b COMPLETE');
+
+    logDebug('Step 6 COMPLETE');
 
     // Step 7: Restore backed up data (unless hard reset)
     if (!clearData && backupData) {
+      logDebug('Step 7: Restoring backed up data...');
       restoreSheetData(ss, backupData);
-      Logger.log('Data restored successfully');
+      logDebug('Step 7 COMPLETE: Data restored');
+    } else {
+      logDebug('Step 7: SKIPPED (clearData=' + clearData + ')');
     }
 
     // Step 8: Reset invoice counter if clearing data
     if (clearData) {
+      logDebug('Step 8: Resetting invoice counter...');
       resetInvoiceCounter(ss);
+      logDebug('Step 8 COMPLETE');
+    } else {
+      logDebug('Step 8: SKIPPED (clearData=false)');
     }
+
+    logAllSheets('FINAL STATE');
+    logDebug('========== SETUP SHEETS SUCCESS ==========');
+
+    // Save debug log to file
+    saveSetupDebugLog(debugLog.join('\n'), 'SUCCESS');
 
     const message = clearData
       ? 'Hard reset complete! All data has been deleted and sheets have been reset.'
@@ -2040,10 +2158,43 @@ function setupSheets(clearData) {
 
     ui.alert(clearData ? '✅ Hard Reset Complete' : '✅ Setup Complete', message, ui.ButtonSet.OK);
 
-    Logger.log('Setup completed successfully (clearData=' + clearData + ')');
   } catch (error) {
-    Logger.log('Error during setup: ' + error.message);
-    ui.alert('Setup Error', 'There was an error: ' + error.message, ui.ButtonSet.OK);
+    logDebug('========== SETUP SHEETS ERROR ==========');
+    logDebug('Error message: ' + error.message);
+    logDebug('Error stack: ' + (error.stack || 'No stack trace'));
+
+    // Try to log current state
+    try {
+      logAllSheets('STATE AT ERROR');
+    } catch (e2) {
+      logDebug('Could not log sheets at error: ' + e2.message);
+    }
+
+    logDebug('========== END ERROR LOG ==========');
+
+    // Save debug log to file
+    saveSetupDebugLog(debugLog.join('\n'), 'ERROR');
+
+    ui.alert('Setup Error', 'There was an error: ' + error.message + '\n\nDebug log has been saved to Google Drive.', ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Save setup debug log to Google Drive
+ * @param {string} logContent - The debug log content
+ * @param {string} status - SUCCESS or ERROR
+ */
+function saveSetupDebugLog(logContent, status) {
+  try {
+    const folder = getOrCreateDebugFolder();
+    const timestamp = Utilities.formatDate(new Date(), 'Pacific/Auckland', 'yyyy-MM-dd_HH-mm-ss');
+    const fileName = 'SETUP_DEBUG_' + status + '_' + timestamp + '.txt';
+    const file = folder.createFile(fileName, logContent);
+    Logger.log('Setup debug log saved: ' + file.getUrl());
+    return file.getUrl();
+  } catch (error) {
+    Logger.log('Error saving setup debug log: ' + error.message);
+    return '';
   }
 }
 
