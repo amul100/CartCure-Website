@@ -1879,20 +1879,35 @@ function backupSheetData(ss) {
  * @param {Spreadsheet} ss - The spreadsheet object
  */
 function deleteAllSheets(ss) {
-  const sheets = ss.getSheets();
+  // Get fresh list of sheets and delete all except the first one
+  // We must re-fetch sheets after each deletion to avoid stale references
+  let sheets = ss.getSheets();
+  const firstSheetId = sheets[0].getSheetId();
 
-  // Keep the first sheet temporarily, delete all others
-  for (let i = sheets.length - 1; i >= 1; i--) {
-    ss.deleteSheet(sheets[i]);
-    Logger.log('Deleted sheet: ' + sheets[i].getName());
+  // Keep deleting until only one sheet remains
+  while (ss.getSheets().length > 1) {
+    // Re-fetch sheets list each iteration to get fresh references
+    sheets = ss.getSheets();
+
+    // Find a sheet to delete (any sheet except the first one we're keeping)
+    for (let i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() !== firstSheetId) {
+        const sheetName = sheets[i].getName();
+        ss.deleteSheet(sheets[i]);
+        Logger.log('Deleted sheet: ' + sheetName);
+        SpreadsheetApp.flush(); // Flush after each deletion
+        break; // Exit inner loop, re-fetch sheets in while loop
+      }
+    }
   }
 
   // Rename the remaining sheet to avoid conflicts
+  sheets = ss.getSheets();
   if (sheets.length > 0) {
     sheets[0].setName('_temp_sheet_');
   }
 
-  // Flush changes to ensure deletions are committed before creating new sheets
+  // Final flush to ensure all changes are committed
   SpreadsheetApp.flush();
 }
 
