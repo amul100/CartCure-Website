@@ -1940,13 +1940,6 @@ function restoreSheetData(ss, backup) {
       Logger.log('Restored settings data');
     }
   }
-
-  // Delete the temporary sheet if it still exists
-  const tempSheet = ss.getSheetByName('_temp_sheet_');
-  if (tempSheet) {
-    ss.deleteSheet(tempSheet);
-    Logger.log('Deleted temporary sheet');
-  }
 }
 
 /**
@@ -1979,13 +1972,20 @@ function setupSheets(clearData) {
     createAnalyticsSheet(ss);
     setupSubmissionsSheet(ss);
 
-    // Step 4: Restore backed up data (unless hard reset)
+    // Step 4: Delete temporary sheet now that all sheets are created
+    const tempSheet = ss.getSheetByName('_temp_sheet_');
+    if (tempSheet) {
+      ss.deleteSheet(tempSheet);
+      Logger.log('Deleted temporary sheet');
+    }
+
+    // Step 5: Restore backed up data (unless hard reset)
     if (!clearData && backupData) {
       restoreSheetData(ss, backupData);
       Logger.log('Data restored successfully');
     }
 
-    // Step 5: Reset invoice counter if clearing data
+    // Step 6: Reset invoice counter if clearing data
     if (clearData) {
       resetInvoiceCounter(ss);
     }
@@ -2674,9 +2674,13 @@ function createDashboardSheet(ss) {
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.DASHBOARD);
+    SpreadsheetApp.flush(); // Ensure sheet is fully created before moving
     // Move dashboard to be the first sheet
     ss.setActiveSheet(sheet);
     ss.moveActiveSheet(1);
+    SpreadsheetApp.flush(); // Ensure move is complete
+    // Re-fetch the sheet reference after moving to avoid stale reference
+    sheet = ss.getSheetByName(SHEETS.DASHBOARD);
   } else {
     sheet.clear();
   }
@@ -2833,9 +2837,13 @@ function createAnalyticsSheet(ss) {
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.ANALYTICS);
+    SpreadsheetApp.flush(); // Ensure sheet is fully created before moving
     // Move analytics to be after dashboard
     ss.setActiveSheet(sheet);
     ss.moveActiveSheet(2);
+    SpreadsheetApp.flush(); // Ensure move is complete
+    // Re-fetch the sheet reference after moving to avoid stale reference
+    sheet = ss.getSheetByName(SHEETS.ANALYTICS);
   } else {
     sheet.clear();
   }
