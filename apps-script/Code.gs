@@ -1994,8 +1994,9 @@ function onOpen() {
       .addItem('Send Invoice Reminder', 'showSendInvoiceReminderDialog')
       .addItem('Mark as Paid', 'showMarkPaidDialog')
       .addSeparator()
-      .addItem('Update Late Fees', 'updateAllLateFees')
+      .addItem('Send Overdue Notice', 'showSendOverdueNoticeDialog')
       .addItem('Send Invoice with Late Fees', 'showSendInvoiceWithFeesDialog')
+      .addItem('Update Late Fees', 'updateAllLateFees')
       .addItem('View Overdue Invoices', 'showOverdueInvoicesWithFees'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
@@ -8180,8 +8181,9 @@ function showSendInvoiceReminderDialog() {
 }
 
 /**
- * Send invoice reminder email
- * Reminds client about unpaid invoice with optional late fee warning
+ * Send invoice reminder email (pre-due date reminder)
+ * Designed to be sent ~6 days after invoice (1 day before due date)
+ * Helps clients avoid late fees by reminding them before the invoice becomes overdue
  */
 function sendInvoiceReminder(invoiceNumber) {
   const ui = SpreadsheetApp.getUi();
@@ -8210,50 +8212,169 @@ function sendInvoiceReminder(invoiceNumber) {
     return;
   }
 
-  // Calculate if overdue and any late fees
-  const feeCalc = calculateLateFee(total, dueDate);
-  const isOverdue = feeCalc.daysOverdue > 0;
+  // Calculate days until due
+  const due = new Date(dueDate.split('/').reverse().join('-')); // Parse DD/MM/YYYY
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const daysUntilDue = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
 
-  const subject = isOverdue
-    ? 'OVERDUE: Invoice ' + invoiceNumber + ' - Payment Required'
-    : 'Reminder: Invoice ' + invoiceNumber + ' from CartCure';
-
-  // Build late fee warning if applicable
-  let lateFeeHtml = '';
-  if (isOverdue) {
-    lateFeeHtml = `
-      <div style="background-color: #ffebee; padding: 15px; margin: 20px 0; border-left: 4px solid #c62828;">
-        <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ This invoice is ${feeCalc.daysOverdue} days overdue</p>
-        <p style="margin: 0;">Per our Terms of Service, late fees of 2% per day apply to overdue balances.</p>
-        <p style="margin: 10px 0 0 0;"><strong>Late Fee Accrued:</strong> ${formatCurrency(feeCalc.lateFee)}</p>
-        <p style="margin: 5px 0 0 0; font-size: 18px;"><strong>Total Now Due:</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>
-      </div>
-    `;
-  }
+  const subject = 'Friendly Reminder: Invoice ' + invoiceNumber + ' Due Soon';
 
   const htmlBody = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
-      <div style="text-align: center; padding: 20px; background-color: ${isOverdue ? '#c62828' : '#2d5d3f'}; color: white;">
-        <h1 style="margin: 0;">${isOverdue ? 'OVERDUE INVOICE' : 'PAYMENT REMINDER'}</h1>
-        <p style="margin: 10px 0 0 0; font-size: 20px;">${invoiceNumber}</p>
+      <div style="text-align: center; padding: 20px; background-color: #2d5d3f; color: white;">
+        <h1 style="margin: 0;">FRIENDLY REMINDER</h1>
+        <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
       </div>
 
       <div style="padding: 20px;">
         <p>Hi ${clientName},</p>
 
-        ${isOverdue
-          ? `<p>This is a reminder that your invoice <strong>${invoiceNumber}</strong> is now <strong>${feeCalc.daysOverdue} days overdue</strong>. Please arrange payment as soon as possible to avoid additional late fees.</p>`
-          : `<p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due on <strong>${dueDate}</strong>.</p>`
-        }
+        <p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + dueDate + '</strong>'}.</p>
 
-        ${lateFeeHtml}
+        <div style="background-color: #fff8e6; padding: 15px; margin: 20px 0; border-left: 4px solid #f5d76e;">
+          <p style="margin: 0; color: #856404;"><strong>💡 Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${dueDate} to avoid any additional charges.</p>
+        </div>
+
+        <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
+          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+          <p><strong>Job Reference:</strong> ${jobNumber}</p>
+          <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(total)}</span></p>
+          <p><strong>Due Date:</strong> ${dueDate}</p>
+        </div>
+
+        ${bankAccount ? `
+        <div style="background-color: #e8f5e9; padding: 15px; border: 1px solid #4caf50; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>💳 Payment Details:</strong></p>
+          <p style="margin: 0;">
+            Bank: ${bankName}<br>
+            Account: ${bankAccount}<br>
+            Reference: ${invoiceNumber}
+          </p>
+        </div>
+        ` : ''}
+
+        <p style="margin-top: 20px;">If you have already made payment, please disregard this reminder — thank you!</p>
+
+        <p>If you have any questions about this invoice, simply reply to this email and we'll be happy to help.</p>
+
+        <p>Thanks for your business!<br><strong>The CartCure Team</strong></p>
+      </div>
+
+      <div style="text-align: center; padding: 15px; background-color: #faf8f4; border-top: 2px solid #d4cfc3; font-size: 12px; color: #8a8a8a;">
+        ${businessName} | Quick Shopify Fixes for NZ Businesses<br>
+        ${isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : ''}
+        <a href="https://cartcure.co.nz" style="color: #2d5d3f;">cartcure.co.nz</a>
+      </div>
+    </div>
+  `;
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Pre-due payment reminder sent. Days until due: ' + daysUntilDue,
+      'To: ' + clientEmail,
+      'Auto'
+    );
+
+    ui.alert('Reminder Sent',
+      'Friendly payment reminder sent to ' + clientEmail + '\n\n' +
+      'Invoice: ' + invoiceNumber + '\n' +
+      'Amount: ' + formatCurrency(total) + '\n' +
+      'Due: ' + dueDate + (daysUntilDue === 1 ? ' (tomorrow)' : daysUntilDue <= 0 ? ' (today)' : ' (' + daysUntilDue + ' days)'),
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Invoice reminder for ' + invoiceNumber + ' sent to ' + clientEmail);
+  } catch (error) {
+    Logger.log('Error sending invoice reminder: ' + error.message);
+    ui.alert('Error', 'Failed to send reminder: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Send overdue invoice notice
+ * For invoices that are already past due date - warns about accumulated late fees
+ */
+function sendOverdueNotice(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    ui.alert('Not Found', 'Invoice ' + invoiceNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const clientEmail = invoice['Client Email'];
+  const jobNumber = invoice['Job #'];
+  const total = parseFloat(invoice['Total']) || 0;
+  const dueDate = invoice['Due Date'];
+
+  if (!clientEmail) {
+    ui.alert('Missing Email', 'No email address found for this invoice.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Calculate late fees
+  const feeCalc = calculateLateFee(total, dueDate);
+
+  if (feeCalc.daysOverdue <= 0) {
+    ui.alert('Not Overdue',
+      'This invoice is not yet overdue.\n\nUse "Send Invoice Reminder" for pre-due date reminders.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  const subject = 'OVERDUE: Invoice ' + invoiceNumber + ' - Payment Required';
+
+  const htmlBody = `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; background-color: #c62828; color: white;">
+        <h1 style="margin: 0;">OVERDUE NOTICE</h1>
+        <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
+      </div>
+
+      <div style="padding: 20px;">
+        <p>Hi ${clientName},</p>
+
+        <p>This is a notice that your invoice <strong>${invoiceNumber}</strong> is now <strong>${feeCalc.daysOverdue} days overdue</strong>.</p>
+
+        <div style="background-color: #ffebee; padding: 15px; margin: 20px 0; border-left: 4px solid #c62828;">
+          <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ Late Fees Apply</p>
+          <p style="margin: 0;">Per our Terms of Service, late fees of 2% per day apply to overdue balances.</p>
+          <p style="margin: 10px 0 0 0;"><strong>Late Fee Accrued:</strong> ${formatCurrency(feeCalc.lateFee)}</p>
+          <p style="margin: 5px 0 0 0; font-size: 18px;"><strong>Total Now Due:</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>
+        </div>
 
         <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
           <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
           <p><strong>Job Reference:</strong> ${jobNumber}</p>
           <p><strong>Original Amount:</strong> ${formatCurrency(total)}</p>
-          <p><strong>Due Date:</strong> ${dueDate}</p>
-          ${isOverdue ? `<p style="font-size: 18px; color: #c62828;"><strong>Total Now Due (incl late fees):</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>` : ''}
+          <p><strong>Original Due Date:</strong> ${dueDate}</p>
+          <p><strong>Days Overdue:</strong> ${feeCalc.daysOverdue}</p>
+          <p style="font-size: 18px; color: #c62828;"><strong>Total Now Due:</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>
         </div>
 
         ${bankAccount ? `
@@ -8267,9 +8388,11 @@ function sendInvoiceReminder(invoiceNumber) {
         </div>
         ` : ''}
 
-        <p style="margin-top: 20px;">If you have already made payment, please disregard this reminder and accept our thanks!</p>
+        <p style="margin-top: 20px; color: #c62828;"><strong>Please arrange payment as soon as possible to avoid additional late fees.</strong></p>
 
-        <p>If you have any questions, please reply to this email.</p>
+        <p>If you have already made payment, please disregard this notice and accept our apologies for the crossed communication.</p>
+
+        <p>If you have any questions or need to discuss payment arrangements, please reply to this email.</p>
 
         <p>Thanks,<br><strong>The CartCure Team</strong></p>
       </div>
@@ -8297,24 +8420,48 @@ function sendInvoiceReminder(invoiceNumber) {
       jobNumber,
       'Email Sent',
       subject,
-      isOverdue
-        ? 'Overdue reminder sent. Days overdue: ' + feeCalc.daysOverdue + ', Late fee: ' + formatCurrency(feeCalc.lateFee)
-        : 'Payment reminder sent',
+      'Overdue notice sent. Days overdue: ' + feeCalc.daysOverdue + ', Late fee: ' + formatCurrency(feeCalc.lateFee),
       'To: ' + clientEmail,
       'Auto'
     );
 
-    ui.alert('Reminder Sent',
-      'Invoice reminder sent to ' + clientEmail +
-      (isOverdue ? '\n\nDays overdue: ' + feeCalc.daysOverdue + '\nLate fee: ' + formatCurrency(feeCalc.lateFee) : ''),
+    ui.alert('Overdue Notice Sent',
+      'Overdue notice sent to ' + clientEmail + '\n\n' +
+      'Days overdue: ' + feeCalc.daysOverdue + '\n' +
+      'Late fee: ' + formatCurrency(feeCalc.lateFee) + '\n' +
+      'Total due: ' + formatCurrency(feeCalc.totalWithFees),
       ui.ButtonSet.OK
     );
 
-    Logger.log('Invoice reminder for ' + invoiceNumber + ' sent to ' + clientEmail);
+    Logger.log('Overdue notice for ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
-    Logger.log('Error sending invoice reminder: ' + error.message);
-    ui.alert('Error', 'Failed to send reminder: ' + error.message, ui.ButtonSet.OK);
+    Logger.log('Error sending overdue notice: ' + error.message);
+    ui.alert('Error', 'Failed to send notice: ' + error.message, ui.ButtonSet.OK);
   }
+}
+
+/**
+ * Show dialog to send overdue notice
+ */
+function showSendOverdueNoticeDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
+  const invoices = getInvoicesByStatus(['Overdue']);
+
+  if (!invoices || invoices.length === 0) {
+    SpreadsheetApp.getUi().alert('No Overdue Invoices',
+      'No overdue invoices found.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    return;
+  }
+
+  showContextAwareDialog(
+    'Send Overdue Notice',
+    invoices,
+    'Invoice',
+    'sendOverdueNotice',
+    selectedInvoice
+  );
 }
 
 /**
@@ -9771,8 +9918,9 @@ function sendAllTestEmails() {
     '6. Status Update - Completed\n' +
     '7. Invoice Email\n' +
     '8. Payment Receipt Email\n' +
-    '9. Invoice Reminder\n' +
-    '10. Invoice with Late Fees\n\n' +
+    '9. Invoice Reminder (pre-due friendly reminder)\n' +
+    '10. Overdue Notice (past due warning)\n' +
+    '11. Invoice with Late Fees\n\n' +
     'Continue?',
     ui.ButtonSet.YES_NO
   );
@@ -10015,9 +10163,23 @@ function sendAllTestEmails() {
     Logger.log('✗ Payment receipt failed: ' + e.message);
   }
 
-  // Create overdue invoice test data for reminder and late fee emails
-  const overdueInvoiceData = {
+  // Create pre-due invoice test data for friendly reminder
+  const preDueInvoiceData = {
     'Invoice #': 'INV-TEST-002',
+    'Job #': 'J-TEST-001',
+    'Client Name': 'Test Customer',
+    'Client Email': testEmail,
+    'Invoice Date': formatNZDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)), // 6 days ago
+    'Due Date': formatNZDate(new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)), // Tomorrow (due soon)
+    'Amount (excl GST)': '250.00',
+    'GST': '37.50',
+    'Total': '287.50',
+    'Status': 'Sent'
+  };
+
+  // Create overdue invoice test data for overdue notice and late fee emails
+  const overdueInvoiceData = {
+    'Invoice #': 'INV-TEST-003',
     'Job #': 'J-TEST-001',
     'Client Name': 'Test Customer',
     'Client Email': testEmail,
@@ -10030,9 +10192,37 @@ function sendAllTestEmails() {
   };
 
   try {
-    // 9. Invoice Reminder Email
-    Logger.log('Sending test email 9: Invoice Reminder');
+    // 9. Invoice Reminder Email (pre-due friendly reminder)
+    Logger.log('Sending test email 9: Invoice Reminder (pre-due)');
     const reminderHtml = generateInvoiceReminderHtml({
+      invoice: preDueInvoiceData,
+      job: testJobData,
+      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
+      bankName: getSetting('Bank Name') || 'Test Bank',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || '',
+      daysUntilDue: 1
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Friendly Reminder: Invoice INV-TEST-002 Due Soon',
+      'Test invoice reminder email (pre-due)',
+      {
+        htmlBody: reminderHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Invoice reminder (pre-due) sent');
+  } catch (e) {
+    errors.push('Invoice Reminder: ' + e.message);
+    Logger.log('✗ Invoice reminder failed: ' + e.message);
+  }
+
+  try {
+    // 10. Overdue Notice Email
+    Logger.log('Sending test email 10: Overdue Notice');
+    const overdueHtml = generateOverdueNoticeHtml({
       invoice: overdueInvoiceData,
       job: testJobData,
       bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
@@ -10045,23 +10235,23 @@ function sendAllTestEmails() {
     });
     GmailApp.sendEmail(
       testEmail,
-      '[TEST] OVERDUE: Invoice INV-TEST-002 - Payment Required',
-      'Test invoice reminder email',
+      '[TEST] OVERDUE: Invoice INV-TEST-003 - Payment Required',
+      'Test overdue notice email',
       {
-        htmlBody: reminderHtml,
+        htmlBody: overdueHtml,
         name: 'CartCure Test'
       }
     );
     successCount++;
-    Logger.log('✓ Invoice reminder sent');
+    Logger.log('✓ Overdue notice sent');
   } catch (e) {
-    errors.push('Invoice Reminder: ' + e.message);
-    Logger.log('✗ Invoice reminder failed: ' + e.message);
+    errors.push('Overdue Notice: ' + e.message);
+    Logger.log('✗ Overdue notice failed: ' + e.message);
   }
 
   try {
-    // 10. Invoice with Late Fees Email
-    Logger.log('Sending test email 10: Invoice with Late Fees');
+    // 11. Invoice with Late Fees Email
+    Logger.log('Sending test email 11: Invoice with Late Fees');
     const lateFeeInvoiceHtml = generateInvoiceWithLateFeeHtml({
       invoice: overdueInvoiceData,
       job: testJobData,
@@ -10075,7 +10265,7 @@ function sendAllTestEmails() {
     });
     GmailApp.sendEmail(
       testEmail,
-      '[TEST] Updated Invoice INV-TEST-002 - Including Late Fees',
+      '[TEST] Updated Invoice INV-TEST-003 - Including Late Fees',
       'Test invoice with late fees email',
       {
         htmlBody: lateFeeInvoiceHtml,
@@ -10090,7 +10280,7 @@ function sendAllTestEmails() {
   }
 
   // Show results
-  let resultMessage = successCount + ' of 10 test emails sent successfully to ' + testEmail + '.';
+  let resultMessage = successCount + ' of 11 test emails sent successfully to ' + testEmail + '.';
 
   if (errors.length > 0) {
     resultMessage += '\n\nErrors:\n• ' + errors.join('\n• ');
@@ -10102,7 +10292,7 @@ function sendAllTestEmails() {
     ui.ButtonSet.OK
   );
 
-  Logger.log('Test emails complete: ' + successCount + '/10 successful');
+  Logger.log('Test emails complete: ' + successCount + '/11 successful');
 }
 
 /**
@@ -10342,11 +10532,10 @@ function generatePaymentReceiptHtml(data) {
 }
 
 /**
- * Generate invoice reminder HTML for testing
+ * Generate invoice reminder HTML for testing (pre-due friendly reminder)
  */
 function generateInvoiceReminderHtml(data) {
-  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
-  const isOverdue = daysOverdue > 0;
+  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysUntilDue } = data;
 
   return `
     <!DOCTYPE html>
@@ -10355,7 +10544,71 @@ function generateInvoiceReminderHtml(data) {
       <style>
         body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
-        .header { background: ${isOverdue ? '#c62828' : '#2d5d3f'}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .tip-box { background: #fff8e6; padding: 15px; border-left: 4px solid #f5d76e; margin: 20px 0; }
+        .info-box { background: #faf8f4; padding: 15px; border-left: 4px solid #2d5d3f; margin: 20px 0; }
+        .bank-box { background: #e8f5e9; padding: 15px; border: 1px solid #4caf50; margin: 20px 0; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>FRIENDLY REMINDER</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoice['Invoice #']}</p>
+        </div>
+        <div class="content">
+          <p>Hi ${invoice['Client Name']},</p>
+
+          <p>This is a friendly reminder that payment for invoice <strong>${invoice['Invoice #']}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + invoice['Due Date'] + '</strong>'}.</p>
+
+          <div class="tip-box">
+            <p style="margin: 0; color: #856404;"><strong>💡 Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${invoice['Due Date']} to avoid any additional charges.</p>
+          </div>
+
+          <div class="info-box">
+            <p><strong>Invoice Number:</strong> ${invoice['Invoice #']}</p>
+            <p><strong>Job Reference:</strong> ${invoice['Job #']}</p>
+            <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">$${invoice['Total']}</span></p>
+            <p><strong>Due Date:</strong> ${invoice['Due Date']}</p>
+          </div>
+
+          <div class="bank-box">
+            <p style="margin: 0 0 10px 0;"><strong>💳 Payment Details:</strong></p>
+            <p style="margin: 0;">
+              Bank: ${bankName}<br>
+              Account: ${bankAccount}<br>
+              Reference: ${invoice['Invoice #']}
+            </p>
+          </div>
+
+          <p>If you have already made payment, please disregard this reminder — thank you!</p>
+          <p>Thanks for your business!<br><strong>The CartCure Team</strong></p>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate overdue notice HTML for testing
+ */
+function generateOverdueNoticeHtml(data) {
+  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #c62828; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
         .content { padding: 30px; }
         .warning-box { background: #ffebee; padding: 15px; border-left: 4px solid #c62828; margin: 20px 0; }
         .info-box { background: #faf8f4; padding: 15px; border-left: 4px solid #2d5d3f; margin: 20px 0; }
@@ -10366,32 +10619,28 @@ function generateInvoiceReminderHtml(data) {
     <body>
       <div class="container">
         <div class="header">
-          <h1>${isOverdue ? 'OVERDUE INVOICE' : 'PAYMENT REMINDER'}</h1>
-          <p style="margin: 10px 0 0 0; font-size: 20px;">${invoice['Invoice #']}</p>
+          <h1>OVERDUE NOTICE</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoice['Invoice #']}</p>
         </div>
         <div class="content">
           <p>Hi ${invoice['Client Name']},</p>
 
-          ${isOverdue
-            ? `<p>This is a reminder that your invoice <strong>${invoice['Invoice #']}</strong> is now <strong>${daysOverdue} days overdue</strong>. Please arrange payment as soon as possible to avoid additional late fees.</p>`
-            : `<p>This is a friendly reminder that payment for invoice <strong>${invoice['Invoice #']}</strong> is due soon.</p>`
-          }
+          <p>This is a notice that your invoice <strong>${invoice['Invoice #']}</strong> is now <strong>${daysOverdue} days overdue</strong>.</p>
 
-          ${isOverdue ? `
           <div class="warning-box">
-            <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ This invoice is ${daysOverdue} days overdue</p>
+            <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ Late Fees Apply</p>
             <p style="margin: 0;">Per our Terms of Service, late fees of 2% per day apply to overdue balances.</p>
             <p style="margin: 10px 0 0 0;"><strong>Late Fee Accrued:</strong> $${lateFee.toFixed(2)}</p>
             <p style="margin: 5px 0 0 0; font-size: 18px;"><strong>Total Now Due:</strong> $${totalWithFees.toFixed(2)}</p>
           </div>
-          ` : ''}
 
           <div class="info-box">
             <p><strong>Invoice Number:</strong> ${invoice['Invoice #']}</p>
             <p><strong>Job Reference:</strong> ${invoice['Job #']}</p>
             <p><strong>Original Amount:</strong> $${invoice['Total']}</p>
-            <p><strong>Due Date:</strong> ${invoice['Due Date']}</p>
-            ${isOverdue ? `<p style="font-size: 18px; color: #c62828;"><strong>Total Now Due (incl late fees):</strong> $${totalWithFees.toFixed(2)}</p>` : ''}
+            <p><strong>Original Due Date:</strong> ${invoice['Due Date']}</p>
+            <p><strong>Days Overdue:</strong> ${daysOverdue}</p>
+            <p style="font-size: 18px; color: #c62828;"><strong>Total Now Due:</strong> $${totalWithFees.toFixed(2)}</p>
           </div>
 
           <div class="bank-box">
@@ -10403,7 +10652,9 @@ function generateInvoiceReminderHtml(data) {
             </p>
           </div>
 
-          <p>If you have already made payment, please disregard this reminder and accept our thanks!</p>
+          <p style="color: #c62828;"><strong>Please arrange payment as soon as possible to avoid additional late fees.</strong></p>
+
+          <p>If you have already made payment, please disregard this notice.</p>
           <p>Thanks,<br><strong>The CartCure Team</strong></p>
         </div>
         <div class="footer">
