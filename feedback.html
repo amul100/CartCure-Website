@@ -389,6 +389,7 @@
                     if (result.success) {
                         form.style.display = 'none';
                         successMessage.style.display = 'block';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else {
                         errorMessage.textContent = result.message || 'Sorry, there was an error. Please try again.';
                         errorMessage.style.display = 'block';
@@ -402,6 +403,7 @@
                     // Fallback: assume success if we can't read response (CORS)
                     form.style.display = 'none';
                     successMessage.style.display = 'block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             });
         })();
