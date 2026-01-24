@@ -551,8 +551,19 @@ function handleTestimonialSubmission(data) {
       debugFolder.createFile('TESTIMONIAL_APPEND_' + new Date().getTime() + '.txt', appendDebug.join('\n'));
     }
 
-    // Append the testimonial
-    testimonialsSheet.appendRow([
+    // Find the actual last row with data (checking column B - Submitted timestamp)
+    // This avoids issues with checkboxes in column A extending beyond the data
+    const submittedCol = testimonialsSheet.getRange('B:B').getValues();
+    let actualLastRow = 1; // Start at header row
+    for (let i = 0; i < submittedCol.length; i++) {
+      if (submittedCol[i][0] !== '') {
+        actualLastRow = i + 1;
+      }
+    }
+    const insertRow = actualLastRow + 1;
+
+    // Insert the testimonial at the correct row
+    const rowData = [
       sanitizedData.showOnWebsite,
       sanitizedData.submitted,
       sanitizedData.name,
@@ -562,7 +573,8 @@ function handleTestimonialSubmission(data) {
       sanitizedData.testimonial,
       sanitizedData.jobNumber,
       sanitizedData.email
-    ]);
+    ];
+    testimonialsSheet.getRange(insertRow, 1, 1, rowData.length).setValues([rowData]);
 
     // Debug: Confirm append completed
     if (!IS_PRODUCTION) {
