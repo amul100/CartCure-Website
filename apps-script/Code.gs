@@ -5689,10 +5689,8 @@ function showContextAwareDialog(title, items, itemType, callback, selectedValue)
 
       if (response === ui.Button.YES) {
         // Call the callback function directly with the selected value
-        const callbackFn = this[callback];
-        if (typeof callbackFn === 'function') {
-          callbackFn(selectedValue);
-        }
+        // Use eval to call the function by name (this[callback] doesn't work in Apps Script)
+        eval(callback + '("' + selectedValue.replace(/"/g, '\\"') + '")');
         return;
       }
     }
