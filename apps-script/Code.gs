@@ -1874,8 +1874,32 @@ const PAYMENT_STATUS = {
   REFUNDED: 'Refunded'
 };
 
-// Job Categories
-const JOB_CATEGORIES = ['Design', 'Content', 'Bug Fix', 'Improvement', 'App Setup', 'Other'];
+// Job Categories (matching TOS services)
+const JOB_CATEGORIES = [
+  'Design',           // Logo, colors, fonts, layout modifications
+  'Content',          // Product descriptions, page edits, banner updates
+  'Bug Fix',          // Broken links, display issues, technical problems
+  'Improvement',      // Menu updates, functionality changes, small improvements
+  'Product/Image',    // Product uploads, CSV imports, image optimization
+  'Creative',         // Custom banner design, custom graphics
+  'Integration',      // App integration, configuration, third-party setup
+  'Theme/Code',       // Theme customization, code modifications
+  'Automation',       // Email automation setup
+  'Other'
+];
+
+// Project Size Classification (for payment schedule tiers)
+const PROJECT_SIZE = {
+  SMALL: 'Small',       // Under $200 - full payment upfront
+  MEDIUM: 'Medium',     // $200-$500 - 50% deposit, balance on completion
+  LARGE: 'Large'        // Over $500 - case-by-case schedule
+};
+
+// Late Payment Fee Configuration
+const LATE_FEE_CONFIG = {
+  RATE_PER_DAY: 0.02,   // 2% per day as per TOS
+  GRACE_PERIOD_DAYS: 7  // Days after due date before fees apply
+};
 
 // ============================================================================
 // SHEET STYLING - Brand Color Palette
@@ -1965,8 +1989,14 @@ function onOpen() {
       .addItem('Mark Quote Declined', 'showDeclineQuoteDialog'))
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('Generate Invoice', 'showGenerateInvoiceDialog')
+      .addItem('Generate Balance Invoice', 'showGenerateBalanceInvoiceDialog')
       .addItem('Send Invoice', 'showSendInvoiceDialog')
-      .addItem('Mark as Paid', 'showMarkPaidDialog'))
+      .addItem('Send Invoice Reminder', 'showSendInvoiceReminderDialog')
+      .addItem('Mark as Paid', 'showMarkPaidDialog')
+      .addSeparator()
+      .addItem('Update Late Fees', 'updateAllLateFees')
+      .addItem('Send Invoice with Late Fees', 'showSendInvoiceWithFeesDialog')
+      .addItem('View Overdue Invoices', 'showOverdueInvoicesWithFees'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
@@ -1976,7 +2006,8 @@ function onOpen() {
       .addItem('📧 Disable Email Activity Logging', 'removeEmailScanTrigger')
       .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs')
       .addSeparator()
-      .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions'))
+      .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions')
+      .addItem('📧 Send All Test Emails', 'sendAllTestEmails'))
     .addToUi();
 
   // Enable auto-refresh by default if not already enabled
@@ -3006,6 +3037,10 @@ function setupInvoiceLogSheet(ss, clearData) {
     'Sent Date',
     'Paid Date',
     'Payment Reference',
+    'Days Overdue',
+    'Late Fee',
+    'Total With Fees',
+    'Invoice Type',
     'Notes'
   ];
 
@@ -3049,18 +3084,29 @@ function setupInvoiceLogSheet(ss, clearData) {
     90,   // Sent Date
     90,   // Paid Date
     130,  // Payment Reference
+    90,   // Days Overdue
+    80,   // Late Fee
+    100,  // Total With Fees
+    90,   // Invoice Type
     150   // Notes
   ];
   for (let col = 1; col <= headers.length; col++) {
     sheet.setColumnWidth(col, invoiceColumnWidths[col - 1] || 100);
   }
 
-  // Add data validation for Status
+  // Add data validation for Status (column 10)
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], true)
     .setAllowInvalid(false)
     .build();
   sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
+
+  // Add data validation for Invoice Type (column 17)
+  const typeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Full', 'Deposit', 'Balance', 'Additional'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 17, 500, 1).setDataValidation(typeRule);
 
   // Add conditional formatting for invoice Status
   addInvoiceStatusConditionalFormatting(sheet);
@@ -4863,6 +4909,271 @@ function calculateSLAStatus(acceptedDate, turnaroundDays) {
   return 'On Track';
 }
 
+/**
+ * Get project size classification based on total amount
+ * Used to determine payment schedule per TOS:
+ * - Small (<$200): Full payment upfront
+ * - Medium ($200-$500): 50% deposit, balance on completion
+ * - Large (>$500): Case-by-case schedule
+ */
+function getProjectSize(totalAmount) {
+  const amount = parseFloat(totalAmount) || 0;
+  if (amount < 200) return PROJECT_SIZE.SMALL;
+  if (amount <= 500) return PROJECT_SIZE.MEDIUM;
+  return PROJECT_SIZE.LARGE;
+}
+
+/**
+ * Calculate late payment fee based on days overdue
+ * Per TOS: 2% per day on outstanding balances after 7 days past due date
+ *
+ * @param {number} originalAmount - Original invoice amount
+ * @param {Date} dueDate - Invoice due date
+ * @param {Date} currentDate - Current date (optional, defaults to now)
+ * @returns {Object} - { daysOverdue, lateFee, totalWithFees }
+ */
+function calculateLateFee(originalAmount, dueDate, currentDate) {
+  const amount = parseFloat(originalAmount) || 0;
+  const due = new Date(dueDate);
+  const now = currentDate ? new Date(currentDate) : new Date();
+
+  // Calculate days overdue
+  const daysOverdue = Math.max(0, daysBetween(due, now));
+
+  // No fee if not overdue or within grace period
+  if (daysOverdue <= 0) {
+    return { daysOverdue: 0, lateFee: 0, totalWithFees: amount };
+  }
+
+  // Calculate fee: 2% per day
+  const lateFee = amount * LATE_FEE_CONFIG.RATE_PER_DAY * daysOverdue;
+  const totalWithFees = amount + lateFee;
+
+  return {
+    daysOverdue: daysOverdue,
+    lateFee: Math.round(lateFee * 100) / 100,  // Round to 2 decimal places
+    totalWithFees: Math.round(totalWithFees * 100) / 100
+  };
+}
+
+/**
+ * Update late fees for all overdue invoices
+ * Called from menu or on schedule to recalculate late fees
+ */
+function updateAllLateFees() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+
+  if (!invoiceSheet) {
+    Logger.log('Invoice sheet not found');
+    return;
+  }
+
+  const data = invoiceSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  // Find column indices
+  const cols = {
+    status: headers.indexOf('Status'),
+    dueDate: headers.indexOf('Due Date'),
+    total: headers.indexOf('Total'),
+    daysOverdue: headers.indexOf('Days Overdue'),
+    lateFee: headers.indexOf('Late Fee'),
+    totalWithFees: headers.indexOf('Total With Fees')
+  };
+
+  let updatedCount = 0;
+  const now = new Date();
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = row[cols.status];
+
+    // Only calculate for unpaid invoices (Sent or Overdue status)
+    if (status !== 'Sent' && status !== 'Overdue') continue;
+
+    const dueDate = row[cols.dueDate];
+    const total = parseFloat(row[cols.total]) || 0;
+
+    if (!dueDate || total === 0) continue;
+
+    const feeCalc = calculateLateFee(total, dueDate, now);
+
+    // Update the row
+    const rowNum = i + 1;
+    invoiceSheet.getRange(rowNum, cols.daysOverdue + 1).setValue(feeCalc.daysOverdue > 0 ? feeCalc.daysOverdue : '');
+    invoiceSheet.getRange(rowNum, cols.lateFee + 1).setValue(feeCalc.lateFee > 0 ? feeCalc.lateFee.toFixed(2) : '');
+    invoiceSheet.getRange(rowNum, cols.totalWithFees + 1).setValue(feeCalc.totalWithFees.toFixed(2));
+
+    // Update status to Overdue if past due
+    if (feeCalc.daysOverdue > 0 && status === 'Sent') {
+      invoiceSheet.getRange(rowNum, cols.status + 1).setValue('Overdue');
+    }
+
+    updatedCount++;
+  }
+
+  Logger.log('Updated late fees for ' + updatedCount + ' invoices');
+  return updatedCount;
+}
+
+/**
+ * Show late fees summary for overdue invoices
+ */
+function showOverdueInvoicesWithFees() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+
+  if (!invoiceSheet) {
+    ui.alert('Error', 'Invoice sheet not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Update fees first
+  updateAllLateFees();
+
+  const data = invoiceSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const cols = {
+    invoiceNum: headers.indexOf('Invoice #'),
+    clientName: headers.indexOf('Client Name'),
+    status: headers.indexOf('Status'),
+    dueDate: headers.indexOf('Due Date'),
+    total: headers.indexOf('Total'),
+    daysOverdue: headers.indexOf('Days Overdue'),
+    lateFee: headers.indexOf('Late Fee'),
+    totalWithFees: headers.indexOf('Total With Fees')
+  };
+
+  let overdueList = [];
+  let totalOutstanding = 0;
+  let totalFees = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[cols.status] === 'Overdue') {
+      const daysOverdue = parseInt(row[cols.daysOverdue]) || 0;
+      const lateFee = parseFloat(row[cols.lateFee]) || 0;
+      const totalWithFees = parseFloat(row[cols.totalWithFees]) || 0;
+
+      overdueList.push(
+        row[cols.invoiceNum] + ' - ' + row[cols.clientName] +
+        '\n  ' + daysOverdue + ' days overdue | Fee: ' + formatCurrency(lateFee) +
+        ' | Total: ' + formatCurrency(totalWithFees)
+      );
+
+      totalOutstanding += totalWithFees;
+      totalFees += lateFee;
+    }
+  }
+
+  if (overdueList.length === 0) {
+    ui.alert('No Overdue Invoices', 'All invoices are paid or current.', ui.ButtonSet.OK);
+    return;
+  }
+
+  ui.alert('Overdue Invoices (' + overdueList.length + ')',
+    overdueList.join('\n\n') +
+    '\n\n-------------------\n' +
+    'Total Outstanding: ' + formatCurrency(totalOutstanding) + '\n' +
+    'Total Late Fees: ' + formatCurrency(totalFees),
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * Generate a balance invoice for a job that had a deposit
+ * Used for medium/large projects after work completion
+ */
+function generateBalanceInvoice(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Get existing invoices
+  const existingInvoices = getInvoicesByJobNumber(jobNumber);
+  const depositInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+
+  if (!depositInvoice) {
+    ui.alert('No Deposit Found',
+      'No deposit invoice found for this job.\nUse Generate Invoice for a full invoice.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Check if balance already exists
+  const balanceInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Balance');
+  if (balanceInvoice) {
+    ui.alert('Balance Exists',
+      'A balance invoice (' + balanceInvoice['Invoice #'] + ') already exists for this job.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+  const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices.length);
+  const now = new Date();
+  const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
+  const dueDate = new Date(now);
+  dueDate.setDate(dueDate.getDate() + paymentTerms);
+
+  // Calculate balance (total - deposit)
+  const totalAmount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+  const totalGst = parseFloat(job['GST']) || 0;
+  const totalWithGst = parseFloat(job['Total (incl GST)']) || 0;
+
+  const depositAmount = parseFloat(depositInvoice['Amount (excl GST)']) || 0;
+  const depositGst = parseFloat(depositInvoice['GST']) || 0;
+
+  const balanceAmount = totalAmount - depositAmount;
+  const balanceGst = totalGst - depositGst;
+  const balanceTotal = balanceAmount + balanceGst;
+
+  const invoiceRow = [
+    invoiceNumber,
+    jobNumber,
+    job['Client Name'],
+    job['Client Email'],
+    formatNZDate(now),
+    formatNZDate(dueDate),
+    balanceAmount.toFixed(2),
+    balanceGst.toFixed(2),
+    balanceTotal.toFixed(2),
+    'Draft',
+    '',  // Sent Date
+    '',  // Paid Date
+    '',  // Payment Reference
+    '',  // Days Overdue
+    '',  // Late Fee
+    balanceTotal.toFixed(2),  // Total With Fees
+    'Balance',
+    ''   // Notes
+  ];
+
+  invoiceSheet.appendRow(invoiceRow);
+  updateJobField(jobNumber, 'Invoice #', invoiceNumber);
+
+  ui.alert('Balance Invoice Generated',
+    'Invoice ' + invoiceNumber + ' created!\n\n' +
+    'Type: Balance (remaining 50%)\n' +
+    'Amount: ' + formatCurrency(balanceTotal) + '\n' +
+    'Due Date: ' + formatNZDate(dueDate) + '\n\n' +
+    'Use CartCure > Invoices > Send Invoice to email it.',
+    ui.ButtonSet.OK
+  );
+
+  Logger.log('Balance invoice ' + invoiceNumber + ' generated for ' + jobNumber);
+}
+
 // ============================================================================
 // DROPDOWN HELPER FUNCTIONS
 // ============================================================================
@@ -6013,6 +6324,26 @@ function startWorkOnJob(jobNumber) {
     return;
   }
 
+  // BACKUP REMINDER (per TOS requirement)
+  // Only show for fresh starts, not resuming from On Hold
+  if (job['Status'] === JOB_STATUS.ACCEPTED) {
+    const backupResponse = ui.alert('⚠️ Backup Reminder',
+      'IMPORTANT: Before starting work, ensure the client has a backup of their store.\n\n' +
+      'Per our Terms of Service, clients are responsible for maintaining their own backups.\n\n' +
+      'Have you confirmed the client has a recent backup?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (backupResponse !== ui.Button.YES) {
+      ui.alert('Work Not Started',
+        'Please confirm backup status before starting work.\n\n' +
+        'You may want to send the client a reminder to backup their store.',
+        ui.ButtonSet.OK
+      );
+      return;
+    }
+  }
+
   const now = new Date();
 
   // Capture current status BEFORE update to detect if resuming from On Hold
@@ -6100,9 +6431,21 @@ function markJobComplete(jobNumber) {
   // Send email notification
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.COMPLETED);
 
+  // CREDENTIAL CLEANUP REMINDER (per TOS requirement)
+  // Per TOS: Delete all access credentials within 24 hours of project completion
+  ui.alert('🔐 Security Reminder',
+    'Job ' + jobNumber + ' marked as Complete!\n\nClient has been notified.\n\n' +
+    '⚠️ IMPORTANT - Per TOS requirements:\n' +
+    '• Delete/revoke any store access credentials within 24 hours\n' +
+    '• Remove any saved passwords\n' +
+    '• Log out of all client accounts\n' +
+    '• Remind client to change their passwords',
+    ui.ButtonSet.OK
+  );
+
   const generateInvoice = ui.alert(
-    'Job Complete',
-    'Job ' + jobNumber + ' marked as Complete!\n\nClient has been notified.\n\nWould you like to generate an invoice now?',
+    'Generate Invoice?',
+    'Would you like to generate an invoice now?',
     ui.ButtonSet.YES_NO
   );
 
@@ -7275,6 +7618,39 @@ function showGenerateInvoiceDialog() {
 }
 
 /**
+ * Show dialog to generate balance invoice for jobs with deposits
+ */
+function showGenerateBalanceInvoiceDialog() {
+  const selectedJob = getSelectedJobNumber();
+  // Get completed jobs that have a deposit invoice
+  const completedJobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
+
+  // Filter to only jobs with deposit invoices
+  const jobsWithDeposits = completedJobs.filter(job => {
+    const invoices = getInvoicesByJobNumber(job['Job #']);
+    return invoices.some(inv => inv['Invoice Type'] === 'Deposit') &&
+           !invoices.some(inv => inv['Invoice Type'] === 'Balance');
+  });
+
+  if (jobsWithDeposits.length === 0) {
+    SpreadsheetApp.getUi().alert('No Jobs Need Balance Invoice',
+      'No completed jobs with pending balance invoices found.\n\n' +
+      'Balance invoices are for jobs that had a deposit invoice.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    return;
+  }
+
+  showContextAwareDialog(
+    'Generate Balance Invoice',
+    jobsWithDeposits,
+    'Job',
+    'generateBalanceInvoice',
+    selectedJob
+  );
+}
+
+/**
  * Generate an invoice for a job
  */
 function generateInvoiceForJob(jobNumber) {
@@ -7323,6 +7699,29 @@ function generateInvoiceForJob(jobNumber) {
   const gst = parseFloat(job['GST']) || 0;
   const total = parseFloat(job['Total (incl GST)']) || amount;
 
+  // Determine invoice type based on project size and existing invoices
+  const projectSize = getProjectSize(total);
+  let invoiceType = 'Full';
+  let invoiceAmount = amount;
+  let invoiceGst = gst;
+  let invoiceTotal = total;
+
+  if (existingInvoices && existingInvoices.length > 0) {
+    invoiceType = 'Additional';
+  } else if (projectSize === PROJECT_SIZE.MEDIUM) {
+    // Medium projects ($200-$500): 50% deposit
+    invoiceType = 'Deposit';
+    invoiceAmount = amount * 0.5;
+    invoiceGst = gst * 0.5;
+    invoiceTotal = total * 0.5;
+  } else if (projectSize === PROJECT_SIZE.LARGE) {
+    // Large projects (>$500): Ask about deposit
+    invoiceType = 'Deposit';
+    invoiceAmount = amount * 0.5;
+    invoiceGst = gst * 0.5;
+    invoiceTotal = total * 0.5;
+  }
+
   const invoiceRow = [
     invoiceNumber,
     jobNumber,
@@ -7330,14 +7729,18 @@ function generateInvoiceForJob(jobNumber) {
     job['Client Email'],
     formatNZDate(now),
     formatNZDate(dueDate),
-    amount.toFixed(2),
-    gst.toFixed(2),
-    total.toFixed(2),
+    invoiceAmount.toFixed(2),
+    invoiceGst.toFixed(2),
+    invoiceTotal.toFixed(2),
     'Draft',
-    '',
-    '',
-    '',
-    ''
+    '',  // Sent Date
+    '',  // Paid Date
+    '',  // Payment Reference
+    '',  // Days Overdue (calculated)
+    '',  // Late Fee (calculated)
+    invoiceTotal.toFixed(2),  // Total With Fees (initially same as total)
+    invoiceType,
+    ''   // Notes
   ];
 
   invoiceSheet.appendRow(invoiceRow);
@@ -7345,15 +7748,21 @@ function generateInvoiceForJob(jobNumber) {
   // Update job with latest invoice number
   updateJobField(jobNumber, 'Invoice #', invoiceNumber);
 
-  // Update success message based on whether this is an additional invoice
+  // Update success message based on invoice type
   const isAdditionalInvoice = existingInvoices && existingInvoices.length > 0;
-  const invoiceCountMessage = isAdditionalInvoice
-    ? '\n\nThis is invoice #' + (existingInvoices.length + 1) + ' for this job.'
-    : '';
+  let invoiceTypeMessage = '';
+
+  if (invoiceType === 'Deposit') {
+    invoiceTypeMessage = '\n\nThis is a 50% DEPOSIT invoice (' + projectSize + ' project).\n' +
+      'A balance invoice will need to be created upon completion.';
+  } else if (isAdditionalInvoice) {
+    invoiceTypeMessage = '\n\nThis is invoice #' + (existingInvoices.length + 1) + ' for this job.';
+  }
 
   ui.alert('Invoice Generated',
-    'Invoice ' + invoiceNumber + ' created!' + invoiceCountMessage + '\n\n' +
-    'Amount: ' + formatCurrency(total) + '\n' +
+    'Invoice ' + invoiceNumber + ' created!' + invoiceTypeMessage + '\n\n' +
+    'Type: ' + invoiceType + '\n' +
+    'Amount: ' + formatCurrency(invoiceTotal) + '\n' +
     'Due Date: ' + formatNZDate(dueDate) + '\n\n' +
     'Use CartCure > Invoices > Send Invoice to email it.',
     ui.ButtonSet.OK
@@ -7751,6 +8160,375 @@ function sendInvoiceEmail(invoiceNumber) {
     Logger.log('Invoice ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
     Logger.log('Error sending invoice: ' + error.message);
+    ui.alert('Error', 'Failed to send invoice: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Show dialog to send invoice reminder
+ */
+function showSendInvoiceReminderDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
+  const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
+  showContextAwareDialog(
+    'Send Invoice Reminder',
+    invoices,
+    'Invoice',
+    'sendInvoiceReminder',
+    selectedInvoice
+  );
+}
+
+/**
+ * Send invoice reminder email
+ * Reminds client about unpaid invoice with optional late fee warning
+ */
+function sendInvoiceReminder(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    ui.alert('Not Found', 'Invoice ' + invoiceNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const clientEmail = invoice['Client Email'];
+  const jobNumber = invoice['Job #'];
+  const total = parseFloat(invoice['Total']) || 0;
+  const dueDate = invoice['Due Date'];
+
+  if (!clientEmail) {
+    ui.alert('Missing Email', 'No email address found for this invoice.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Calculate if overdue and any late fees
+  const feeCalc = calculateLateFee(total, dueDate);
+  const isOverdue = feeCalc.daysOverdue > 0;
+
+  const subject = isOverdue
+    ? 'OVERDUE: Invoice ' + invoiceNumber + ' - Payment Required'
+    : 'Reminder: Invoice ' + invoiceNumber + ' from CartCure';
+
+  // Build late fee warning if applicable
+  let lateFeeHtml = '';
+  if (isOverdue) {
+    lateFeeHtml = `
+      <div style="background-color: #ffebee; padding: 15px; margin: 20px 0; border-left: 4px solid #c62828;">
+        <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ This invoice is ${feeCalc.daysOverdue} days overdue</p>
+        <p style="margin: 0;">Per our Terms of Service, late fees of 2% per day apply to overdue balances.</p>
+        <p style="margin: 10px 0 0 0;"><strong>Late Fee Accrued:</strong> ${formatCurrency(feeCalc.lateFee)}</p>
+        <p style="margin: 5px 0 0 0; font-size: 18px;"><strong>Total Now Due:</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>
+      </div>
+    `;
+  }
+
+  const htmlBody = `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; background-color: ${isOverdue ? '#c62828' : '#2d5d3f'}; color: white;">
+        <h1 style="margin: 0;">${isOverdue ? 'OVERDUE INVOICE' : 'PAYMENT REMINDER'}</h1>
+        <p style="margin: 10px 0 0 0; font-size: 20px;">${invoiceNumber}</p>
+      </div>
+
+      <div style="padding: 20px;">
+        <p>Hi ${clientName},</p>
+
+        ${isOverdue
+          ? `<p>This is a reminder that your invoice <strong>${invoiceNumber}</strong> is now <strong>${feeCalc.daysOverdue} days overdue</strong>. Please arrange payment as soon as possible to avoid additional late fees.</p>`
+          : `<p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due on <strong>${dueDate}</strong>.</p>`
+        }
+
+        ${lateFeeHtml}
+
+        <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
+          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+          <p><strong>Job Reference:</strong> ${jobNumber}</p>
+          <p><strong>Original Amount:</strong> ${formatCurrency(total)}</p>
+          <p><strong>Due Date:</strong> ${dueDate}</p>
+          ${isOverdue ? `<p style="font-size: 18px; color: #c62828;"><strong>Total Now Due (incl late fees):</strong> ${formatCurrency(feeCalc.totalWithFees)}</p>` : ''}
+        </div>
+
+        ${bankAccount ? `
+        <div style="background-color: #fff8e6; padding: 15px; border: 1px solid #f5d76e;">
+          <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
+          <p style="margin: 0;">
+            Bank: ${bankName}<br>
+            Account: ${bankAccount}<br>
+            Reference: ${invoiceNumber}
+          </p>
+        </div>
+        ` : ''}
+
+        <p style="margin-top: 20px;">If you have already made payment, please disregard this reminder and accept our thanks!</p>
+
+        <p>If you have any questions, please reply to this email.</p>
+
+        <p>Thanks,<br><strong>The CartCure Team</strong></p>
+      </div>
+
+      <div style="text-align: center; padding: 15px; background-color: #faf8f4; border-top: 2px solid #d4cfc3; font-size: 12px; color: #8a8a8a;">
+        ${businessName} | Quick Shopify Fixes for NZ Businesses<br>
+        ${isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : ''}
+        <a href="https://cartcure.co.nz" style="color: #2d5d3f;">cartcure.co.nz</a>
+      </div>
+    </div>
+  `;
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      isOverdue
+        ? 'Overdue reminder sent. Days overdue: ' + feeCalc.daysOverdue + ', Late fee: ' + formatCurrency(feeCalc.lateFee)
+        : 'Payment reminder sent',
+      'To: ' + clientEmail,
+      'Auto'
+    );
+
+    ui.alert('Reminder Sent',
+      'Invoice reminder sent to ' + clientEmail +
+      (isOverdue ? '\n\nDays overdue: ' + feeCalc.daysOverdue + '\nLate fee: ' + formatCurrency(feeCalc.lateFee) : ''),
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Invoice reminder for ' + invoiceNumber + ' sent to ' + clientEmail);
+  } catch (error) {
+    Logger.log('Error sending invoice reminder: ' + error.message);
+    ui.alert('Error', 'Failed to send reminder: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Show dialog to send invoice with late fees
+ */
+function showSendInvoiceWithFeesDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
+  const invoices = getInvoicesByStatus(['Overdue']);
+
+  if (!invoices || invoices.length === 0) {
+    SpreadsheetApp.getUi().alert('No Overdue Invoices',
+      'No overdue invoices found.\n\nLate fee invoices can only be sent for overdue invoices.',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+    return;
+  }
+
+  showContextAwareDialog(
+    'Send Invoice with Late Fees',
+    invoices,
+    'Invoice',
+    'sendInvoiceWithLateFees',
+    selectedInvoice
+  );
+}
+
+/**
+ * Send updated invoice email including accumulated late fees
+ * Creates a formal invoice showing original amount + late fees
+ */
+function sendInvoiceWithLateFees(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    ui.alert('Not Found', 'Invoice ' + invoiceNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const clientEmail = invoice['Client Email'];
+  const jobNumber = invoice['Job #'];
+  const originalAmount = parseFloat(invoice['Amount (excl GST)']) || 0;
+  const originalGst = parseFloat(invoice['GST']) || 0;
+  const originalTotal = parseFloat(invoice['Total']) || 0;
+  const dueDate = invoice['Due Date'];
+  const invoiceDate = invoice['Invoice Date'];
+
+  if (!clientEmail) {
+    ui.alert('Missing Email', 'No email address found for this invoice.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Calculate late fees
+  const feeCalc = calculateLateFee(originalTotal, dueDate);
+
+  if (feeCalc.daysOverdue <= 0) {
+    ui.alert('Not Overdue',
+      'This invoice is not overdue. No late fees apply.\n\nUse "Send Invoice" for regular invoices.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Confirm with user
+  const confirmResponse = ui.alert('Confirm Late Fee Invoice',
+    'Send updated invoice including late fees?\n\n' +
+    'Original Amount: ' + formatCurrency(originalTotal) + '\n' +
+    'Days Overdue: ' + feeCalc.daysOverdue + '\n' +
+    'Late Fee (2% per day): ' + formatCurrency(feeCalc.lateFee) + '\n' +
+    'New Total: ' + formatCurrency(feeCalc.totalWithFees),
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirmResponse !== ui.Button.YES) {
+    return;
+  }
+
+  const subject = 'Updated Invoice ' + invoiceNumber + ' - Including Late Fees';
+
+  const htmlBody = `
+    <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; background-color: #c62828; color: white;">
+        <h1 style="margin: 0;">UPDATED INVOICE</h1>
+        <p style="margin: 10px 0 0 0; font-size: 20px;">${invoiceNumber}</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px;">Including Late Payment Fees</p>
+      </div>
+
+      <div style="padding: 20px;">
+        <p>Hi ${clientName},</p>
+
+        <p>This is an updated invoice for <strong>${invoiceNumber}</strong> which is now <strong>${feeCalc.daysOverdue} days overdue</strong>.</p>
+
+        <p>Per our Terms of Service, a late payment fee of 2% per day applies to overdue balances.</p>
+
+        <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
+          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+          <p><strong>Job Reference:</strong> ${jobNumber}</p>
+          <p><strong>Original Invoice Date:</strong> ${invoiceDate}</p>
+          <p><strong>Original Due Date:</strong> ${dueDate}</p>
+          <p><strong>Days Overdue:</strong> ${feeCalc.daysOverdue}</p>
+        </div>
+
+        <div style="background-color: #fff; padding: 20px; margin: 20px 0; border: 2px solid #d4cfc3;">
+          <h3 style="margin: 0 0 15px 0; color: #2d5d3f; border-bottom: 1px solid #d4cfc3; padding-bottom: 10px;">Amount Due</h3>
+
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0;">Original Amount${isGSTRegistered ? ' (excl GST)' : ''}:</td>
+              <td style="text-align: right; padding: 8px 0;">${formatCurrency(originalAmount)}</td>
+            </tr>
+            ${isGSTRegistered && originalGst > 0 ? `
+            <tr>
+              <td style="padding: 8px 0;">GST (15%):</td>
+              <td style="text-align: right; padding: 8px 0;">${formatCurrency(originalGst)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0;"><strong>Original Total (incl GST):</strong></td>
+              <td style="text-align: right; padding: 8px 0;"><strong>${formatCurrency(originalTotal)}</strong></td>
+            </tr>
+            ` : `
+            <tr>
+              <td style="padding: 8px 0;"><strong>Original Total:</strong></td>
+              <td style="text-align: right; padding: 8px 0;"><strong>${formatCurrency(originalTotal)}</strong></td>
+            </tr>
+            `}
+            <tr style="color: #c62828;">
+              <td style="padding: 8px 0;">Late Fee (2% × ${feeCalc.daysOverdue} days):</td>
+              <td style="text-align: right; padding: 8px 0;">${formatCurrency(feeCalc.lateFee)}</td>
+            </tr>
+            <tr style="border-top: 2px solid #2d5d3f;">
+              <td style="padding: 15px 0; font-size: 18px;"><strong>TOTAL NOW DUE:</strong></td>
+              <td style="text-align: right; padding: 15px 0; font-size: 18px; color: #c62828;"><strong>${formatCurrency(feeCalc.totalWithFees)}</strong></td>
+            </tr>
+          </table>
+        </div>
+
+        ${bankAccount ? `
+        <div style="background-color: #fff8e6; padding: 15px; border: 1px solid #f5d76e;">
+          <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
+          <p style="margin: 0;">
+            Bank: ${bankName}<br>
+            Account: ${bankAccount}<br>
+            Reference: ${invoiceNumber}
+          </p>
+        </div>
+        ` : ''}
+
+        <div style="background-color: #ffebee; padding: 15px; margin: 20px 0; border-left: 4px solid #c62828;">
+          <p style="margin: 0; color: #c62828;"><strong>⚠️ Please note:</strong> Late fees continue to accrue at 2% per day until payment is received.</p>
+        </div>
+
+        <p>Please arrange payment immediately to avoid additional fees.</p>
+
+        <p>If you have any questions or concerns, please reply to this email.</p>
+
+        <p>Thanks,<br><strong>The CartCure Team</strong></p>
+      </div>
+
+      <div style="text-align: center; padding: 15px; background-color: #faf8f4; border-top: 2px solid #d4cfc3; font-size: 12px; color: #8a8a8a;">
+        ${businessName} | Quick Shopify Fixes for NZ Businesses<br>
+        ${isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : ''}
+        <a href="https://cartcure.co.nz" style="color: #2d5d3f;">cartcure.co.nz</a>
+      </div>
+    </div>
+  `;
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Update invoice with calculated late fees
+    updateInvoiceFields(invoiceNumber, {
+      'Days Overdue': feeCalc.daysOverdue,
+      'Late Fee': feeCalc.lateFee.toFixed(2),
+      'Total With Fees': feeCalc.totalWithFees.toFixed(2)
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Invoice with late fees sent. Days overdue: ' + feeCalc.daysOverdue +
+      ', Late fee: ' + formatCurrency(feeCalc.lateFee) +
+      ', New total: ' + formatCurrency(feeCalc.totalWithFees),
+      'To: ' + clientEmail,
+      'Auto'
+    );
+
+    ui.alert('Invoice Sent',
+      'Updated invoice with late fees sent to ' + clientEmail + '\n\n' +
+      'Original: ' + formatCurrency(originalTotal) + '\n' +
+      'Late Fee: ' + formatCurrency(feeCalc.lateFee) + '\n' +
+      'New Total: ' + formatCurrency(feeCalc.totalWithFees),
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Invoice ' + invoiceNumber + ' with late fees sent to ' + clientEmail);
+  } catch (error) {
+    Logger.log('Error sending invoice with late fees: ' + error.message);
     ui.alert('Error', 'Failed to send invoice: ' + error.message, ui.ButtonSet.OK);
   }
 }
@@ -8965,4 +9743,782 @@ function createTestSubmissions() {
     ui.alert('Error', 'Failed to create test submissions: ' + error.toString(), ui.ButtonSet.OK);
     Logger.log('Error creating test submissions: ' + error);
   }
+}
+
+// ============================================================================
+// TEST EMAIL FUNCTION - SENDS ALL EMAIL TYPES TO info@cartcure.co.nz
+// ============================================================================
+
+/**
+ * Send all email types to info@cartcure.co.nz for testing purposes
+ * This function sends sample versions of every email template in the system
+ * Accessible via: CartCure Menu > Setup > Send Test Emails
+ */
+function sendAllTestEmails() {
+  const ui = SpreadsheetApp.getUi();
+  const testEmail = 'info@cartcure.co.nz';
+
+  // Confirm with user
+  const response = ui.alert(
+    '📧 Send Test Emails',
+    'This will send ALL email types to ' + testEmail + ' for testing.\n\n' +
+    'Email types to be sent:\n' +
+    '1. Admin Notification (new submission)\n' +
+    '2. User Confirmation (submission received)\n' +
+    '3. Quote Email\n' +
+    '4. Status Update - In Progress\n' +
+    '5. Status Update - On Hold\n' +
+    '6. Status Update - Completed\n' +
+    '7. Invoice Email\n' +
+    '8. Payment Receipt Email\n' +
+    '9. Invoice Reminder\n' +
+    '10. Invoice with Late Fees\n\n' +
+    'Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  let successCount = 0;
+  let errors = [];
+
+  // Sample test data
+  const testSubmissionData = {
+    name: 'Test Customer',
+    email: testEmail,
+    storeUrl: 'https://test-store.myshopify.com',
+    message: 'This is a test submission message for email template testing.',
+    submissionNumber: 'CC-TEST-001',
+    timestamp: new Date().toISOString()
+  };
+
+  const testJobData = {
+    'Job #': 'J-TEST-001',
+    'Client Name': 'Test Customer',
+    'Client Email': testEmail,
+    'Store URL': 'https://test-store.myshopify.com',
+    'Job Description': 'Test job for email template testing - fix product page layout and mobile responsiveness.',
+    'Category': 'Design',
+    'Status': 'In Progress',
+    'Quote Amount (excl GST)': '150.00',
+    'GST': '22.50',
+    'Total (incl GST)': '172.50',
+    'Quote Sent Date': formatNZDate(new Date()),
+    'Quote Valid Until': formatNZDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
+    'Estimated Turnaround': '7'
+  };
+
+  const testInvoiceData = {
+    'Invoice #': 'INV-TEST-001',
+    'Job #': 'J-TEST-001',
+    'Client Name': 'Test Customer',
+    'Client Email': testEmail,
+    'Invoice Date': formatNZDate(new Date()),
+    'Due Date': formatNZDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+    'Amount (excl GST)': '150.00',
+    'GST': '22.50',
+    'Total': '172.50',
+    'Status': 'Sent'
+  };
+
+  try {
+    // 1. Admin Notification Email
+    Logger.log('Sending test email 1: Admin Notification');
+    const adminHtml = generateAdminNotificationHtml(testSubmissionData);
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] New Contact Form Submission - ' + testSubmissionData.submissionNumber,
+      'Test admin notification email',
+      {
+        htmlBody: adminHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Admin notification sent');
+  } catch (e) {
+    errors.push('Admin Notification: ' + e.message);
+    Logger.log('✗ Admin notification failed: ' + e.message);
+  }
+
+  try {
+    // 2. User Confirmation Email
+    Logger.log('Sending test email 2: User Confirmation');
+    const confirmHtml = generateUserConfirmationHtml(testSubmissionData);
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Thanks for Contacting CartCure - ' + testSubmissionData.submissionNumber,
+      'Test user confirmation email',
+      {
+        htmlBody: confirmHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ User confirmation sent');
+  } catch (e) {
+    errors.push('User Confirmation: ' + e.message);
+    Logger.log('✗ User confirmation failed: ' + e.message);
+  }
+
+  try {
+    // 3. Quote Email
+    Logger.log('Sending test email 3: Quote');
+    const quoteHtml = generateQuoteEmailHtml({
+      job: testJobData,
+      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
+      bankName: getSetting('Bank Name') || 'Test Bank',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || ''
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Quote for Your Shopify Project - J-TEST-001',
+      'Test quote email',
+      {
+        htmlBody: quoteHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Quote email sent');
+  } catch (e) {
+    errors.push('Quote Email: ' + e.message);
+    Logger.log('✗ Quote email failed: ' + e.message);
+  }
+
+  try {
+    // 4. Status Update - In Progress
+    Logger.log('Sending test email 4: Status Update - In Progress');
+    const inProgressHtml = generateStatusUpdateEmailHtml({
+      job: testJobData,
+      newStatus: JOB_STATUS.IN_PROGRESS,
+      wasOnHold: false,
+      daysOnHold: 0
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Your Job is Now In Progress - J-TEST-001',
+      'Test status update email - In Progress',
+      {
+        htmlBody: inProgressHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Status update (In Progress) sent');
+  } catch (e) {
+    errors.push('Status In Progress: ' + e.message);
+    Logger.log('✗ Status update (In Progress) failed: ' + e.message);
+  }
+
+  try {
+    // 5. Status Update - On Hold
+    Logger.log('Sending test email 5: Status Update - On Hold');
+    const onHoldHtml = generateStatusUpdateEmailHtml({
+      job: testJobData,
+      newStatus: JOB_STATUS.ON_HOLD,
+      explanation: 'Waiting for client to provide product images and updated content.'
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Your Job is Now On Hold - J-TEST-001',
+      'Test status update email - On Hold',
+      {
+        htmlBody: onHoldHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Status update (On Hold) sent');
+  } catch (e) {
+    errors.push('Status On Hold: ' + e.message);
+    Logger.log('✗ Status update (On Hold) failed: ' + e.message);
+  }
+
+  try {
+    // 6. Status Update - Completed
+    Logger.log('Sending test email 6: Status Update - Completed');
+    const completedHtml = generateStatusUpdateEmailHtml({
+      job: testJobData,
+      newStatus: JOB_STATUS.COMPLETED
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Your Job is Complete! - J-TEST-001',
+      'Test status update email - Completed',
+      {
+        htmlBody: completedHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Status update (Completed) sent');
+  } catch (e) {
+    errors.push('Status Completed: ' + e.message);
+    Logger.log('✗ Status update (Completed) failed: ' + e.message);
+  }
+
+  try {
+    // 7. Invoice Email
+    Logger.log('Sending test email 7: Invoice');
+    const invoiceHtml = generateInvoiceEmailHtml({
+      invoice: testInvoiceData,
+      job: testJobData,
+      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
+      bankName: getSetting('Bank Name') || 'Test Bank',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || ''
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Invoice INV-TEST-001 from CartCure',
+      'Test invoice email',
+      {
+        htmlBody: invoiceHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Invoice email sent');
+  } catch (e) {
+    errors.push('Invoice Email: ' + e.message);
+    Logger.log('✗ Invoice email failed: ' + e.message);
+  }
+
+  try {
+    // 8. Payment Receipt Email
+    Logger.log('Sending test email 8: Payment Receipt');
+    const receiptHtml = generatePaymentReceiptHtml({
+      invoice: testInvoiceData,
+      job: testJobData,
+      method: 'Bank Transfer',
+      reference: 'TEST-REF-12345',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || ''
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Payment Receipt - INV-TEST-001',
+      'Test payment receipt email',
+      {
+        htmlBody: receiptHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Payment receipt sent');
+  } catch (e) {
+    errors.push('Payment Receipt: ' + e.message);
+    Logger.log('✗ Payment receipt failed: ' + e.message);
+  }
+
+  // Create overdue invoice test data for reminder and late fee emails
+  const overdueInvoiceData = {
+    'Invoice #': 'INV-TEST-002',
+    'Job #': 'J-TEST-001',
+    'Client Name': 'Test Customer',
+    'Client Email': testEmail,
+    'Invoice Date': formatNZDate(new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)), // 21 days ago
+    'Due Date': formatNZDate(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)), // 14 days ago (overdue)
+    'Amount (excl GST)': '250.00',
+    'GST': '37.50',
+    'Total': '287.50',
+    'Status': 'Overdue'
+  };
+
+  try {
+    // 9. Invoice Reminder Email
+    Logger.log('Sending test email 9: Invoice Reminder');
+    const reminderHtml = generateInvoiceReminderHtml({
+      invoice: overdueInvoiceData,
+      job: testJobData,
+      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
+      bankName: getSetting('Bank Name') || 'Test Bank',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || '',
+      daysOverdue: 14,
+      lateFee: 80.50,
+      totalWithFees: 368.00
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] OVERDUE: Invoice INV-TEST-002 - Payment Required',
+      'Test invoice reminder email',
+      {
+        htmlBody: reminderHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Invoice reminder sent');
+  } catch (e) {
+    errors.push('Invoice Reminder: ' + e.message);
+    Logger.log('✗ Invoice reminder failed: ' + e.message);
+  }
+
+  try {
+    // 10. Invoice with Late Fees Email
+    Logger.log('Sending test email 10: Invoice with Late Fees');
+    const lateFeeInvoiceHtml = generateInvoiceWithLateFeeHtml({
+      invoice: overdueInvoiceData,
+      job: testJobData,
+      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
+      bankName: getSetting('Bank Name') || 'Test Bank',
+      isGSTRegistered: getSetting('GST Registered') === 'Yes',
+      gstNumber: getSetting('GST Number') || '',
+      daysOverdue: 14,
+      lateFee: 80.50,
+      totalWithFees: 368.00
+    });
+    GmailApp.sendEmail(
+      testEmail,
+      '[TEST] Updated Invoice INV-TEST-002 - Including Late Fees',
+      'Test invoice with late fees email',
+      {
+        htmlBody: lateFeeInvoiceHtml,
+        name: 'CartCure Test'
+      }
+    );
+    successCount++;
+    Logger.log('✓ Invoice with late fees sent');
+  } catch (e) {
+    errors.push('Invoice with Late Fees: ' + e.message);
+    Logger.log('✗ Invoice with late fees failed: ' + e.message);
+  }
+
+  // Show results
+  let resultMessage = successCount + ' of 10 test emails sent successfully to ' + testEmail + '.';
+
+  if (errors.length > 0) {
+    resultMessage += '\n\nErrors:\n• ' + errors.join('\n• ');
+  }
+
+  ui.alert(
+    '📧 Test Emails ' + (errors.length === 0 ? 'Complete' : 'Partial'),
+    resultMessage,
+    ui.ButtonSet.OK
+  );
+
+  Logger.log('Test emails complete: ' + successCount + '/10 successful');
+}
+
+/**
+ * Generate admin notification HTML for testing
+ * (Simplified version of the email sent when a new submission arrives)
+ */
+function generateAdminNotificationHtml(data) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .field { margin-bottom: 15px; }
+        .label { font-weight: bold; color: #2d5d3f; }
+        .value { margin-top: 5px; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Contact Form Submission</h1>
+        </div>
+        <div class="content">
+          <div class="field">
+            <div class="label">Submission Number:</div>
+            <div class="value">${data.submissionNumber}</div>
+          </div>
+          <div class="field">
+            <div class="label">Name:</div>
+            <div class="value">${data.name}</div>
+          </div>
+          <div class="field">
+            <div class="label">Email:</div>
+            <div class="value">${data.email}</div>
+          </div>
+          <div class="field">
+            <div class="label">Store URL:</div>
+            <div class="value">${data.storeUrl}</div>
+          </div>
+          <div class="field">
+            <div class="label">Message:</div>
+            <div class="value">${data.message}</div>
+          </div>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate user confirmation HTML for testing
+ */
+function generateUserConfirmationHtml(data) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .ref-box { background: #f5f3ef; padding: 15px; border-radius: 4px; text-align: center; margin: 20px 0; }
+        .ref-number { font-size: 24px; font-weight: bold; color: #2d5d3f; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Thanks for Reaching Out!</h1>
+        </div>
+        <div class="content">
+          <p>Hi ${data.name},</p>
+          <p>Thank you for contacting CartCure. We've received your enquiry and will review it shortly.</p>
+          <div class="ref-box">
+            <div>Your Reference Number:</div>
+            <div class="ref-number">${data.submissionNumber}</div>
+          </div>
+          <p><strong>What happens next?</strong></p>
+          <ul>
+            <li>We'll review your request within 24-48 hours</li>
+            <li>You'll receive a fixed-price quote via email</li>
+            <li>Once approved, we'll complete your project within 7 days</li>
+          </ul>
+          <p>Please keep this reference number for your records.</p>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate invoice email HTML for testing
+ */
+function generateInvoiceEmailHtml(data) {
+  const { invoice, job, bankAccount, bankName, isGSTRegistered, gstNumber } = data;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .invoice-details { background: #f5f3ef; padding: 20px; border-radius: 4px; margin: 20px 0; }
+        .total-row { font-size: 20px; font-weight: bold; color: #2d5d3f; border-top: 2px solid #2d5d3f; padding-top: 10px; margin-top: 10px; }
+        .bank-details { background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px 0; }
+        .label { color: #5a5a5a; }
+        .value { text-align: right; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Invoice ${invoice['Invoice #']}</h1>
+        </div>
+        <div class="content">
+          <p>Hi ${invoice['Client Name']},</p>
+          <p>Please find attached your invoice for the completed work on your Shopify store.</p>
+
+          <div class="invoice-details">
+            <table>
+              <tr><td class="label">Invoice Number:</td><td class="value">${invoice['Invoice #']}</td></tr>
+              <tr><td class="label">Job Reference:</td><td class="value">${invoice['Job #']}</td></tr>
+              <tr><td class="label">Invoice Date:</td><td class="value">${invoice['Invoice Date']}</td></tr>
+              <tr><td class="label">Due Date:</td><td class="value">${invoice['Due Date']}</td></tr>
+            </table>
+            <hr style="border: none; border-top: 1px solid #d4cfc3; margin: 15px 0;">
+            <table>
+              <tr><td class="label">Amount (excl GST):</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
+              ${isGSTRegistered ? `<tr><td class="label">GST (15%):</td><td class="value">$${invoice['GST']}</td></tr>` : ''}
+              <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Total']}</td></tr>
+            </table>
+          </div>
+
+          <div class="bank-details">
+            <strong>Payment Details:</strong><br>
+            Bank: ${bankName}<br>
+            Account: ${bankAccount}<br>
+            Reference: ${invoice['Invoice #']}
+            ${isGSTRegistered ? `<br>GST Number: ${gstNumber}` : ''}
+          </div>
+
+          <p>Payment is due by ${invoice['Due Date']}. Please use the invoice number as your payment reference.</p>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate payment receipt HTML for testing
+ */
+function generatePaymentReceiptHtml(data) {
+  const { invoice, job, method, reference, isGSTRegistered, gstNumber } = data;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .success-box { background: #e8f5e9; padding: 20px; border-radius: 4px; text-align: center; margin: 20px 0; }
+        .checkmark { font-size: 48px; color: #2d5d3f; }
+        .receipt-details { background: #f5f3ef; padding: 20px; border-radius: 4px; margin: 20px 0; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px 0; }
+        .label { color: #5a5a5a; }
+        .value { text-align: right; font-weight: bold; }
+        .btn { display: inline-block; background: #2d5d3f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Payment Received</h1>
+        </div>
+        <div class="content">
+          <div class="success-box">
+            <div class="checkmark">✓</div>
+            <h2 style="color: #2d5d3f; margin: 10px 0;">Thank You!</h2>
+            <p>Your payment has been received and processed.</p>
+          </div>
+
+          <div class="receipt-details">
+            <h3 style="margin-top: 0;">Receipt Details</h3>
+            <table>
+              <tr><td class="label">Invoice Number:</td><td class="value">${invoice['Invoice #']}</td></tr>
+              <tr><td class="label">Job Reference:</td><td class="value">${invoice['Job #']}</td></tr>
+              <tr><td class="label">Payment Method:</td><td class="value">${method}</td></tr>
+              <tr><td class="label">Reference:</td><td class="value">${reference}</td></tr>
+              <tr><td class="label">Amount Paid:</td><td class="value">$${invoice['Total']}</td></tr>
+              <tr><td class="label">Date:</td><td class="value">${formatNZDate(new Date())}</td></tr>
+            </table>
+          </div>
+
+          <p>Thank you for choosing CartCure for your Shopify store needs. We hope you're happy with the work!</p>
+
+          <div style="text-align: center;">
+            <a href="https://cartcure.co.nz/feedback.html?job=${invoice['Job #']}" class="btn">Leave a Review</a>
+          </div>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate invoice reminder HTML for testing
+ */
+function generateInvoiceReminderHtml(data) {
+  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
+  const isOverdue = daysOverdue > 0;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: ${isOverdue ? '#c62828' : '#2d5d3f'}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .warning-box { background: #ffebee; padding: 15px; border-left: 4px solid #c62828; margin: 20px 0; }
+        .info-box { background: #faf8f4; padding: 15px; border-left: 4px solid #2d5d3f; margin: 20px 0; }
+        .bank-box { background: #fff8e6; padding: 15px; border: 1px solid #f5d76e; margin: 20px 0; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${isOverdue ? 'OVERDUE INVOICE' : 'PAYMENT REMINDER'}</h1>
+          <p style="margin: 10px 0 0 0; font-size: 20px;">${invoice['Invoice #']}</p>
+        </div>
+        <div class="content">
+          <p>Hi ${invoice['Client Name']},</p>
+
+          ${isOverdue
+            ? `<p>This is a reminder that your invoice <strong>${invoice['Invoice #']}</strong> is now <strong>${daysOverdue} days overdue</strong>. Please arrange payment as soon as possible to avoid additional late fees.</p>`
+            : `<p>This is a friendly reminder that payment for invoice <strong>${invoice['Invoice #']}</strong> is due soon.</p>`
+          }
+
+          ${isOverdue ? `
+          <div class="warning-box">
+            <p style="color: #c62828; font-weight: bold; margin: 0 0 10px 0;">⚠️ This invoice is ${daysOverdue} days overdue</p>
+            <p style="margin: 0;">Per our Terms of Service, late fees of 2% per day apply to overdue balances.</p>
+            <p style="margin: 10px 0 0 0;"><strong>Late Fee Accrued:</strong> $${lateFee.toFixed(2)}</p>
+            <p style="margin: 5px 0 0 0; font-size: 18px;"><strong>Total Now Due:</strong> $${totalWithFees.toFixed(2)}</p>
+          </div>
+          ` : ''}
+
+          <div class="info-box">
+            <p><strong>Invoice Number:</strong> ${invoice['Invoice #']}</p>
+            <p><strong>Job Reference:</strong> ${invoice['Job #']}</p>
+            <p><strong>Original Amount:</strong> $${invoice['Total']}</p>
+            <p><strong>Due Date:</strong> ${invoice['Due Date']}</p>
+            ${isOverdue ? `<p style="font-size: 18px; color: #c62828;"><strong>Total Now Due (incl late fees):</strong> $${totalWithFees.toFixed(2)}</p>` : ''}
+          </div>
+
+          <div class="bank-box">
+            <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
+            <p style="margin: 0;">
+              Bank: ${bankName}<br>
+              Account: ${bankAccount}<br>
+              Reference: ${invoice['Invoice #']}
+            </p>
+          </div>
+
+          <p>If you have already made payment, please disregard this reminder and accept our thanks!</p>
+          <p>Thanks,<br><strong>The CartCure Team</strong></p>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Generate invoice with late fees HTML for testing
+ */
+function generateInvoiceWithLateFeeHtml(data) {
+  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
+  const originalAmount = parseFloat(invoice['Amount (excl GST)']) || 0;
+  const originalGst = parseFloat(invoice['GST']) || 0;
+  const originalTotal = parseFloat(invoice['Total']) || 0;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
+        .header { background: #c62828; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .info-box { background: #faf8f4; padding: 15px; border-left: 4px solid #2d5d3f; margin: 20px 0; }
+        .amount-box { background: #fff; padding: 20px; border: 2px solid #d4cfc3; margin: 20px 0; }
+        .bank-box { background: #fff8e6; padding: 15px; border: 1px solid #f5d76e; margin: 20px 0; }
+        .warning-box { background: #ffebee; padding: 15px; border-left: 4px solid #c62828; margin: 20px 0; }
+        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px 0; }
+        .total-row { border-top: 2px solid #2d5d3f; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>UPDATED INVOICE</h1>
+          <p style="margin: 10px 0 0 0; font-size: 20px;">${invoice['Invoice #']}</p>
+          <p style="margin: 5px 0 0 0; font-size: 14px;">Including Late Payment Fees</p>
+        </div>
+        <div class="content">
+          <p>Hi ${invoice['Client Name']},</p>
+
+          <p>This is an updated invoice for <strong>${invoice['Invoice #']}</strong> which is now <strong>${daysOverdue} days overdue</strong>.</p>
+
+          <p>Per our Terms of Service, a late payment fee of 2% per day applies to overdue balances.</p>
+
+          <div class="info-box">
+            <p><strong>Invoice Number:</strong> ${invoice['Invoice #']}</p>
+            <p><strong>Job Reference:</strong> ${invoice['Job #']}</p>
+            <p><strong>Original Invoice Date:</strong> ${invoice['Invoice Date']}</p>
+            <p><strong>Original Due Date:</strong> ${invoice['Due Date']}</p>
+            <p><strong>Days Overdue:</strong> ${daysOverdue}</p>
+          </div>
+
+          <div class="amount-box">
+            <h3 style="margin: 0 0 15px 0; color: #2d5d3f; border-bottom: 1px solid #d4cfc3; padding-bottom: 10px;">Amount Due</h3>
+            <table>
+              <tr>
+                <td>Original Amount${isGSTRegistered ? ' (excl GST)' : ''}:</td>
+                <td style="text-align: right;">$${originalAmount.toFixed(2)}</td>
+              </tr>
+              ${isGSTRegistered && originalGst > 0 ? `
+              <tr>
+                <td>GST (15%):</td>
+                <td style="text-align: right;">$${originalGst.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td><strong>Original Total (incl GST):</strong></td>
+                <td style="text-align: right;"><strong>$${originalTotal.toFixed(2)}</strong></td>
+              </tr>
+              ` : `
+              <tr>
+                <td><strong>Original Total:</strong></td>
+                <td style="text-align: right;"><strong>$${originalTotal.toFixed(2)}</strong></td>
+              </tr>
+              `}
+              <tr style="color: #c62828;">
+                <td>Late Fee (2% × ${daysOverdue} days):</td>
+                <td style="text-align: right;">$${lateFee.toFixed(2)}</td>
+              </tr>
+              <tr class="total-row">
+                <td style="padding: 15px 0; font-size: 18px;"><strong>TOTAL NOW DUE:</strong></td>
+                <td style="text-align: right; padding: 15px 0; font-size: 18px; color: #c62828;"><strong>$${totalWithFees.toFixed(2)}</strong></td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="bank-box">
+            <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
+            <p style="margin: 0;">
+              Bank: ${bankName}<br>
+              Account: ${bankAccount}<br>
+              Reference: ${invoice['Invoice #']}
+            </p>
+          </div>
+
+          <div class="warning-box">
+            <p style="margin: 0; color: #c62828;"><strong>⚠️ Please note:</strong> Late fees continue to accrue at 2% per day until payment is received.</p>
+          </div>
+
+          <p>Please arrange payment immediately to avoid additional fees.</p>
+          <p>Thanks,<br><strong>The CartCure Team</strong></p>
+        </div>
+        <div class="footer">
+          This is a test email from CartCure Job Management System
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 }

@@ -597,7 +597,7 @@
     <li>Find your new job (JOB-001, JOB-002, etc.)</li>
     <li>Fill in:
         <ul>
-            <li><strong>Category</strong>: Design, Content, Bug Fix, Improvement, App Setup, or Other</li>
+            <li><strong>Category</strong>: Design, Content, Bug Fix, Improvement, Product/Image, Creative, Integration, Theme/Code, Automation, or Other</li>
             <li><strong>Quote Amount (excl GST)</strong>: Your price (e.g., 100)</li>
             <li><strong>Job Description</strong>: Refine the description if needed</li>
             <li><strong>Estimated Turnaround</strong>: Days to complete (default: 7)</li>
@@ -648,12 +648,18 @@
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Start Work on Job</strong></li>
     <li>Select a job from the dropdown list</li>
+    <li><strong>Backup Reminder:</strong> You'll see a prompt asking if you've confirmed the client has a recent backup of their store (per Terms of Service)</li>
+    <li>Click <strong>Yes</strong> to proceed, or <strong>No</strong> to send a backup reminder first</li>
     <li>Status changes to "In Progress"</li>
     <li>Client automatically receives an email notification</li>
 </ol>
 
+<div class="warning">
+    <strong>⚠️ Backup Reminder (TOS Requirement):</strong> Per the Terms of Service, clients are responsible for maintaining their own backups. The system prompts you to confirm backup status before starting work to protect both parties.
+</div>
+
 <div class="info">
-    <strong>Automatic Email:</strong> If resuming from "On Hold" status, the email will mention how many days the job was on hold.
+    <strong>Automatic Email:</strong> If resuming from "On Hold" status, the email will mention how many days the job was on hold. (No backup reminder when resuming.)
 </div>
 
 <h3>Complete the Job</h3>
@@ -661,8 +667,20 @@
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Job Complete</strong></li>
     <li>Select a job from the dropdown list</li>
     <li>Client automatically receives a completion notification email</li>
+    <li><strong>Security Reminder:</strong> You'll see a checklist reminding you to:
+        <ul>
+            <li>Delete/revoke any store access credentials within 24 hours</li>
+            <li>Remove any saved passwords</li>
+            <li>Log out of all client accounts</li>
+            <li>Remind client to change their passwords</li>
+        </ul>
+    </li>
     <li>You'll be asked if you want to generate an invoice</li>
 </ol>
+
+<div class="warning">
+    <strong>🔐 Credential Cleanup (TOS Requirement):</strong> Per the Terms of Service, all access credentials must be deleted within 24 hours of project completion. The system reminds you of this when completing each job.
+</div>
 
 <h3>Put on Hold (if needed)</h3>
 <ol>
@@ -681,10 +699,49 @@
 
 <h2>Invoicing & Payments</h2>
 
+<h3>Project Size Classification</h3>
+<p>The system automatically classifies projects based on total value to determine payment schedules (per Terms of Service):</p>
+<table>
+    <thead>
+        <tr>
+            <th>Project Size</th>
+            <th>Value Range</th>
+            <th>Payment Schedule</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Small</td>
+            <td>Under $200</td>
+            <td>Full payment upfront</td>
+        </tr>
+        <tr>
+            <td>Medium</td>
+            <td>$200 - $500</td>
+            <td>50% deposit, balance on completion</td>
+        </tr>
+        <tr>
+            <td>Large</td>
+            <td>Over $500</td>
+            <td>Case-by-case schedule (usually 50% deposit)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Invoice Types</h3>
+<p>The system supports different invoice types:</p>
+<ul>
+    <li><strong>Full</strong> - Standard invoice for the full project amount (small projects)</li>
+    <li><strong>Deposit</strong> - 50% deposit invoice (automatically generated for medium/large projects)</li>
+    <li><strong>Balance</strong> - Remaining 50% after work completion</li>
+    <li><strong>Additional</strong> - Extra invoices for scope changes or additional work</li>
+</ul>
+
 <h3>Generate an Invoice</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Generate Invoice</strong></li>
     <li>Select a job from the dropdown list</li>
+    <li>For <strong>Medium/Large projects</strong>: The system automatically creates a 50% deposit invoice</li>
     <li>If invoices already exist for this job, you'll see a warning: "[number] invoice(s) already exist for this job: [invoice numbers]. Are you sure you want to create another?"</li>
     <li>Click <strong>Yes</strong> to create an additional invoice, or <strong>No</strong> to cancel</li>
     <li>Invoice number is auto-generated to mirror the job number:
@@ -697,6 +754,15 @@
     <li>The job's Invoice # field is updated to show the most recent invoice</li>
 </ol>
 
+<h3>Generate Balance Invoice</h3>
+<p>For medium/large projects that started with a deposit:</p>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Generate Balance Invoice</strong></li>
+    <li>Select a completed job that has a deposit invoice</li>
+    <li>The system calculates the remaining 50% balance automatically</li>
+    <li>A new invoice with type "Balance" is created</li>
+</ol>
+
 <div class="info">
     <strong>Invoice Numbering:</strong> Invoice numbers are automatically generated from the job number (J-WORD-XXX becomes INV-WORD-XXX). This makes it easy to see which job an invoice belongs to at a glance.
 </div>
@@ -704,7 +770,7 @@
 <div class="info">
     <strong>Multiple Invoices:</strong> You can create multiple invoices for a single job. This is useful for:
     <ul>
-        <li>Partial billing (deposit invoice, then final invoice)</li>
+        <li>Deposit/balance billing (automatic for medium/large projects)</li>
         <li>Additional work requested after initial invoice</li>
         <li>Milestone-based payments on large projects</li>
     </ul>
@@ -735,6 +801,63 @@
         <li><strong>"Leave a Review" button</strong> - Links to the feedback form with job number pre-filled</li>
     </ul>
     This encourages satisfied customers to leave testimonials while the positive experience is fresh!
+</div>
+
+<h3>Late Payment Fees</h3>
+<p>Per the Terms of Service, late fees apply to overdue invoices:</p>
+<ul>
+    <li><strong>Rate:</strong> 2% per day on outstanding balances</li>
+    <li><strong>When:</strong> Applies after invoice due date has passed</li>
+</ul>
+
+<h4>Managing Late Fees</h4>
+<ol>
+    <li><strong>Update Late Fees:</strong> Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Update Late Fees</strong> to recalculate fees for all overdue invoices</li>
+    <li><strong>View Overdue Invoices:</strong> Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; View Overdue Invoices</strong> to see a summary of all overdue invoices with accumulated fees</li>
+</ol>
+
+<h4>Invoice Reminders</h4>
+<p>Send payment reminders to clients with unpaid invoices:</p>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Invoice Reminder</strong></li>
+    <li>Select a Sent or Overdue invoice</li>
+    <li>Client receives a reminder email which:
+        <ul>
+            <li>Shows the original invoice details</li>
+            <li>If overdue: displays days overdue and accumulated late fees</li>
+            <li>Includes payment details for easy reference</li>
+        </ul>
+    </li>
+</ol>
+
+<h4>Sending Invoices with Late Fees</h4>
+<p>For overdue invoices, you can send an updated invoice that includes the calculated late fees:</p>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Invoice with Late Fees</strong></li>
+    <li>Select an overdue invoice</li>
+    <li>Confirm the late fee calculation</li>
+    <li>Client receives a formal updated invoice showing:
+        <ul>
+            <li>Original amount</li>
+            <li>Days overdue</li>
+            <li>Late fee breakdown (2% × days)</li>
+            <li>New total due</li>
+        </ul>
+    </li>
+</ol>
+
+<div class="info">
+    <strong>Invoice Log Columns:</strong> The Invoice Log sheet now includes:
+    <ul>
+        <li><strong>Days Overdue</strong> - Number of days past due date</li>
+        <li><strong>Late Fee</strong> - Calculated late fee amount</li>
+        <li><strong>Total With Fees</strong> - Original amount plus late fees</li>
+        <li><strong>Invoice Type</strong> - Full, Deposit, Balance, or Additional</li>
+    </ul>
+</div>
+
+<div class="warning">
+    <strong>Important:</strong> Invoices automatically change to "Overdue" status when late fees are calculated. Run "Update Late Fees" regularly to keep the system current.
 </div>
 
 <div class="page-break"></div>
