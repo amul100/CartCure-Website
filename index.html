@@ -74,25 +74,18 @@
                     </div>
                     <div class="form-group">
                         <label for="message">What needs fixing?</label>
-                        <textarea id="message" placeholder="Be as detailed as possible - include what page it's on, what should happen vs what's happening, any error messages, etc." maxlength="5000"></textarea>
-                        <div class="form-hint">
-                            <span class="hint-icon">💡</span>
-                            <span>The more detail you provide, the faster and more accurate your quote will be!</span>
-                        </div>
+                        <textarea id="message" placeholder="Give as much detail as possible" maxlength="5000"></textarea>
                         <div class="voice-controls">
                             <button type="button" class="voice-button" id="voiceButton">
                                 🎤 Record Voice Note
                             </button>
                             <span class="recording-timer" id="recordingTimer"></span>
                         </div>
+                        <p class="voice-hint" style="font-size: 0.75rem; opacity: 0.7; margin: 0.5rem 0 0 0; line-height: 1.3;">Voice notes often capture details that are hard to type out. Feel free to ramble!</p>
                         <div class="audio-preview" id="audioPreview">
                             <audio controls id="audioPlayer"></audio>
                             <button type="button" class="delete-audio" id="deleteAudio">Delete Recording</button>
                         </div>
-                    </div>
-                    <div class="voice-recording-section">
-                        <label>Prefer to explain out loud? Record a voice note</label>
-                        <p class="voice-hint">Voice notes often capture details that are hard to type out. Feel free to ramble!</p>
                     </div>
                     <div class="form-group" style="margin-top: 0.5rem;">
                         <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
