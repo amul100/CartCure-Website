@@ -393,6 +393,7 @@
                     } else {
                         errorMessage.textContent = result.message || 'Sorry, there was an error. Please try again.';
                         errorMessage.style.display = 'block';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                         submitButton.disabled = false;
                         submitButton.textContent = 'Submit Feedback';
                     }
