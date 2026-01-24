@@ -553,12 +553,14 @@ function handleTestimonialSubmission(data) {
 
     // Find the actual last row with data (checking column B - Submitted timestamp)
     // This avoids issues with checkboxes in column A extending beyond the data
+    // We scan from row 2 (after header) and stop at the first empty cell
     const submittedCol = testimonialsSheet.getRange('B:B').getValues();
     let actualLastRow = 1; // Start at header row
-    for (let i = 0; i < submittedCol.length; i++) {
-      if (submittedCol[i][0] !== '') {
-        actualLastRow = i + 1;
+    for (let i = 1; i < submittedCol.length; i++) { // Start at index 1 (row 2, after header)
+      if (submittedCol[i][0] === '' || submittedCol[i][0] === null || submittedCol[i][0] === undefined) {
+        break; // Stop at first empty cell - this is where we insert
       }
+      actualLastRow = i + 1;
     }
     const insertRow = actualLastRow + 1;
 
