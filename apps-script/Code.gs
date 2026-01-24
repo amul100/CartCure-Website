@@ -1964,28 +1964,72 @@ function setupSheets(clearData) {
     deleteAllSheets(ss);
     Logger.log('All sheets deleted');
 
-    // Step 3: Create/update all sheets with fresh structure
+    // Step 3: Create all sheets first (without moving them)
     setupJobsSheet(ss, clearData);
     setupInvoiceLogSheet(ss, clearData);
     setupSettingsSheet(ss, clearData);
-    createDashboardSheet(ss);
-    createAnalyticsSheet(ss);
     setupSubmissionsSheet(ss);
 
-    // Step 4: Delete temporary sheet now that all sheets are created
+    // Create Dashboard and Analytics without moving yet
+    let dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    if (!dashboardSheet) {
+      dashboardSheet = ss.insertSheet(SHEETS.DASHBOARD);
+      Logger.log('Created Dashboard sheet');
+    } else {
+      dashboardSheet.clear();
+    }
+
+    let analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    if (!analyticsSheet) {
+      analyticsSheet = ss.insertSheet(SHEETS.ANALYTICS);
+      Logger.log('Created Analytics sheet');
+    } else {
+      analyticsSheet.clear();
+    }
+
+    SpreadsheetApp.flush(); // Ensure all sheets are created
+
+    // Step 4: Delete temporary sheet now that we have other sheets
     const tempSheet = ss.getSheetByName('_temp_sheet_');
     if (tempSheet) {
       ss.deleteSheet(tempSheet);
+      SpreadsheetApp.flush(); // Ensure deletion is complete
       Logger.log('Deleted temporary sheet');
     }
 
-    // Step 5: Restore backed up data (unless hard reset)
+    // Step 5: Now move Dashboard and Analytics to correct positions
+    // Re-fetch sheet references after potential deletion
+    dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    if (dashboardSheet) {
+      ss.setActiveSheet(dashboardSheet);
+      ss.moveActiveSheet(1);
+      SpreadsheetApp.flush();
+      Logger.log('Moved Dashboard to position 1');
+    }
+
+    analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    if (analyticsSheet) {
+      ss.setActiveSheet(analyticsSheet);
+      ss.moveActiveSheet(2);
+      SpreadsheetApp.flush();
+      Logger.log('Moved Analytics to position 2');
+    }
+
+    // Step 6: Apply formatting to Dashboard and Analytics
+    // Re-fetch references after moving
+    dashboardSheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    analyticsSheet = ss.getSheetByName(SHEETS.ANALYTICS);
+
+    formatDashboardSheet(dashboardSheet);
+    formatAnalyticsSheet(analyticsSheet);
+
+    // Step 7: Restore backed up data (unless hard reset)
     if (!clearData && backupData) {
       restoreSheetData(ss, backupData);
       Logger.log('Data restored successfully');
     }
 
-    // Step 6: Reset invoice counter if clearing data
+    // Step 8: Reset invoice counter if clearing data
     if (clearData) {
       resetInvoiceCounter(ss);
     }
@@ -2668,23 +2712,30 @@ function setupSettingsSheet(ss, clearData) {
 
 /**
  * Create the Dashboard sheet with brand styling
+ * @param {Spreadsheet} ss - Optional spreadsheet object (for backwards compatibility)
  */
 function createDashboardSheet(ss) {
+  if (!ss) {
+    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  }
   let sheet = ss.getSheetByName(SHEETS.DASHBOARD);
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.DASHBOARD);
-    SpreadsheetApp.flush(); // Ensure sheet is fully created before moving
-    // Move dashboard to be the first sheet
-    ss.setActiveSheet(sheet);
-    ss.moveActiveSheet(1);
-    SpreadsheetApp.flush(); // Ensure move is complete
-    // Re-fetch the sheet reference after moving to avoid stale reference
-    sheet = ss.getSheetByName(SHEETS.DASHBOARD);
+    SpreadsheetApp.flush();
   } else {
     sheet.clear();
   }
 
+  formatDashboardSheet(sheet);
+  Logger.log('Dashboard sheet created/updated successfully');
+}
+
+/**
+ * Apply formatting to Dashboard sheet (called after sheet creation and positioning)
+ * @param {Sheet} sheet - The Dashboard sheet to format
+ */
+function formatDashboardSheet(sheet) {
   // Apply paper-like background to entire sheet
   applyPaperBackground(sheet);
 
@@ -2826,28 +2877,35 @@ function createDashboardSheet(ss) {
   sheet.setRowHeight(8, 28);
   sheet.setRowHeight(17, 28);
 
-  Logger.log('Dashboard sheet created successfully');
+  Logger.log('Dashboard sheet formatted successfully');
 }
 
 /**
  * Create the Analytics sheet with visual data displays
+ * @param {Spreadsheet} ss - Optional spreadsheet object (for backwards compatibility)
  */
 function createAnalyticsSheet(ss) {
+  if (!ss) {
+    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  }
   let sheet = ss.getSheetByName(SHEETS.ANALYTICS);
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.ANALYTICS);
-    SpreadsheetApp.flush(); // Ensure sheet is fully created before moving
-    // Move analytics to be after dashboard
-    ss.setActiveSheet(sheet);
-    ss.moveActiveSheet(2);
-    SpreadsheetApp.flush(); // Ensure move is complete
-    // Re-fetch the sheet reference after moving to avoid stale reference
-    sheet = ss.getSheetByName(SHEETS.ANALYTICS);
+    SpreadsheetApp.flush();
   } else {
     sheet.clear();
   }
 
+  formatAnalyticsSheet(sheet);
+  Logger.log('Analytics sheet created/updated successfully');
+}
+
+/**
+ * Apply formatting to Analytics sheet (called after sheet creation and positioning)
+ * @param {Sheet} sheet - The Analytics sheet to format
+ */
+function formatAnalyticsSheet(sheet) {
   // Apply paper-like background to entire sheet
   applyPaperBackground(sheet);
 
@@ -2983,7 +3041,7 @@ function createAnalyticsSheet(ss) {
   // Create visual charts section (below existing tables)
   createAnalyticsCharts(sheet);
 
-  Logger.log('Analytics sheet created successfully');
+  Logger.log('Analytics sheet formatted successfully');
 }
 
 /**
