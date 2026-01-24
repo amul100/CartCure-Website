@@ -37,7 +37,7 @@
 // ============================================================================
 // Set to false for testing/debugging (disables origin validation, shows detailed errors)
 // IMPORTANT: Set to true before deploying to production!
-const IS_PRODUCTION = true;
+const IS_PRODUCTION = false; // TEMPORARILY DISABLED FOR DEBUGGING
 
 // Get configuration from Script Properties
 const CONFIG = {

@@ -486,7 +486,9 @@
 
             // Debug logging
             if (!IS_PRODUCTION) {
-                console.log('Submitting form data:', Object.fromEntries(formBody));
+                const debugData = Object.fromEntries(formBody);
+                console.log('Submitting form data:', debugData);
+                console.log('Submission number:', debugData.submissionNumber);
             }
 
             const response = await fetch(SCRIPT_URL, {
