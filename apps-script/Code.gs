@@ -2183,6 +2183,7 @@ function onOpen() {
       .addItem('⏰ Disable Auto Invoice Reminders', 'removeAutoEmailTriggers')
       .addSeparator()
       .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions')
+      .addItem('🧪 Create Test Job for Testimonials', 'createTestJobForTestimonials')
       .addItem('📧 Send All Test Emails', 'sendAllTestEmails'))
     .addToUi();
 
@@ -10262,6 +10263,107 @@ function createTestSubmissions() {
   } catch (error) {
     ui.alert('Error', 'Failed to create test submissions: ' + error.toString(), ui.ButtonSet.OK);
     Logger.log('Error creating test submissions: ' + error);
+  }
+}
+
+// ============================================================================
+// CREATE TEST JOB FOR TESTIMONIAL TESTING
+// ============================================================================
+
+/**
+ * Create a test job specifically for testing the testimonial/feedback form
+ * The job is created in "Completed" status so it can accept testimonials immediately
+ * Accessible via: CartCure Menu > Setup > Create Test Job for Testimonials
+ */
+function createTestJobForTestimonials() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirm with user
+  const response = ui.alert(
+    '🧪 Create Test Job',
+    'This will create a test job in "Completed" status that you can use to test the testimonial/feedback form.\n\nThe job number will be displayed after creation.\n\nContinue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+
+    if (!jobsSheet) {
+      ui.alert('Error', 'Jobs sheet not found. Please run Setup first.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Generate job number
+    const randomWord = JOB_WORDS[Math.floor(Math.random() * JOB_WORDS.length)];
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    const jobNumber = 'J-' + randomWord + '-' + randomNum;
+
+    const now = new Date();
+    const timestamp = formatNZDate(now);
+
+    // Get headers to find column indices
+    const headers = jobsSheet.getRange(1, 1, 1, jobsSheet.getLastColumn()).getValues()[0];
+
+    // Create job data object
+    const jobData = {
+      'Job #': jobNumber,
+      'Submission #': 'TEST-' + randomNum,
+      'Created Date': timestamp,
+      'Client Name': 'Test Customer',
+      'Client Email': 'test@example.com',
+      'Store URL': 'https://test-store.myshopify.com',
+      'Job Description': 'Test job for testimonial testing - can be deleted',
+      'Category': 'Testing',
+      'Status': JOB_STATUS.COMPLETED,
+      'Quote Amount (excl GST)': '50.00',
+      'GST': '7.50',
+      'Total (incl GST)': '57.50',
+      'Quote Sent Date': timestamp,
+      'Quote Accepted Date': timestamp,
+      'Actual Start Date': timestamp,
+      'Actual Completion Date': timestamp,
+      'Payment Status': 'Paid',
+      'Payment Date': timestamp,
+      'Notes': 'AUTO-CREATED: Test job for testimonial form testing',
+      'Last Updated': timestamp
+    };
+
+    // Build row array based on headers
+    const rowData = headers.map(header => jobData[header] || '');
+
+    // Find first empty row (checking Job # column)
+    const jobCol = jobsSheet.getRange('A:A').getValues();
+    let insertRow = 2; // Start after header
+    for (let i = 1; i < jobCol.length; i++) {
+      if (jobCol[i][0] === '') {
+        insertRow = i + 1;
+        break;
+      }
+      insertRow = i + 2;
+    }
+
+    // Insert the job
+    jobsSheet.getRange(insertRow, 1, 1, rowData.length).setValues([rowData]);
+
+    ui.alert(
+      '✅ Test Job Created',
+      'Job Number: ' + jobNumber + '\n\n' +
+      'You can now test the testimonial form at:\n' +
+      'https://cartcure.co.nz/feedback.html?job=' + jobNumber + '\n\n' +
+      'This job is in "Completed" status and ready to receive testimonials.',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Created test job for testimonials: ' + jobNumber);
+
+  } catch (error) {
+    ui.alert('Error', 'Failed to create test job: ' + error.toString(), ui.ButtonSet.OK);
+    Logger.log('Error creating test job: ' + error);
   }
 }
 
