@@ -10298,8 +10298,8 @@ function createTestJobForTestimonials() {
       return;
     }
 
-    // Generate job number
-    const randomWord = JOB_WORDS[Math.floor(Math.random() * JOB_WORDS.length)];
+    // Generate job number (using SUBMISSION_WORDS which is the same word list)
+    const randomWord = SUBMISSION_WORDS[Math.floor(Math.random() * SUBMISSION_WORDS.length)];
     const randomNum = Math.floor(100 + Math.random() * 900);
     const jobNumber = 'J-' + randomWord + '-' + randomNum;
 
