@@ -834,36 +834,51 @@
     <strong>💡 Best Practice:</strong> Send invoice reminders around day 6 after sending the invoice. This gives clients a friendly heads-up one day before the due date, helping them avoid late fees and maintaining a positive relationship.
 </div>
 
-<h4>Overdue Notices</h4>
-<p>Send overdue notices to clients whose invoices are past their due date:</p>
+<h4>Overdue Invoices</h4>
+<p>Send overdue invoices to clients whose invoices are past their due date. This combined email serves as both an overdue notice AND a formal updated invoice with late fees:</p>
 <ol>
-    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Overdue Notice</strong></li>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Overdue Invoice</strong></li>
     <li>Select an Overdue invoice</li>
-    <li>Client receives an overdue notice email which:
+    <li>Client receives an overdue invoice email which:
         <ul>
             <li>Shows how many days overdue the invoice is</li>
-            <li>Displays accumulated late fees (2% per day)</li>
+            <li>Displays the original invoice breakdown (amount, GST, total)</li>
+            <li>Shows late fee calculation (2% × days overdue)</li>
             <li>Shows new total due including fees</li>
-            <li>Urges immediate payment to avoid additional fees</li>
+            <li>Includes payment details for immediate payment</li>
+            <li>Warns that fees continue to accrue daily</li>
         </ul>
     </li>
 </ol>
 
-<h4>Sending Invoices with Late Fees</h4>
-<p>For overdue invoices, you can send an updated invoice that includes the calculated late fees:</p>
+<h4>Automatic Invoice Reminders and Overdue Notices</h4>
+<p>The system can automatically send invoice reminders and overdue notices without manual intervention:</p>
+
+<h5>What Gets Sent Automatically:</h5>
+<ul>
+    <li><strong>Invoice Reminders:</strong> Sent 1-2 days before the due date to help clients avoid late fees</li>
+    <li><strong>Overdue Invoices:</strong> Sent weekly (every 7 days) for invoices that are past due</li>
+</ul>
+
+<h5>Important: Paid Invoices Are Skipped</h5>
+<p>Both automatic functions check the invoice status before sending. If an invoice is marked as "Paid", it will be automatically skipped - no reminder or overdue notice will be sent.</p>
+
+<h5>Enabling Automatic Emails:</h5>
 <ol>
-    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Send Invoice with Late Fees</strong></li>
-    <li>Select an overdue invoice</li>
-    <li>Confirm the late fee calculation</li>
-    <li>Client receives a formal updated invoice showing:
-        <ul>
-            <li>Original amount</li>
-            <li>Days overdue</li>
-            <li>Late fee breakdown (2% × days)</li>
-            <li>New total due</li>
-        </ul>
-    </li>
+    <li>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; Enable Auto Invoice Reminders</strong></li>
+    <li>The system creates daily triggers that run at 9:00 AM (NZ time)</li>
+    <li>You'll see a confirmation dialog with details</li>
 </ol>
+
+<h5>Disabling Automatic Emails:</h5>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; Disable Auto Invoice Reminders</strong></li>
+    <li>All automatic email triggers will be removed</li>
+</ol>
+
+<div class="success">
+    <strong>Set It and Forget It:</strong> Once enabled, the system automatically manages invoice reminders and overdue notices. You don't need to remember to check for due invoices - the system handles it for you, and automatically skips any invoices that have been paid.
+</div>
 
 <div class="info">
     <strong>Invoice Log Columns:</strong> The Invoice Log sheet now includes:
@@ -938,6 +953,16 @@
             <td><strong>Payment Receipt</strong></td>
             <td>Payment Receipt - INV-WORD-XXX from CartCure</td>
             <td>Payment confirmation with receipt details + "Leave a Review" button linking to feedback form</td>
+        </tr>
+        <tr>
+            <td><strong>Invoice Reminder</strong></td>
+            <td>Friendly Reminder: Invoice INV-WORD-XXX Due Soon</td>
+            <td>Pre-due reminder with payment details and late fee warning (can be sent automatically)</td>
+        </tr>
+        <tr>
+            <td><strong>Overdue Invoice</strong></td>
+            <td>OVERDUE: Invoice INV-WORD-XXX - Updated Amount Due</td>
+            <td>Overdue notice with late fee breakdown and updated total (can be sent automatically)</td>
         </tr>
     </tbody>
 </table>
