@@ -552,10 +552,9 @@ function handleTestimonialSubmission(data) {
     }
 
     // Append the testimonial using appendRow() - this correctly finds the last row with actual data
-    // Note: The sheet setup no longer pre-populates checkboxes/validation for 1000 rows,
-    // so appendRow() works correctly now
+    // Note: Column A is left empty here - the checkbox is added by applyTestimonialRowValidation()
     const rowData = [
-      sanitizedData.showOnWebsite,
+      '',  // Placeholder for checkbox - will be set properly after validation is applied
       sanitizedData.submitted,
       sanitizedData.name,
       sanitizedData.business,
@@ -568,6 +567,7 @@ function handleTestimonialSubmission(data) {
     testimonialsSheet.appendRow(rowData);
 
     // Apply validation (checkbox, rating dropdown, text wrap) to the newly added row
+    // This must happen AFTER appendRow so the checkbox validation is set before the value
     const newRow = testimonialsSheet.getLastRow();
     applyTestimonialRowValidation(testimonialsSheet, newRow);
 
