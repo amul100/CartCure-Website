@@ -2202,6 +2202,7 @@ function onOpen() {
       .addItem('⏰ Disable Auto Invoice Reminders', 'removeAutoEmailTriggers')
       .addSeparator()
       .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions')
+      .addItem('🧪 Create 20 Test Testimonials', 'createTestTestimonials')
       .addItem('🧪 Create Test Job for Testimonials', 'createTestJobForTestimonials')
       .addItem('🧹 Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')
       .addItem('📧 Send All Test Emails', 'sendAllTestEmails'))
