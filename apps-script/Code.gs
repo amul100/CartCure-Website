@@ -10311,9 +10311,191 @@ function showHardResetDialog() {
   }
 }
 
+// ############################################################################
+// ##                                                                        ##
+// ##                              TESTS                                     ##
+// ##                                                                        ##
+// ############################################################################
+
 // ============================================================================
-// TEST DATA GENERATION (For Testing Purposes Only)
+// TEST DATA GENERATION
 // ============================================================================
+
+/**
+ * Create 20 test testimonials with varying star ratings
+ * Accessible via: CartCure Menu > Setup > Create 20 Test Testimonials
+ */
+function createTestTestimonials() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirm with user before creating test data
+  const response = ui.alert(
+    'Create Test Testimonials',
+    'This will create 20 test testimonials with varying star ratings (1-5 stars) in the Testimonials sheet.\n\nThese are for testing purposes only.\n\nContinue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    let sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+
+    // Create sheet if it doesn't exist
+    if (!sheet) {
+      setupTestimonialsSheet(ss, false);
+      sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+    }
+
+    // Sample test data arrays
+    const testNames = [
+      'Sarah Johnson', 'Mike Chen', 'Emma Wilson', 'James Brown', 'Lisa Anderson',
+      'David Lee', 'Rachel Martinez', 'Tom Williams', 'Amy Taylor', 'Chris Davis',
+      'Jessica White', 'Ryan Thompson', 'Nicole Garcia', 'Brandon Miller', 'Samantha Moore',
+      'Kevin Jackson', 'Michelle Harris', 'Andrew Clark', 'Lauren Lewis', 'Daniel Robinson'
+    ];
+
+    const testBusinesses = [
+      'Boutique Fashion NZ', 'Tech Gadgets Store', 'Home & Living Co', 'Sports Gear Pro', 'Beauty Essentials',
+      'Garden Paradise', 'Pet Supplies Plus', 'Kitchen Masters', 'Kids World', 'Auto Parts Hub',
+      'Fitness First', 'Book Haven', 'Craft Corner', 'Music Store NZ', 'Outdoor Adventures',
+      'Jewellery Box', 'Toy Kingdom', 'Health Foods', 'Office Supplies', 'Gift Emporium'
+    ];
+
+    const testLocations = [
+      'Auckland', 'Wellington', 'Christchurch', 'Hamilton', 'Tauranga',
+      'Dunedin', 'Palmerston North', 'Napier', 'Nelson', 'Rotorua',
+      'New Plymouth', 'Whangarei', 'Invercargill', 'Whanganui', 'Gisborne',
+      'Queenstown', 'Timaru', 'Blenheim', 'Hastings', 'Kapiti Coast'
+    ];
+
+    // Testimonial templates by star rating
+    const testimonialsByRating = {
+      5: [
+        'Absolutely fantastic service! CartCure went above and beyond to fix our Shopify issues. The turnaround was incredibly fast and the quality of work exceeded all expectations. Highly recommend!',
+        'Best investment we made for our store. The team was professional, responsive, and delivered exactly what we needed. Our conversion rate has improved significantly since the changes.',
+        'Outstanding experience from start to finish. Communication was excellent, pricing was fair, and the results speak for themselves. Will definitely use CartCure again!',
+        'We were struggling with our store for months before finding CartCure. They fixed everything in days and taught us how to maintain it. Truly exceptional service!',
+        'Cannot recommend CartCure highly enough! They transformed our sluggish store into a fast, beautiful shopping experience. Our customers love it!'
+      ],
+      4: [
+        'Great service overall. The work was completed on time and the results were solid. Would have liked a bit more communication during the process, but very happy with the outcome.',
+        'Really good experience. CartCure delivered quality work and was professional throughout. Minor delays but nothing that impacted us significantly.',
+        'Very satisfied with the work done on our store. The team was knowledgeable and helpful. Just a few minor revisions needed, but they handled those quickly.',
+        'Good value for money. The improvements to our store were noticeable and our customers have responded positively. Reliable service.',
+        'Pleased with the results. CartCure understood our needs and delivered a solid solution. Would use them again for future projects.'
+      ],
+      3: [
+        'Decent service. The work was completed but took a bit longer than expected. The end result was acceptable, though we had hoped for a bit more polish.',
+        'Average experience. Some things worked well, others needed a few rounds of revisions. Communication could have been better but they got the job done eventually.',
+        'Okay service. Nothing exceptional but nothing terrible either. The basic work was fine, but some advanced features did not work as expected initially.',
+        'Mixed feelings about this one. The core work was good, but there were some communication gaps. Eventually sorted everything out though.',
+        'Fair service for the price. Met the basic requirements but did not go above and beyond. Adequate for simple fixes.'
+      ],
+      2: [
+        'Below expectations. The project took much longer than quoted and required multiple revisions. Communication was sporadic. End result was okay but the process was frustrating.',
+        'Not entirely satisfied. Some things worked, but others did not and took extra time to fix. Would have appreciated more proactive communication.',
+        'Disappointing experience. The work was eventually completed but not to the standard we expected. Several back-and-forth exchanges needed.',
+        'Could have been better. Felt like the project was rushed and some details were overlooked. Had to follow up multiple times for updates.',
+        'Underwhelming service. The basics were covered but quality was inconsistent. Expected more attention to detail for the price.'
+      ],
+      1: [
+        'Very poor experience. Significant delays, poor communication, and the final work did not meet our requirements. Would not recommend.',
+        'Extremely disappointed. Project was not delivered as described and getting issues fixed was like pulling teeth. Major communication problems.',
+        'Terrible service. Weeks of delays, unresponsive support, and the work had to be redone by someone else. Complete waste of time and money.',
+        'Worst experience with a Shopify service. Nothing was done on time, quality was subpar, and they seemed uninterested in fixing problems.',
+        'Do not use. Promises were not kept, deadlines were missed, and the final work was unusable. Had to hire another developer to start over.'
+      ]
+    };
+
+    // Define star rating distribution (weighted towards higher ratings for realism)
+    // 5 stars: 8, 4 stars: 5, 3 stars: 4, 2 stars: 2, 1 star: 1
+    const starDistribution = [5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 1];
+
+    // Shuffle the distribution
+    for (let i = starDistribution.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [starDistribution[i], starDistribution[j]] = [starDistribution[j], starDistribution[i]];
+    }
+
+    // Track which testimonials we've used for each rating
+    const usedTestimonials = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+    // Generate 20 test testimonials
+    let successCount = 0;
+    for (let i = 0; i < 20; i++) {
+      const rating = starDistribution[i];
+
+      // Pick a testimonial we haven't used yet for this rating
+      let testimonialIndex = Math.floor(Math.random() * testimonialsByRating[rating].length);
+      let attempts = 0;
+      while (usedTestimonials[rating].includes(testimonialIndex) && attempts < 10) {
+        testimonialIndex = Math.floor(Math.random() * testimonialsByRating[rating].length);
+        attempts++;
+      }
+      usedTestimonials[rating].push(testimonialIndex);
+
+      const testimonialText = testimonialsByRating[rating][testimonialIndex];
+
+      // Generate timestamp (spread over last 60 days)
+      const daysAgo = Math.floor(Math.random() * 60);
+      const hoursAgo = Math.floor(Math.random() * 24);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+      date.setHours(date.getHours() - hoursAgo);
+      const timestamp = formatNZDate(date);
+
+      // Generate job number
+      const randomWord = SUBMISSION_WORDS[Math.floor(Math.random() * SUBMISSION_WORDS.length)];
+      const randomNum = Math.floor(100 + Math.random() * 900);
+      const jobNumber = 'J-' + randomWord + '-' + randomNum;
+
+      // Create row data
+      // Columns: Show on Website, Submitted, Name, Business, Location, Rating, Testimonial, Job Number, Email
+      const rowData = [
+        '',  // Show on Website - will be checkbox
+        timestamp,
+        testNames[i],
+        testBusinesses[i],
+        testLocations[i],
+        rating.toString(),
+        testimonialText,
+        jobNumber,
+        testNames[i].toLowerCase().replace(' ', '.') + '@test.com'
+      ];
+
+      // Append the row
+      sheet.appendRow(rowData);
+
+      // Apply validation to the new row
+      const newRow = sheet.getLastRow();
+      applyTestimonialRowValidation(sheet, newRow);
+
+      successCount++;
+    }
+
+    ui.alert(
+      'Test Testimonials Created',
+      successCount + ' test testimonials have been added to the Testimonials sheet.\n\n' +
+      'Star distribution:\n' +
+      '★★★★★ (5 stars): 8 testimonials\n' +
+      '★★★★☆ (4 stars): 5 testimonials\n' +
+      '★★★☆☆ (3 stars): 4 testimonials\n' +
+      '★★☆☆☆ (2 stars): 2 testimonials\n' +
+      '★☆☆☆☆ (1 star): 1 testimonial\n\n' +
+      'Check the "Show on Website" checkbox to approve testimonials for display.',
+      ui.ButtonSet.OK
+    );
+
+    Logger.log('Created ' + successCount + ' test testimonials');
+
+  } catch (error) {
+    ui.alert('Error', 'Failed to create test testimonials: ' + error.toString(), ui.ButtonSet.OK);
+    Logger.log('Error creating test testimonials: ' + error);
+  }
+}
 
 /**
  * Create 10 test submissions for testing purposes
@@ -10439,9 +10621,9 @@ function createTestSubmissions() {
   }
 }
 
-// ============================================================================
-// CREATE TEST JOB FOR TESTIMONIAL TESTING
-// ============================================================================
+// ----------------------------------------------------------------------------
+// TEST JOB CREATION
+// ----------------------------------------------------------------------------
 
 /**
  * Create a test job specifically for testing the testimonial/feedback form
@@ -10540,9 +10722,9 @@ function createTestJobForTestimonials() {
   }
 }
 
-// ============================================================================
-// TEST EMAIL FUNCTION - SENDS ALL EMAIL TYPES TO info@cartcure.co.nz
-// ============================================================================
+// ----------------------------------------------------------------------------
+// TEST EMAIL FUNCTIONS
+// ----------------------------------------------------------------------------
 
 /**
  * Send all email types to info@cartcure.co.nz for testing purposes
