@@ -1891,6 +1891,9 @@ function deleteAllSheets(ss) {
   if (sheets.length > 0) {
     sheets[0].setName('_temp_sheet_');
   }
+
+  // Flush changes to ensure deletions are committed before creating new sheets
+  SpreadsheetApp.flush();
 }
 
 /**
