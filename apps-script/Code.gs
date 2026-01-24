@@ -551,20 +551,9 @@ function handleTestimonialSubmission(data) {
       debugFolder.createFile('TESTIMONIAL_APPEND_' + new Date().getTime() + '.txt', appendDebug.join('\n'));
     }
 
-    // Find the actual last row with data (checking column B - Submitted timestamp)
-    // This avoids issues with checkboxes in column A extending beyond the data
-    // We scan from row 2 (after header) and stop at the first empty cell
-    const submittedCol = testimonialsSheet.getRange('B:B').getValues();
-    let actualLastRow = 1; // Start at header row
-    for (let i = 1; i < submittedCol.length; i++) { // Start at index 1 (row 2, after header)
-      if (submittedCol[i][0] === '' || submittedCol[i][0] === null || submittedCol[i][0] === undefined) {
-        break; // Stop at first empty cell - this is where we insert
-      }
-      actualLastRow = i + 1;
-    }
-    const insertRow = actualLastRow + 1;
-
-    // Insert the testimonial at the correct row
+    // Append the testimonial using appendRow() - this correctly finds the last row with actual data
+    // Note: The sheet setup no longer pre-populates checkboxes/validation for 1000 rows,
+    // so appendRow() works correctly now
     const rowData = [
       sanitizedData.showOnWebsite,
       sanitizedData.submitted,
@@ -576,12 +565,16 @@ function handleTestimonialSubmission(data) {
       sanitizedData.jobNumber,
       sanitizedData.email
     ];
-    testimonialsSheet.getRange(insertRow, 1, 1, rowData.length).setValues([rowData]);
+    testimonialsSheet.appendRow(rowData);
+
+    // Apply validation (checkbox, rating dropdown, text wrap) to the newly added row
+    const newRow = testimonialsSheet.getLastRow();
+    applyTestimonialRowValidation(testimonialsSheet, newRow);
 
     // Debug: Confirm append completed
     if (!IS_PRODUCTION) {
       const debugFolder = getOrCreateDebugFolder();
-      debugFolder.createFile('TESTIMONIAL_APPENDED_' + new Date().getTime() + '.txt', 'Row appended successfully. Last row: ' + testimonialsSheet.getLastRow());
+      debugFolder.createFile('TESTIMONIAL_APPENDED_' + new Date().getTime() + '.txt', 'Row appended successfully at row ' + newRow + '. Last row: ' + testimonialsSheet.getLastRow());
     }
 
     // Send notification email to admin
@@ -2186,6 +2179,7 @@ function onOpen() {
       .addSeparator()
       .addItem('🧪 Create 10 Test Submissions', 'createTestSubmissions')
       .addItem('🧪 Create Test Job for Testimonials', 'createTestJobForTestimonials')
+      .addItem('🧹 Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')
       .addItem('📧 Send All Test Emails', 'sendAllTestEmails'))
     .addToUi();
 
@@ -4413,21 +4407,14 @@ function setupTestimonialsSheet(ss, clearData) {
   }
 
   // Enable wrap text for Testimonial column (column 7)
-  const testimonialColumn = sheet.getRange(2, 7, 1000, 1);
+  // Only apply to existing data rows, not pre-emptively to 1000 rows
+  const existingRows = Math.max(sheet.getLastRow() - 1, 1);
+  const testimonialColumn = sheet.getRange(2, 7, existingRows, 1);
   testimonialColumn.setWrap(true);
 
-  // Add checkbox data validation for "Show on Website" column (column 1)
-  const checkboxRule = SpreadsheetApp.newDataValidation()
-    .requireCheckbox()
-    .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(checkboxRule);
-
-  // Add rating data validation (1-5)
-  const ratingRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['1', '2', '3', '4', '5'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 6, 1000, 1).setDataValidation(ratingRule);
+  // NOTE: We do NOT pre-populate checkboxes or rating validation for empty rows
+  // This was causing getLastRow() to return incorrect values
+  // Instead, validation is applied when new testimonials are added (see applyTestimonialRowValidation)
 
   // Add conditional formatting for approved testimonials (green background when checked)
   const rules = sheet.getConditionalFormatRules();
@@ -4457,6 +4444,85 @@ function setupTestimonialsSheet(ss, clearData) {
   protection.setWarningOnly(true);
 
   Logger.log('Testimonials sheet setup completed successfully');
+}
+
+/**
+ * Apply validation (checkbox and rating) to a specific testimonial row
+ * Called when a new testimonial is added to ensure proper formatting
+ * @param {Sheet} sheet - The Testimonials sheet
+ * @param {number} row - The row number to apply validation to
+ */
+function applyTestimonialRowValidation(sheet, row) {
+  // Add checkbox validation for "Show on Website" column (column 1)
+  const checkboxRule = SpreadsheetApp.newDataValidation()
+    .requireCheckbox()
+    .build();
+  sheet.getRange(row, 1).setDataValidation(checkboxRule);
+
+  // Add rating validation (1-5) for column 6
+  const ratingRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['1', '2', '3', '4', '5'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(row, 6).setDataValidation(ratingRule);
+
+  // Enable wrap text for testimonial column (column 7)
+  sheet.getRange(row, 7).setWrap(true);
+}
+
+/**
+ * Clean up the Testimonials sheet by removing pre-populated checkboxes/validation from empty rows
+ * Run this once via: CartCure Menu > Setup > Clean Up Testimonials Sheet
+ * This fixes the issue where appendRow() was adding data at the bottom due to pre-populated checkboxes
+ */
+function cleanupTestimonialsSheet() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Testimonials sheet not found.');
+    return;
+  }
+
+  // Find the actual last row with data by checking column B (Submitted timestamp)
+  const submittedCol = sheet.getRange('B:B').getValues();
+  let lastDataRow = 1; // Header row
+  for (let i = 1; i < submittedCol.length; i++) {
+    if (submittedCol[i][0] === '' || submittedCol[i][0] === null || submittedCol[i][0] === undefined) {
+      break;
+    }
+    lastDataRow = i + 1;
+  }
+
+  const totalRows = sheet.getMaxRows();
+
+  // If there are rows beyond the data, clear their validation and content
+  if (lastDataRow < totalRows) {
+    const rowsToClear = totalRows - lastDataRow;
+    const startRow = lastDataRow + 1;
+
+    // Clear data validation from empty rows
+    sheet.getRange(startRow, 1, rowsToClear, sheet.getMaxColumns()).clearDataValidations();
+
+    // Clear any checkbox values (FALSE) that were pre-populated
+    sheet.getRange(startRow, 1, rowsToClear, 1).clearContent();
+
+    SpreadsheetApp.getUi().alert(
+      'Cleanup complete!\n\n' +
+      'Found ' + (lastDataRow - 1) + ' testimonials.\n' +
+      'Cleared validation from ' + rowsToClear + ' empty rows.\n\n' +
+      'New testimonials will now be appended correctly.'
+    );
+  } else {
+    SpreadsheetApp.getUi().alert('No cleanup needed - sheet looks good!');
+  }
+
+  // Re-apply validation to existing data rows
+  for (let row = 2; row <= lastDataRow; row++) {
+    applyTestimonialRowValidation(sheet, row);
+  }
+
+  Logger.log('Testimonials sheet cleanup completed. Data rows: ' + (lastDataRow - 1));
 }
 
 /**
