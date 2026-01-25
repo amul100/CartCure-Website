@@ -11264,16 +11264,18 @@ function generateInvoiceEmailHtml(data) {
               <tr><td class="label">Invoice Date:</td><td class="value">${invoice['Invoice Date']}</td></tr>
               <tr><td class="label">Due Date:</td><td class="value">${invoice['Due Date']}</td></tr>
             </table>
+            ${isGSTRegistered ? `
             <hr style="border: none; border-top: 1px solid #d4cfc3; margin: 15px 0;">
             <table>
-              ${isGSTRegistered ? `
               <tr><td class="label">Amount (excl GST):</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
               <tr><td class="label">GST (15%):</td><td class="value">$${invoice['GST']}</td></tr>
               <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Total']}</td></tr>
-              ` : `
-              <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
-              `}
             </table>
+            ` : `
+            <table>
+              <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
+            </table>
+            `}
           </div>
 
           <div class="bank-details">
