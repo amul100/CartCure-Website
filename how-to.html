@@ -127,45 +127,44 @@
         .guide-nav {
             background: var(--paper-cream);
             border: 2px solid var(--paper-border);
-            padding: 2rem;
+            padding: 1.5rem 2rem 2rem;
             margin: 2rem 0;
             box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.08);
-            text-align: center;
         }
 
         .guide-nav h3 {
             margin-top: 0;
-            margin-bottom: 1.5rem;
-            font-size: 1.2rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.1rem;
             color: var(--ink-black);
+            text-align: left;
         }
 
         .guide-nav-list {
             list-style: none;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
-            align-items: center;
         }
 
         .guide-nav-list li {
             width: 100%;
-            max-width: 500px;
         }
 
         .guide-nav-card {
             background: var(--paper-white);
             border: 2px solid var(--paper-border);
-            padding: 1rem 1.5rem;
+            padding: 1.25rem 1.5rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.75rem;
             text-decoration: none;
             color: var(--ink-black);
             box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.08);
             transition: all 0.2s;
+            height: 100%;
         }
 
         .guide-nav-card:hover {
@@ -193,6 +192,7 @@
             font-weight: 600;
             border: 1px solid var(--ink-black);
             white-space: nowrap;
+            width: fit-content;
         }
 
         /* Reassurance Box */
@@ -458,14 +458,15 @@
                 font-size: 0.9rem;
             }
 
-            .guide-nav-card {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
+            .guide-nav-list {
+                grid-template-columns: 1fr;
             }
 
-            .time-badge {
-                align-self: flex-start;
+            .guide-nav-card {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
             }
 
             .contact-section {
