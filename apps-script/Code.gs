@@ -144,6 +144,45 @@ function doPost(e) {
     if (!IS_PRODUCTION) {
       Logger.log('Data keys received: ' + Object.keys(data).join(', '));
       Logger.log('submissionNumber received: ' + data.submissionNumber);
+
+      // DEBUG: Write received data to file to diagnose phone issue
+      try {
+        const debugFolder = getOrCreateDebugFolder();
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        const debugContent = [
+          '=== DOPOST RAW DATA DEBUG ===',
+          'Timestamp: ' + ts,
+          '',
+          '=== e.parameter keys ===',
+          Object.keys(e.parameter || {}).join(', '),
+          '',
+          '=== e.parameter.phone ===',
+          'Value: "' + (e.parameter ? e.parameter.phone : 'e.parameter is null') + '"',
+          'Type: ' + typeof (e.parameter ? e.parameter.phone : undefined),
+          '',
+          '=== data object keys ===',
+          Object.keys(data).join(', '),
+          '',
+          '=== data.phone ===',
+          'Value: "' + data.phone + '"',
+          'Type: ' + typeof data.phone,
+          '',
+          '=== All data values ===',
+          'name: "' + data.name + '"',
+          'email: "' + data.email + '"',
+          'phone: "' + data.phone + '"',
+          'storeUrl: "' + data.storeUrl + '"',
+          'message length: ' + (data.message ? data.message.length : 0),
+          'hasVoiceNote: "' + data.hasVoiceNote + '"',
+          '',
+          '=== postData info ===',
+          'postData.type: ' + (e.postData ? e.postData.type : 'undefined'),
+          'postData.contents (first 500 chars): ' + (e.postData ? e.postData.contents.substring(0, 500) : 'undefined')
+        ].join('\n');
+        debugFolder.createFile('DOPOST_DEBUG_' + ts + '.txt', debugContent);
+      } catch (debugError) {
+        Logger.log('Debug file creation failed: ' + debugError.message);
+      }
     }
 
     // Check for action parameter to handle different form types
@@ -1402,6 +1441,17 @@ function saveToSheet(data) {
     debugLog.push('Target row: ' + targetRow);
     debugLog.push('Writing to sheet: "' + sheet.getName() + '"');
     debugLog.push('Sheet index: ' + sheet.getIndex());
+    debugLog.push('');
+    debugLog.push('=== DATA VALUES BEING WRITTEN ===');
+    debugLog.push('data.submissionNumber: "' + data.submissionNumber + '"');
+    debugLog.push('data.timestamp: "' + data.timestamp + '"');
+    debugLog.push('data.name: "' + data.name + '"');
+    debugLog.push('data.email: "' + data.email + '"');
+    debugLog.push('data.phone: "' + data.phone + '" (type: ' + typeof data.phone + ')');
+    debugLog.push('data.storeUrl: "' + data.storeUrl + '"');
+    debugLog.push('data.message length: ' + (data.message ? data.message.length : 0));
+    debugLog.push('data.hasVoiceNote: ' + data.hasVoiceNote);
+    debugLog.push('');
 
     // Prepare the row data with Status first (set to 'New')
     const rowData = [
@@ -1416,6 +1466,8 @@ function saveToSheet(data) {
       data.hasVoiceNote ? 'Yes' : 'No',
       audioFileUrl
     ];
+
+    debugLog.push('rowData[5] (phone column): "' + rowData[5] + '"');
 
     // Write to the target row
     Logger.log('Writing to sheet: "' + sheet.getName() + '" at row: ' + targetRow);
