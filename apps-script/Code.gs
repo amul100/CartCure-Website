@@ -6670,7 +6670,7 @@ function markQuoteAccepted(jobNumber) {
   // Check if job requires deposit ($200+)
   const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
   const requiresDeposit = total >= 200;
-  const projectSize = classifyProjectSize(total);
+  const projectSize = getProjectSize(total);
 
   // If deposit required, show confirmation dialog
   if (requiresDeposit) {
