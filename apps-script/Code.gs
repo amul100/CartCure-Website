@@ -8590,7 +8590,7 @@ function sendInvoiceReminder(invoiceNumber) {
         <p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + dueDate + '</strong>'}.</p>
 
         <div style="background-color: #fff8e6; padding: 15px; margin: 20px 0; border-left: 4px solid #f5d76e;">
-          <p style="margin: 0; color: #856404;"><strong>💡 Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${dueDate} to avoid any additional charges.</p>
+          <p style="margin: 0; color: #856404;"><strong>Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${dueDate} to avoid any additional charges.</p>
         </div>
 
         <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
@@ -8602,7 +8602,7 @@ function sendInvoiceReminder(invoiceNumber) {
 
         ${bankAccount ? `
         <div style="background-color: #e8f5e9; padding: 15px; border: 1px solid #4caf50; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;"><strong>💳 Payment Details:</strong></p>
+          <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
           <p style="margin: 0;">
             Bank: ${bankName}<br>
             Account: ${bankAccount}<br>
@@ -11393,7 +11393,7 @@ function generateInvoiceReminderHtml(data) {
           <p>This is a friendly reminder that payment for invoice <strong>${invoice['Invoice #']}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + invoice['Due Date'] + '</strong>'}.</p>
 
           <div class="tip-box">
-            <p style="margin: 0; color: #856404;"><strong>💡 Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${invoice['Due Date']} to avoid any additional charges.</p>
+            <p style="margin: 0; color: #856404;"><strong>Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${invoice['Due Date']} to avoid any additional charges.</p>
           </div>
 
           <div class="info-box">
@@ -11404,7 +11404,7 @@ function generateInvoiceReminderHtml(data) {
           </div>
 
           <div class="bank-box">
-            <p style="margin: 0 0 10px 0;"><strong>💳 Payment Details:</strong></p>
+            <p style="margin: 0 0 10px 0;"><strong>Payment Details:</strong></p>
             <p style="margin: 0;">
               Bank: ${bankName}<br>
               Account: ${bankAccount}<br>
