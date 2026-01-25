@@ -18,9 +18,65 @@ This includes:
 The guide must stay synchronized with the actual implementation to ensure users have accurate documentation.
 
 ## Email Template Previews
-The `email-previews/` folder contains static HTML preview files for all email templates. When updating email templates in Code.gs, also update the corresponding preview HTML files manually to keep them in sync.
+**IMPORTANT**: The `email-previews/` folder contains the exact HTML email templates as they appear in Code.gs. These files and Code.gs must always stay in sync:
 
-**Note**: The `email-previews/` folder is in `.gitignore` - these files are for local preview only and should not be committed to git.
+- **When updating emails in Code.gs**: Also update the corresponding preview HTML file in `email-previews/`
+- **When updating preview HTML files**: Also update the corresponding email template in Code.gs
+
+This bidirectional sync ensures:
+1. Preview files accurately reflect what customers receive
+2. Changes made in either location are not lost
+3. Email formatting can be tested locally before deployment
+
+### Email Template Cross-References in Code.gs
+Each email function in Code.gs includes a comment referencing its corresponding preview file(s):
+```javascript
+/**
+ * Send a professional quote email
+ *
+ * EMAIL TEMPLATE: See email-previews/03-quote.html for preview
+ */
+function sendQuoteEmail(jobNumber) {
+```
+
+The email template mapping is:
+| Preview File | Code.gs Function | Description |
+|-------------|------------------|-------------|
+| 01-admin-notification.html | sendEmailNotification() | Admin notification for new form submissions |
+| 02-user-confirmation.html | sendUserConfirmationEmail() | User confirmation after form submission |
+| 03-quote.html | sendQuoteEmail() / generateQuoteEmailHtml() | Standard quote email |
+| 04-quote-with-deposit.html | sendQuoteEmail() / generateQuoteEmailHtml() | Quote for $200+ jobs requiring deposit |
+| 05-quote-reminder.html | sendQuoteReminder() | Quote follow-up reminder |
+| 06-status-in-progress.html | sendStatusUpdateEmail() | Job status: In Progress |
+| 07-status-on-hold.html | sendStatusUpdateEmail() | Job status: On Hold |
+| 08-status-completed.html | sendStatusUpdateEmail() | Job status: Completed |
+| 09-invoice.html | sendInvoiceEmail() | Standard invoice |
+| 10-deposit-invoice.html | sendInvoiceEmailSilent() | Deposit invoice (50% for $200+ jobs) |
+| 11-invoice-reminder.html | sendInvoiceReminder() | Pre-due date payment reminder |
+| 12-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
+| 13-payment-receipt.html | sendPaymentReceiptEmail() | Payment confirmation receipt |
+
+### Email Template Sync Script
+A Python script (`sync-email-templates.py`) is available to sync HTML preview files to Code.gs:
+
+```bash
+# Preview changes without modifying files
+python sync-email-templates.py --dry-run
+
+# Sync all configured templates
+python sync-email-templates.py
+
+# Sync a specific template
+python sync-email-templates.py --template 05-quote-reminder
+```
+
+The script:
+1. Reads the HTML preview file
+2. Converts static placeholders (e.g., "Sarah", "JOB-0042") to JavaScript template variables (e.g., `${clientName}`, `${jobNumber}`)
+3. Finds the corresponding function in Code.gs
+4. Replaces the `htmlBody` template literal with the updated HTML
+
+**Note**: Not all templates are configured in the script yet. Add new template configurations to the `EMAIL_TEMPLATES` dict in the script as needed.
 
 ## Apps Script Debugging
 **IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
