@@ -56,7 +56,8 @@
       "Bash(cmd /c \"npm install -g md-to-pdf 2>&1\")",
       "Bash(node generate-previews.js:*)",
       "Bash(cmd.exe /c \"node generate-previews.js\")",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",
