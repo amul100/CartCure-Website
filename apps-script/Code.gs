@@ -8442,6 +8442,9 @@ function sendInvoiceEmail(invoiceNumber) {
 
   const htmlBody = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; border-bottom: 2px solid #d4cfc3;">
+        <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+      </div>
       <div style="text-align: center; padding: 20px; background-color: #2d5d3f; color: white;">
         <h1 style="margin: 0;">INVOICE</h1>
         <p style="margin: 10px 0 0 0; font-size: 20px;">${invoiceNumber}</p>
@@ -8579,6 +8582,9 @@ function sendInvoiceReminder(invoiceNumber) {
 
   const htmlBody = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; border-bottom: 2px solid #d4cfc3;">
+        <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+      </div>
       <div style="text-align: center; padding: 20px; background-color: #2d5d3f; color: white;">
         <h1 style="margin: 0;">FRIENDLY REMINDER</h1>
         <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
@@ -8722,6 +8728,9 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
 
   const htmlBody = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; border-bottom: 2px solid #d4cfc3;">
+        <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+      </div>
       <div style="text-align: center; padding: 20px; background-color: #c62828; color: white;">
         <h1 style="margin: 0;">OVERDUE INVOICE</h1>
         <p style="margin: 10px 0 0 0; font-size: 20px;">${invoiceNumber}</p>
@@ -9009,6 +9018,9 @@ function sendInvoiceReminderAuto(invoiceNumber) {
 
   const htmlBody = `
     <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #d4cfc3; background-color: #f9f7f3;">
+      <div style="text-align: center; padding: 20px; border-bottom: 2px solid #d4cfc3;">
+        <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+      </div>
       <div style="text-align: center; padding: 20px; background-color: #2d5d3f; color: white;">
         <h1 style="margin: 0;">FRIENDLY REMINDER</h1>
         <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoiceNumber}</p>
@@ -9732,7 +9744,14 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
           <td align="center" style="padding: 40px 20px;">
             <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: ${colors.paperWhite}; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
 
-              <!-- Header -->
+              <!-- Header with Logo -->
+              <tr>
+                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
+                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+                </td>
+              </tr>
+
+              <!-- Title -->
               <tr>
                 <td style="padding: 30px 40px; background-color: ${colors.brandGreen}; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
@@ -11250,6 +11269,9 @@ function generateInvoiceEmailHtml(data) {
     </head>
     <body>
       <div class="container">
+        <div style="text-align: center; padding: 20px; border-bottom: 1px solid #d4cfc3;">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+        </div>
         <div class="header">
           <h1>Invoice ${invoice['Invoice #']}</h1>
         </div>
@@ -11325,6 +11347,9 @@ function generatePaymentReceiptHtml(data) {
     </head>
     <body>
       <div class="container">
+        <div style="text-align: center; padding: 20px; border-bottom: 1px solid #d4cfc3;">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+        </div>
         <div class="header">
           <h1>Payment Received</h1>
         </div>
@@ -11385,6 +11410,9 @@ function generateInvoiceReminderHtml(data) {
     </head>
     <body>
       <div class="container">
+        <div style="text-align: center; padding: 20px; border-bottom: 1px solid #d4cfc3;">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+        </div>
         <div class="header">
           <h1>FRIENDLY REMINDER</h1>
           <p style="margin: 10px 0 0 0; font-size: 16px;">Invoice ${invoice['Invoice #']}</p>
@@ -11456,6 +11484,9 @@ function generateOverdueInvoiceHtml(data) {
     </head>
     <body>
       <div class="container">
+        <div style="text-align: center; padding: 20px; border-bottom: 1px solid #d4cfc3;">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: inline-block; max-width: 180px; height: auto;">
+        </div>
         <div class="header">
           <h1>OVERDUE INVOICE</h1>
           <p style="margin: 10px 0 0 0; font-size: 20px;">${invoice['Invoice #']}</p>
