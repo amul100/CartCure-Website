@@ -49,7 +49,7 @@ The `email-previews/` folder contains static HTML preview files for all email te
 
 5. The `IS_PRODUCTION` flag (set at top of Code.gs) controls whether debug files are created
 
-**Remember**: After updating Code.gs, you must redeploy the Apps Script web app for changes to take effect.
+**Remember**: After updating Code.gs, push changes with git (clasp is linked and runs automatically).
 
 ### Error logging pattern:
 When debugging functions that might fail early, add debug file creation at the VERY START of the function, before any other code:
@@ -79,6 +79,15 @@ function someFunction(data) {
 ```
 
 This ensures you get a debug file even if the function fails immediately.
+
+## Apps Script Deployment
+**IMPORTANT**: After making changes to Code.gs:
+
+1. **For menu functions, triggers, and spreadsheet UI code**: Just git push. Clasp is linked and runs automatically. Changes take effect immediately.
+
+2. **For the web app endpoint (`doPost()`)**: After git push, you also need to create a new version via "Manage Deployments" in Apps Script. Select the deployment and create a new version.
+
+**DO NOT say "redeploy"** - this is incorrect terminology. The correct process is to manage deployments and create a new version if needed for web app changes.
 
 ## Git Commands
 ```bash

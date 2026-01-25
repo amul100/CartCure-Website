@@ -6650,6 +6650,8 @@ function showAcceptQuoteDialog() {
  * Mark quote as accepted - PERFORMANCE OPTIMIZED
  * OLD: 6 separate updateJobField() calls = 6 sheet loads
  * NEW: 1 batch updateJobFields() call = 1 sheet load (83% reduction)
+ *
+ * For jobs $200+, automatically generates and sends a 50% deposit invoice
  */
 function markQuoteAccepted(jobNumber) {
   const ui = SpreadsheetApp.getUi();
@@ -6663,6 +6665,30 @@ function markQuoteAccepted(jobNumber) {
   if (job['Status'] !== JOB_STATUS.QUOTED) {
     ui.alert('Invalid Status', 'This job is not in Quoted status. Current status: ' + job['Status'], ui.ButtonSet.OK);
     return;
+  }
+
+  // Check if job requires deposit ($200+)
+  const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
+  const requiresDeposit = total >= 200;
+  const projectSize = classifyProjectSize(total);
+
+  // If deposit required, show confirmation dialog
+  if (requiresDeposit) {
+    const depositAmount = (total * 0.5).toFixed(2);
+    const response = ui.alert(
+      '💰 Deposit Invoice Required',
+      'This job total is ' + formatCurrency(total) + ' (' + projectSize + ' project).\n\n' +
+      'Per Terms of Service, jobs $200+ require a 50% deposit upfront.\n\n' +
+      'A deposit invoice for ' + formatCurrency(parseFloat(depositAmount)) + ' will be:\n' +
+      '• Generated automatically\n' +
+      '• Sent to the client immediately\n\n' +
+      'Do you want to proceed?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      return; // User cancelled
+    }
   }
 
   const now = new Date();
@@ -6680,19 +6706,408 @@ function markQuoteAccepted(jobNumber) {
     'Due Date': formatNZDate(dueDate)
   });
 
+  // Generate and send deposit invoice for $200+ jobs
+  let depositMessage = '';
+  if (requiresDeposit) {
+    const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
+    if (invoiceResult.success) {
+      depositMessage = '\n\n💰 Deposit Invoice:\n' +
+        '• Invoice ' + invoiceResult.invoiceNumber + ' created\n' +
+        '• Amount: ' + formatCurrency(invoiceResult.amount) + '\n' +
+        '• Sent to: ' + job['Client Email'];
+    } else {
+      depositMessage = '\n\n⚠️ Deposit Invoice Error:\n' + invoiceResult.error +
+        '\n\nPlease generate and send manually via CartCure > Invoices.';
+    }
+  }
+
   ui.alert('Quote Accepted',
     'Job ' + jobNumber + ' marked as Accepted!\n\n' +
     'SLA Clock Started:\n' +
     '- Due Date: ' + formatNZDate(dueDate) + '\n' +
-    '- Days Remaining: ' + turnaround + '\n\n' +
+    '- Days Remaining: ' + turnaround + depositMessage + '\n\n' +
     'Use CartCure > Jobs > Start Work when you begin.',
     ui.ButtonSet.OK
   );
 
-  Logger.log('Quote accepted for ' + jobNumber);
+  Logger.log('Quote accepted for ' + jobNumber + (requiresDeposit ? ' (deposit invoice sent)' : ''));
 
   // Refresh dashboard to show updated data
   refreshDashboard();
+}
+
+/**
+ * Generate and send a 50% deposit invoice for a job
+ * Called automatically when quote is accepted for jobs $200+
+ *
+ * @param {string} jobNumber - The job number
+ * @param {Object} job - The job object with all fields
+ * @returns {Object} Result object with success, invoiceNumber, amount, or error
+ */
+function generateAndSendDepositInvoice(jobNumber, job) {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+
+    if (!invoiceSheet) {
+      return { success: false, error: 'Invoice Log sheet not found' };
+    }
+
+    // Check for existing invoices
+    const existingInvoices = getInvoicesByJobNumber(jobNumber);
+
+    // Generate invoice number
+    const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices ? existingInvoices.length : 0);
+    const now = new Date();
+    const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + paymentTerms);
+
+    // Calculate 50% deposit amounts
+    const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+    const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+    const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
+    const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
+
+    const depositAmount = amount * 0.5;
+    const depositGst = gst * 0.5;
+    const depositTotal = total * 0.5;
+
+    // Create invoice row
+    const invoiceRow = [
+      invoiceNumber,
+      jobNumber,
+      job['Client Name'],
+      job['Client Email'],
+      job['Client Phone'] || '',
+      formatNZDate(now),
+      formatNZDate(dueDate),
+      depositAmount.toFixed(2),
+      depositGst.toFixed(2),
+      depositTotal.toFixed(2),
+      'Draft',  // Will be updated to 'Sent' after email
+      '',  // Sent Date
+      '',  // Paid Date
+      '',  // Payment Reference
+      '',  // Days Overdue
+      '',  // Late Fee
+      depositTotal.toFixed(2),  // Total With Fees
+      'Deposit',  // Invoice Type
+      'Auto-generated on quote acceptance'  // Notes
+    ];
+
+    invoiceSheet.appendRow(invoiceRow);
+
+    // Update job with invoice number
+    updateJobField(jobNumber, 'Invoice #', invoiceNumber);
+
+    // Send the invoice email
+    const sendResult = sendInvoiceEmailSilent(invoiceNumber);
+
+    if (!sendResult.success) {
+      return {
+        success: false,
+        error: 'Invoice created but email failed: ' + sendResult.error,
+        invoiceNumber: invoiceNumber,
+        amount: depositTotal
+      };
+    }
+
+    Logger.log('Deposit invoice ' + invoiceNumber + ' generated and sent for ' + jobNumber);
+
+    return {
+      success: true,
+      invoiceNumber: invoiceNumber,
+      amount: depositTotal
+    };
+
+  } catch (error) {
+    Logger.log('Error generating deposit invoice: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send invoice email without UI prompts (for automated sending)
+ * Returns result object instead of showing alerts
+ *
+ * @param {string} invoiceNumber - The invoice number to send
+ * @returns {Object} Result object with success boolean and error message if failed
+ */
+function sendInvoiceEmailSilent(invoiceNumber) {
+  try {
+    const invoice = getInvoiceByNumber(invoiceNumber);
+
+    if (!invoice) {
+      return { success: false, error: 'Invoice not found' };
+    }
+
+    const businessName = getSetting('Business Name') || 'CartCure';
+    const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+    const bankName = getSetting('Bank Name') || '';
+    const bankAccount = getSetting('Bank Account') || '';
+    const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+    const gstNumber = getSetting('GST Number') || '';
+
+    const clientName = invoice['Client Name'];
+    const clientEmail = invoice['Client Email'];
+    const jobNumber = invoice['Job #'];
+    const amount = invoice['Amount (excl GST)'];
+    const gst = invoice['GST'];
+    const total = invoice['Total'];
+    const dueDate = invoice['Due Date'];
+    const invoiceType = invoice['Invoice Type'] || 'Full';
+
+    if (!clientEmail) {
+      return { success: false, error: 'No client email address' };
+    }
+
+    if (!clientName) {
+      return { success: false, error: 'No client name' };
+    }
+
+    // Determine subject based on invoice type
+    let subject = 'Invoice ' + invoiceNumber + ' from CartCure';
+    if (invoiceType === 'Deposit') {
+      subject = 'Deposit Invoice ' + invoiceNumber + ' from CartCure (50% Payment Required)';
+    }
+
+    // Build the email HTML (reuse existing invoice email template logic)
+    const colors = {
+      brandGreen: '#2d5d3f',
+      paperWhite: '#f9f7f3',
+      paperCream: '#faf8f4',
+      paperBorder: '#d4cfc3',
+      inkBlack: '#2b2b2b',
+      inkGray: '#5a5a5a',
+      inkLight: '#8a8a8a',
+      alertBg: '#fff8e6',
+      alertBorder: '#f5d76e'
+    };
+
+    const gstValue = parseFloat(gst);
+    const displayTotal = isGSTRegistered ? total : amount;
+
+    let pricingRowsHtml = '';
+    if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
+      pricingRowsHtml = `
+        <tr>
+          <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Amount (excl GST)</td>
+          <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${amount}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">GST (15%)</td>
+          <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${gst}</td>
+        </tr>
+        <tr style="border-top: 2px solid ${colors.paperBorder};">
+          <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total (incl GST)</td>
+          <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${total}</td>
+        </tr>
+      `;
+    } else {
+      pricingRowsHtml = `
+        <tr>
+          <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total</td>
+          <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${displayTotal}</td>
+        </tr>
+      `;
+    }
+
+    // Add deposit-specific messaging
+    let depositNotice = '';
+    if (invoiceType === 'Deposit') {
+      depositNotice = `
+        <tr>
+          <td style="padding: 0 40px 20px 40px;">
+            <div style="background-color: ${colors.alertBg}; border: 2px solid ${colors.alertBorder}; padding: 15px; margin-bottom: 10px;">
+              <p style="margin: 0; color: ${colors.inkBlack}; font-size: 14px; font-weight: bold;">💰 This is a 50% Deposit Invoice</p>
+              <p style="margin: 10px 0 0 0; color: ${colors.inkGray}; font-size: 13px;">
+                Per our Terms of Service, jobs $200+ require a 50% deposit before work begins.<br>
+                A balance invoice for the remaining 50% will be sent upon completion.
+              </p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
+          <tr>
+            <td align="center" style="padding: 40px 20px;">
+              <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+                <!-- Header with Logo -->
+                <tr>
+                  <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
+                    <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+                  </td>
+                </tr>
+
+                <!-- Invoice Title -->
+                <tr>
+                  <td align="center" style="padding: 30px 40px 20px 40px;">
+                    <h1 style="margin: 0; color: ${colors.brandGreen}; font-size: 28px; font-weight: normal; letter-spacing: 2px;">
+                      ${invoiceType === 'Deposit' ? 'DEPOSIT INVOICE' : 'INVOICE'}
+                    </h1>
+                    <p style="margin: 10px 0 0 0; color: ${colors.inkGray}; font-size: 16px;">${invoiceNumber}</p>
+                  </td>
+                </tr>
+
+                ${depositNotice}
+
+                <!-- Greeting -->
+                <tr>
+                  <td style="padding: 0 40px 20px 40px;">
+                    <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.6;">
+                      Hi ${clientName},
+                    </p>
+                    <p style="margin: 15px 0 0 0; color: ${colors.inkGray}; font-size: 15px; line-height: 1.6;">
+                      ${invoiceType === 'Deposit'
+                        ? 'Thank you for accepting our quote! Please find your deposit invoice below. Work will begin once payment is received.'
+                        : 'Please find your invoice below for the completed work on ' + jobNumber + '.'}
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Invoice Details Card -->
+                <tr>
+                  <td style="padding: 0 40px 30px 40px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperWhite}; border: 2px solid ${colors.paperBorder};">
+                      <tr>
+                        <td style="padding: 25px;">
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td style="padding-bottom: 15px; border-bottom: 1px solid ${colors.paperBorder};">
+                                <span style="color: ${colors.inkLight}; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Job Reference</span>
+                                <p style="margin: 5px 0 0 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">${jobNumber}</p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 15px 0; border-bottom: 1px solid ${colors.paperBorder};">
+                                <span style="color: ${colors.inkLight}; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Invoice Date</span>
+                                <p style="margin: 5px 0 0 0; color: ${colors.inkBlack}; font-size: 14px;">${formatNZDate(new Date())}</p>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 15px 0;">
+                                <span style="color: ${colors.inkLight}; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Due Date</span>
+                                <p style="margin: 5px 0 0 0; color: ${colors.inkBlack}; font-size: 14px; font-weight: bold;">${dueDate}</p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Pricing Section -->
+                <tr>
+                  <td style="padding: 0 40px 30px 40px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      ${pricingRowsHtml}
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Payment Details -->
+                <tr>
+                  <td style="padding: 0 40px 30px 40px;">
+                    <div style="background-color: ${colors.paperWhite}; border: 2px solid ${colors.paperBorder}; padding: 20px;">
+                      <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-weight: bold;">Payment Details:</p>
+                      <p style="margin: 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.8;">
+                        ${bankName ? 'Bank: ' + bankName + '<br>' : ''}
+                        ${bankAccount ? 'Account: ' + bankAccount + '<br>' : ''}
+                        Reference: ${invoiceNumber}
+                        ${isGSTRegistered && gstNumber ? '<br>GST Number: ' + gstNumber : ''}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="padding: 30px 40px; background-color: ${colors.paperWhite}; border-top: 2px solid ${colors.paperBorder};">
+                    <p style="margin: 0 0 10px 0; color: ${colors.inkGray}; font-size: 13px; text-align: center;">
+                      Questions? Reply to this email or contact us at ${adminEmail}
+                    </p>
+                    <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; text-align: center;">
+                      ${businessName} • cartcure.co.nz
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Build plain text version
+    const plainText = `
+${invoiceType === 'Deposit' ? 'DEPOSIT INVOICE' : 'INVOICE'} ${invoiceNumber}
+
+Hi ${clientName},
+
+${invoiceType === 'Deposit'
+  ? 'Thank you for accepting our quote! Please find your deposit invoice below.\n\nThis is a 50% deposit invoice. Per our Terms of Service, jobs $200+ require a 50% deposit before work begins. A balance invoice for the remaining 50% will be sent upon completion.'
+  : 'Please find your invoice for ' + jobNumber + '.'}
+
+Job Reference: ${jobNumber}
+Due Date: ${dueDate}
+
+${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total: $' + displayTotal}
+
+PAYMENT DETAILS
+${bankName ? 'Bank: ' + bankName : ''}
+${bankAccount ? 'Account: ' + bankAccount : ''}
+Reference: ${invoiceNumber}
+${isGSTRegistered && gstNumber ? 'GST Number: ' + gstNumber : ''}
+
+Questions? Reply to this email.
+
+${businessName}
+cartcure.co.nz
+    `;
+
+    // Send the email
+    GmailApp.sendEmail(clientEmail, subject, plainText, {
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Update invoice status to Sent
+    updateInvoiceField(invoiceNumber, 'Status', 'Sent');
+    updateInvoiceField(invoiceNumber, 'Sent Date', formatNZDate(new Date()));
+
+    // Update job payment status to Invoiced
+    const jobNumber2 = invoice['Job #'];
+    if (jobNumber2) {
+      updateJobField(jobNumber2, 'Payment Status', PAYMENT_STATUS.INVOICED);
+    }
+
+    // Log the email
+    logEmail(jobNumber2, clientEmail, subject, invoiceType === 'Deposit' ? 'Deposit Invoice' : 'Invoice');
+
+    Logger.log('Invoice ' + invoiceNumber + ' sent silently to ' + clientEmail);
+
+    return { success: true };
+
+  } catch (error) {
+    Logger.log('Error sending invoice silently: ' + error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
