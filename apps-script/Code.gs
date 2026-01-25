@@ -5455,11 +5455,12 @@ function generateBalanceInvoice(jobNumber) {
 
   // Calculate balance (total - deposit)
   const totalAmount = parseFloat(job['Quote Amount (excl GST)']) || 0;
-  const totalGst = parseFloat(job['GST']) || 0;
-  const totalWithGst = parseFloat(job['Total (incl GST)']) || 0;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const totalGst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
+  const totalWithGst = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || 0) : totalAmount;
 
   const depositAmount = parseFloat(depositInvoice['Amount (excl GST)']) || 0;
-  const depositGst = parseFloat(depositInvoice['GST']) || 0;
+  const depositGst = isGSTRegistered ? (parseFloat(depositInvoice['GST']) || 0) : 0;
 
   const balanceAmount = totalAmount - depositAmount;
   const balanceGst = totalGst - depositGst;
@@ -8047,8 +8048,9 @@ function generateInvoiceForJob(jobNumber) {
   dueDate.setDate(dueDate.getDate() + paymentTerms);
 
   const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
-  const gst = parseFloat(job['GST']) || 0;
-  const total = parseFloat(job['Total (incl GST)']) || amount;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
+  const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
 
   // Determine invoice type based on project size and existing invoices
   const projectSize = getProjectSize(total);
@@ -8422,7 +8424,9 @@ function sendInvoiceEmail(invoiceNumber) {
   const subject = 'Invoice ' + invoiceNumber + ' from CartCure';
 
   // Build pricing section - validate GST is a number
+  // When GST is not registered, use amount (excl GST) as the total
   const gstValue = parseFloat(gst);
+  const displayTotal = isGSTRegistered ? total : amount;
   let pricingHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingHtml = `
@@ -8432,7 +8436,7 @@ function sendInvoiceEmail(invoiceNumber) {
     `;
   } else {
     pricingHtml = `
-      <p style="font-size: 18px;"><strong>Total:</strong> $${total}</p>
+      <p style="font-size: 18px;"><strong>Total:</strong> $${displayTotal}</p>
     `;
   }
 
@@ -8493,7 +8497,7 @@ function sendInvoiceEmail(invoiceNumber) {
       jobNumber,
       'Email Sent',
       subject,
-      'Invoice sent: ' + formatCurrency(total),
+      'Invoice sent: ' + formatCurrency(displayTotal),
       'To: ' + clientEmail,
       'Auto'
     );
@@ -8554,7 +8558,9 @@ function sendInvoiceReminder(invoiceNumber) {
   const clientName = invoice['Client Name'];
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
+  const amount = parseFloat(invoice['Amount (excl GST)']) || 0;
   const total = parseFloat(invoice['Total']) || 0;
+  const displayTotal = isGSTRegistered ? total : amount;
   const dueDate = invoice['Due Date'];
 
   if (!clientEmail) {
@@ -8590,7 +8596,7 @@ function sendInvoiceReminder(invoiceNumber) {
         <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
           <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
           <p><strong>Job Reference:</strong> ${jobNumber}</p>
-          <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(total)}</span></p>
+          <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(displayTotal)}</span></p>
           <p><strong>Due Date:</strong> ${dueDate}</p>
         </div>
 
@@ -8689,8 +8695,8 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
   const originalAmount = parseFloat(invoice['Amount (excl GST)']) || 0;
-  const originalGst = parseFloat(invoice['GST']) || 0;
-  const originalTotal = parseFloat(invoice['Total']) || 0;
+  const originalGst = isGSTRegistered ? (parseFloat(invoice['GST']) || 0) : 0;
+  const originalTotal = isGSTRegistered ? (parseFloat(invoice['Total']) || 0) : originalAmount;
   const dueDate = invoice['Due Date'];
   const invoiceDate = invoice['Invoice Date'];
 
@@ -8699,7 +8705,7 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
     return false;
   }
 
-  // Calculate late fees
+  // Calculate late fees (based on correct total depending on GST registration)
   const feeCalc = calculateLateFee(originalTotal, dueDate);
 
   if (feeCalc.daysOverdue <= 0) {
@@ -8977,7 +8983,9 @@ function sendInvoiceReminderAuto(invoiceNumber) {
   const clientName = invoice['Client Name'];
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
+  const amount = parseFloat(invoice['Amount (excl GST)']) || 0;
   const total = parseFloat(invoice['Total']) || 0;
+  const displayTotal = isGSTRegistered ? total : amount;
   const dueDate = invoice['Due Date'];
 
   if (!clientEmail) {
@@ -9018,7 +9026,7 @@ function sendInvoiceReminderAuto(invoiceNumber) {
         <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
           <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
           <p><strong>Job Reference:</strong> ${jobNumber}</p>
-          <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(total)}</span></p>
+          <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(displayTotal)}</span></p>
           <p><strong>Due Date:</strong> ${dueDate}</p>
         </div>
 
@@ -9683,7 +9691,9 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
   };
 
   // Build pricing section - validate GST is a number
+  // When GST is not registered, use amount (excl GST) as the total
   const gstValue = parseFloat(gst);
+  const displayTotal = isGSTRegistered ? total : amount;
   let pricingHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingHtml = `
@@ -9704,7 +9714,7 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
     pricingHtml = `
       <tr>
         <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total Paid</td>
-        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${total}</td>
+        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${displayTotal}</td>
       </tr>
     `;
   }
@@ -11256,9 +11266,13 @@ function generateInvoiceEmailHtml(data) {
             </table>
             <hr style="border: none; border-top: 1px solid #d4cfc3; margin: 15px 0;">
             <table>
+              ${isGSTRegistered ? `
               <tr><td class="label">Amount (excl GST):</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
-              ${isGSTRegistered ? `<tr><td class="label">GST (15%):</td><td class="value">$${invoice['GST']}</td></tr>` : ''}
+              <tr><td class="label">GST (15%):</td><td class="value">$${invoice['GST']}</td></tr>
               <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Total']}</td></tr>
+              ` : `
+              <tr class="total-row"><td>Total Due:</td><td class="value">$${invoice['Amount (excl GST)']}</td></tr>
+              `}
             </table>
           </div>
 
@@ -11326,7 +11340,7 @@ function generatePaymentReceiptHtml(data) {
               <tr><td class="label">Job Reference:</td><td class="value">${invoice['Job #']}</td></tr>
               <tr><td class="label">Payment Method:</td><td class="value">${method}</td></tr>
               <tr><td class="label">Reference:</td><td class="value">${reference}</td></tr>
-              <tr><td class="label">Amount Paid:</td><td class="value">$${invoice['Total']}</td></tr>
+              <tr><td class="label">Amount Paid:</td><td class="value">$${isGSTRegistered ? invoice['Total'] : invoice['Amount (excl GST)']}</td></tr>
               <tr><td class="label">Date:</td><td class="value">${formatNZDate(new Date())}</td></tr>
             </table>
           </div>
@@ -11385,7 +11399,7 @@ function generateInvoiceReminderHtml(data) {
           <div class="info-box">
             <p><strong>Invoice Number:</strong> ${invoice['Invoice #']}</p>
             <p><strong>Job Reference:</strong> ${invoice['Job #']}</p>
-            <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">$${invoice['Total']}</span></p>
+            <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">$${isGSTRegistered ? invoice['Total'] : invoice['Amount (excl GST)']}</span></p>
             <p><strong>Due Date:</strong> ${invoice['Due Date']}</p>
           </div>
 
@@ -11416,8 +11430,8 @@ function generateInvoiceReminderHtml(data) {
 function generateOverdueInvoiceHtml(data) {
   const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
   const originalAmount = parseFloat(invoice['Amount (excl GST)']) || 0;
-  const originalGst = parseFloat(invoice['GST']) || 0;
-  const originalTotal = parseFloat(invoice['Total']) || 0;
+  const originalGst = isGSTRegistered ? (parseFloat(invoice['GST']) || 0) : 0;
+  const originalTotal = isGSTRegistered ? (parseFloat(invoice['Total']) || 0) : originalAmount;
 
   return `
     <!DOCTYPE html>
