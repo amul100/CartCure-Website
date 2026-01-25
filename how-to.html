@@ -23,38 +23,211 @@
 
         .privacy-content h1 {
             font-size: 2.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             color: var(--ink-black);
-            border-bottom: 3px solid var(--paper-border);
-            padding-bottom: 1rem;
+        }
+
+        .page-intro {
+            font-size: 1.1rem;
+            color: var(--ink-gray);
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--paper-border);
+        }
+
+        /* Guide Navigation Cards */
+        .guide-nav {
+            background: var(--paper-cream);
+            border: 2px solid var(--paper-border);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        .guide-nav h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            color: var(--ink-black);
+        }
+
+        .guide-nav-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .guide-nav-card {
+            background: var(--paper-white);
+            border: 2px solid var(--paper-border);
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-decoration: none;
+            color: var(--ink-black);
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.08);
+            transition: all 0.2s;
+        }
+
+        .guide-nav-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.12);
+            border-color: var(--accent-green);
+        }
+
+        .guide-nav-card span {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .time-badge {
+            background: var(--accent-green);
+            color: white;
+            padding: 0.3rem 0.75rem;
+            font-size: 0.75rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 600;
+            border: 1px solid var(--ink-black);
+            white-space: nowrap;
+        }
+
+        /* Reassurance Box */
+        .highlight-box {
+            background: var(--paper-cream);
+            border-left: 4px solid var(--accent-green);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .highlight-box p {
+            margin: 0;
+        }
+
+        .highlight-box p + p {
+            margin-top: 1rem;
+        }
+
+        /* Guide Section Headers */
+        .guide-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+        }
+
+        .guide-section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .guide-icon {
+            width: 3rem;
+            height: 3rem;
+            background: var(--accent-green);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 2px solid var(--ink-black);
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
         }
 
         .privacy-content h2 {
             font-size: 1.8rem;
-            margin-top: 2.5rem;
-            margin-bottom: 1rem;
-            color: var(--accent-green);
+            margin: 0;
+            color: var(--ink-black);
+        }
+
+        .guide-description {
+            color: var(--ink-gray);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            padding-left: 4rem;
         }
 
         .privacy-content h3 {
-            font-size: 1.3rem;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            color: var(--ink-black);
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--accent-green);
         }
 
         .privacy-content p {
             margin-bottom: 1rem;
         }
 
-        .privacy-content ul,
-        .privacy-content ol {
-            margin-left: 2rem;
-            margin-bottom: 1rem;
+        /* Step Boxes with Numbers */
+        .step-box {
+            background: var(--paper-cream);
+            border: 2px solid var(--paper-border);
+            padding: 1.25rem 1.5rem;
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.08);
+            transition: all 0.2s;
         }
 
-        .privacy-content li {
-            margin-bottom: 0.5rem;
+        .step-box:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .step-number {
+            width: 2.25rem;
+            height: 2.25rem;
+            min-width: 2.25rem;
+            background: var(--accent-green);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 1rem;
+            border: 2px solid var(--ink-black);
+            box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            color: var(--ink-black);
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+
+        .step-content p {
+            margin: 0;
+            color: var(--ink-gray);
+        }
+
+        .step-content p + p {
+            margin-top: 0.75rem;
+        }
+
+        .step-content ul {
+            margin: 0.75rem 0 0 1.25rem;
+            padding: 0;
+        }
+
+        .step-content li {
+            margin-bottom: 0.35rem;
+            color: var(--ink-gray);
         }
 
         .privacy-content strong {
@@ -69,12 +242,6 @@
         .privacy-content a.back-link {
             color: #ffffff;
             text-decoration: none;
-        }
-
-        .last-updated {
-            font-style: italic;
-            color: var(--ink-gray);
-            margin-bottom: 2rem;
         }
 
         .back-link {
@@ -97,43 +264,114 @@
             box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
         }
 
-        .highlight-box {
-            background: var(--paper-cream);
+        /* Section Divider */
+        .section-divider {
+            margin: 3rem 0;
+            border: none;
+            border-top: 2px dashed var(--paper-border);
+            position: relative;
+        }
+
+        /* Success/Completion Box */
+        .success-box {
+            background: linear-gradient(135deg, var(--paper-cream) 0%, #e8f0e8 100%);
+            border: 2px solid var(--accent-green);
             border-left: 4px solid var(--accent-green);
             padding: 1.5rem;
             margin: 1.5rem 0;
-            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.08);
+            box-shadow: 3px 3px 0 rgba(45, 93, 63, 0.15);
         }
 
-        .step-box {
+        .success-box p {
+            margin: 0;
+        }
+
+        /* Contact Section */
+        .contact-section {
             background: var(--paper-cream);
             border: 2px solid var(--paper-border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1rem 0;
+            padding: 2rem;
+            margin-top: 3rem;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.08);
+            text-align: center;
         }
 
-        .step-box h4 {
-            color: var(--accent-green);
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-        }
-
-        .guide-nav {
-            background: var(--paper-cream);
-            border: 2px solid var(--paper-border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 2rem 0;
-        }
-
-        .guide-nav h3 {
+        .contact-section h2 {
             margin-top: 0;
-            margin-bottom: 1rem;
+            font-size: 1.5rem;
         }
 
-        .guide-nav ul {
-            margin-bottom: 0;
+        .contact-section p {
+            margin-bottom: 1.5rem;
+        }
+
+        .contact-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .contact-details a {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .privacy-container {
+                padding: 6rem 1.5rem 3rem;
+            }
+
+            .privacy-content h1 {
+                font-size: 2rem;
+            }
+
+            .privacy-content h2 {
+                font-size: 1.4rem;
+            }
+
+            .guide-section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .guide-description {
+                padding-left: 0;
+            }
+
+            .guide-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+                font-size: 1.25rem;
+            }
+
+            .step-box {
+                padding: 1rem;
+            }
+
+            .step-number {
+                width: 2rem;
+                height: 2rem;
+                min-width: 2rem;
+                font-size: 0.9rem;
+            }
+
+            .guide-nav-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .time-badge {
+                align-self: flex-start;
+            }
+
+            .contact-section {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
@@ -152,142 +390,211 @@
 
         <div class="privacy-content">
             <h1>How-To Guides</h1>
-            <p class="last-updated">Simple step-by-step instructions to get your store ready</p>
+            <p class="page-intro">Simple step-by-step instructions to get your store ready for us to work on. Each guide only takes a few minutes to complete.</p>
 
-            <div class="guide-nav">
-                <h3>What's on This Page</h3>
-                <ul>
-                    <li><a href="#backups">How to Create a Backup of Your Theme</a> (takes about 2 minutes)</li>
-                    <li><a href="#staff-account">How to Give CartCure Access to Your Store</a> (takes about 3 minutes)</li>
+            <nav class="guide-nav">
+                <h3>Jump to a Guide</h3>
+                <ul class="guide-nav-list">
+                    <li>
+                        <a href="#backups" class="guide-nav-card">
+                            <span>How to Create a Backup of Your Theme</span>
+                            <span class="time-badge">~2 min</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#staff-account" class="guide-nav-card">
+                            <span>How to Give CartCure Access to Your Store</span>
+                            <span class="time-badge">~3 min</span>
+                        </a>
+                    </li>
                 </ul>
-            </div>
+            </nav>
 
             <div class="highlight-box">
                 <p><strong>Don't worry if this seems technical</strong> - we've broken everything down into simple steps with clear instructions. Just follow along one step at a time, and you'll be done before you know it. If you get stuck at any point, just send us an email and we'll happily walk you through it.</p>
             </div>
 
-            <h2 id="backups">How to Create a Backup of Your Theme</h2>
-            <p>Think of this like making a photocopy of an important document before you make changes to it. If anything goes wrong, you can always go back to the original. This only takes a couple of minutes and gives you peace of mind.</p>
+            <!-- GUIDE 1: BACKUPS -->
+            <section class="guide-section" id="backups">
+                <div class="guide-section-header">
+                    <div class="guide-icon">1</div>
+                    <h2>How to Create a Backup of Your Theme</h2>
+                </div>
+                <p class="guide-description">Think of this like making a photocopy of an important document before you make changes to it. If anything goes wrong, you can always go back to the original.</p>
 
-            <h3>The Easy Way: Make a Copy of Your Theme</h3>
-            <p>This is the simplest method - just 4 quick steps:</p>
+                <h3>The Easy Way: Make a Copy of Your Theme</h3>
+                <p>This is the simplest method - just 4 quick steps:</p>
 
-            <div class="step-box">
-                <h4>Step 1: Open Your Shopify Admin</h4>
-                <p>Log in to your Shopify store. You'll see a menu on the left side of the screen. Look for <strong>Online Store</strong> and click on it, then click <strong>Themes</strong>.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Open Your Shopify Admin</h4>
+                        <p>Log in to your Shopify store. You'll see a menu on the left side of the screen. Look for <strong>Online Store</strong> and click on it, then click <strong>Themes</strong>.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 2: Find Your Current Theme</h4>
-                <p>At the top of the page, you'll see a section called "Current theme" - this is the design your customers see when they visit your store. That's the one we want to back up.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Find Your Current Theme</h4>
+                        <p>At the top of the page, you'll see a section called "Current theme" - this is the design your customers see when they visit your store. That's the one we want to back up.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 3: Make a Copy</h4>
-                <p>Look for the <strong>...</strong> button (three small dots) next to your theme name. Click it, and a small menu will pop up. Choose <strong>Duplicate</strong> from the list. Shopify will make a complete copy of your theme - this usually takes just a few seconds.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Make a Copy</h4>
+                        <p>Look for the <strong>...</strong> button (three small dots) next to your theme name. Click it, and a small menu will pop up. Choose <strong>Duplicate</strong> from the list. Shopify will make a complete copy of your theme - this usually takes just a few seconds.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 4: Give Your Backup a Name</h4>
-                <p>Your copy will appear below in the "Theme library" section. Click the <strong>...</strong> button on this new copy and select <strong>Rename</strong>. Name it something like "Backup - January 2026" (use today's date) so you'll remember what it is later.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Give Your Backup a Name</h4>
+                        <p>Your copy will appear below in the "Theme library" section. Click the <strong>...</strong> button on this new copy and select <strong>Rename</strong>. Name it something like "Backup - January 2026" (use today's date) so you'll remember what it is later.</p>
+                    </div>
+                </div>
 
-            <div class="highlight-box">
-                <p><strong>That's it!</strong> Your backup will stay safely in your Theme library. You don't need to do anything else with it - it's just there as a safety net. Once your project is complete and you're happy with everything, you can delete the backup if you like.</p>
-            </div>
+                <div class="success-box">
+                    <p><strong>That's it!</strong> Your backup will stay safely in your Theme library. You don't need to do anything else with it - it's just there as a safety net. Once your project is complete and you're happy with everything, you can delete the backup if you like.</p>
+                </div>
 
-            <h3>Optional: Save a Copy to Your Computer</h3>
-            <p>If you'd like an extra backup saved on your own computer, you can do that too. This is completely optional - the method above is usually enough.</p>
+                <h3>Optional: Save a Copy to Your Computer</h3>
+                <p>If you'd like an extra backup saved on your own computer, you can do that too. This is completely optional - the method above is usually enough.</p>
 
-            <div class="step-box">
-                <h4>Step 1: Go to Your Themes</h4>
-                <p>From your Shopify admin, click <strong>Online Store</strong> on the left, then <strong>Themes</strong>.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Go to Your Themes</h4>
+                        <p>From your Shopify admin, click <strong>Online Store</strong> on the left, then <strong>Themes</strong>.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 2: Download the Theme</h4>
-                <p>Click the <strong>...</strong> button (three dots) next to your theme name, then choose <strong>Download theme file</strong>.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Download the Theme</h4>
+                        <p>Click the <strong>...</strong> button (three dots) next to your theme name, then choose <strong>Download theme file</strong>.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 3: Check Your Email</h4>
-                <p>Shopify will send you an email with a download link (this might take a minute or two). Click the link in the email to download the file, then save it somewhere on your computer where you can find it later, like your Documents folder or Desktop.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Check Your Email</h4>
+                        <p>Shopify will send you an email with a download link (this might take a minute or two). Click the link in the email to download the file, then save it somewhere on your computer where you can find it later, like your Documents folder or Desktop.</p>
+                    </div>
+                </div>
+            </section>
 
-            <hr style="margin: 3rem 0; border: 1px solid var(--paper-border);">
+            <hr class="section-divider">
 
-            <h2 id="staff-account">How to Give CartCure Access to Your Store</h2>
-            <p>Instead of sharing your personal login details, Shopify lets you create a separate "staff account" just for us. Think of it like giving someone a spare key to your house that you can take back whenever you want. It's the safest way to let us work on your store.</p>
+            <!-- GUIDE 2: STAFF ACCOUNT -->
+            <section class="guide-section" id="staff-account">
+                <div class="guide-section-header">
+                    <div class="guide-icon">2</div>
+                    <h2>How to Give CartCure Access to Your Store</h2>
+                </div>
+                <p class="guide-description">Instead of sharing your personal login details, Shopify lets you create a separate "staff account" just for us. Think of it like giving someone a spare key to your house that you can take back whenever you want.</p>
 
-            <div class="highlight-box">
-                <p><strong>Why is this better than sharing your password?</strong> A staff account keeps your personal login private and secure. You stay in control - you can see what we do, and you can remove our access with one click when the job is done.</p>
-            </div>
+                <div class="highlight-box">
+                    <p><strong>Why is this better than sharing your password?</strong> A staff account keeps your personal login private and secure. You stay in control - you can see what we do, and you can remove our access with one click when the job is done.</p>
+                </div>
 
-            <h3>How to Set This Up</h3>
+                <h3>How to Set This Up</h3>
 
-            <div class="step-box">
-                <h4>Step 1: Open Settings</h4>
-                <p>Log in to your Shopify store. Look at the bottom left corner of the screen - you'll see <strong>Settings</strong> with a small gear icon. Click on it.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Open Settings</h4>
+                        <p>Log in to your Shopify store. Look at the bottom left corner of the screen - you'll see <strong>Settings</strong> with a small gear icon. Click on it.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 2: Find Users and Permissions</h4>
-                <p>A menu will appear on the left side. Look for <strong>Users and permissions</strong> and click on it.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Find Users and Permissions</h4>
+                        <p>A menu will appear on the left side. Look for <strong>Users and permissions</strong> and click on it.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 3: Click "Add Staff"</h4>
-                <p>You'll see a green button that says <strong>Add staff</strong>. Click on it.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Click "Add Staff"</h4>
+                        <p>You'll see a green button that says <strong>Add staff</strong>. Click on it.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 4: Fill In Our Details</h4>
-                <p>Type in the following information exactly as shown:</p>
-                <ul>
-                    <li><strong>First name:</strong> CartCure</li>
-                    <li><strong>Last name:</strong> Support</li>
-                    <li><strong>Email:</strong> info@cartcure.co.nz</li>
-                </ul>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Fill In Our Details</h4>
+                        <p>Type in the following information exactly as shown:</p>
+                        <ul>
+                            <li><strong>First name:</strong> CartCure</li>
+                            <li><strong>Last name:</strong> Support</li>
+                            <li><strong>Email:</strong> info@cartcure.co.nz</li>
+                        </ul>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 5: Choose What We Can Access</h4>
-                <p>Shopify will ask what permissions to give us. The easiest option is to tick the box that says <strong>Give access to all current and future permissions</strong> - this ensures we have everything we need to complete your project.</p>
-                <p>Don't worry - we only use what's necessary for your specific job, and you can remove all access once we're done.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <h4>Choose What We Can Access</h4>
+                        <p>Shopify will ask what permissions to give us. The easiest option is to tick the box that says <strong>Give access to all current and future permissions</strong> - this ensures we have everything we need to complete your project.</p>
+                        <p>Don't worry - we only use what's necessary for your specific job, and you can remove all access once we're done.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 6: Send the Invitation</h4>
-                <p>Click the <strong>Send invite</strong> button. That's it! We'll receive an email and accept the invitation. You'll see "CartCure Support" appear in your staff list once we've accepted.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">6</div>
+                    <div class="step-content">
+                        <h4>Send the Invitation</h4>
+                        <p>Click the <strong>Send invite</strong> button. That's it! We'll receive an email and accept the invitation. You'll see "CartCure Support" appear in your staff list once we've accepted.</p>
+                    </div>
+                </div>
 
-            <h3>How to Remove Our Access When the Job is Done</h3>
-            <p>Once you're happy with the completed work, it's a good idea to remove our access. Here's how:</p>
+                <h3>How to Remove Our Access When the Job is Done</h3>
+                <p>Once you're happy with the completed work, it's a good idea to remove our access. Here's how:</p>
 
-            <div class="step-box">
-                <h4>Step 1: Go Back to Users and Permissions</h4>
-                <p>Click <strong>Settings</strong> (bottom left corner), then <strong>Users and permissions</strong>.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Go Back to Users and Permissions</h4>
+                        <p>Click <strong>Settings</strong> (bottom left corner), then <strong>Users and permissions</strong>.</p>
+                    </div>
+                </div>
 
-            <div class="step-box">
-                <h4>Step 2: Remove CartCure Support</h4>
-                <p>Find "CartCure Support" in the list of staff members and click on it. Then click the <strong>Remove staff</strong> button. Confirm when asked, and our access is gone immediately.</p>
-            </div>
+                <div class="step-box">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Remove CartCure Support</h4>
+                        <p>Find "CartCure Support" in the list of staff members and click on it. Then click the <strong>Remove staff</strong> button. Confirm when asked, and our access is gone immediately.</p>
+                    </div>
+                </div>
 
-            <div class="highlight-box">
-                <p><strong>Good to know:</strong> We recommend removing access within a week or so after your project is finished. It's just good practice to only keep active accounts for people who need them. But there's no rush - do it whenever is convenient for you.</p>
-            </div>
+                <div class="highlight-box">
+                    <p><strong>Good to know:</strong> We recommend removing access within a week or so after your project is finished. It's just good practice to only keep active accounts for people who need them. But there's no rush - do it whenever is convenient for you.</p>
+                </div>
+            </section>
 
-            <hr style="margin: 3rem 0; border: 1px solid var(--paper-border);">
+            <hr class="section-divider">
 
-            <h2>Stuck or Have Questions?</h2>
-            <p>If anything doesn't look quite right, or you can't find a button we mentioned, please don't hesitate to reach out. Shopify occasionally updates their layout, so things might look slightly different on your screen. We're always happy to help you through it - just send us an email or give us a call.</p>
-
-            <div class="highlight-box">
-                <p><strong>Email us:</strong> info@cartcure.co.nz<br>
-                <strong>Visit our website:</strong> <a href="https://cartcure.co.nz">cartcure.co.nz</a></p>
-                <p style="margin-top: 1rem; margin-bottom: 0;">We can also hop on a quick video call if you'd prefer someone to walk you through it - just ask!</p>
-            </div>
+            <!-- CONTACT SECTION -->
+            <section class="contact-section">
+                <h2>Stuck or Have Questions?</h2>
+                <p>If anything doesn't look quite right, or you can't find a button we mentioned, please don't hesitate to reach out. Shopify occasionally updates their layout, so things might look slightly different on your screen. We're always happy to help!</p>
+                <div class="contact-details">
+                    <span>Email us: <a href="mailto:info@cartcure.co.nz">info@cartcure.co.nz</a></span>
+                    <span>Visit: <a href="https://cartcure.co.nz">cartcure.co.nz</a></span>
+                </div>
+                <p style="margin-top: 1.5rem; margin-bottom: 0; font-size: 0.95rem; color: var(--ink-gray);">We can also hop on a quick video call if you'd prefer someone to walk you through it - just ask!</p>
+            </section>
 
             <a href="index.html" class="back-link" style="margin-top: 2rem;">&larr; Back to Home</a>
         </div>
@@ -303,7 +610,7 @@
                 <a href="privacy-policy.html">Privacy Policy</a>
             </div>
             <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
-            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">🇳🇿 Proudly serving New Zealand small businesses</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
         </div>
     </footer>
 </body>

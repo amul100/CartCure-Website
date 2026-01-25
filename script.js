@@ -457,6 +457,7 @@
         // Get and sanitize inputs
         const name = sanitizeInput(document.getElementById('name').value);
         const email = sanitizeInput(document.getElementById('email').value);
+        const phone = sanitizeInput(document.getElementById('phone').value);
         const storeUrl = sanitizeInput(document.getElementById('store').value);
         const message = sanitizeInput(elements.messageTextarea.value);
 
@@ -472,8 +473,18 @@
             return;
         }
 
-        // Validate store URL if provided
-        if (storeUrl && !validateURL(storeUrl)) {
+        // Validate phone number
+        if (!phone || phone.length < 6 || phone.length > 20) {
+            showError('Please enter a valid phone number');
+            return;
+        }
+
+        // Validate store URL (required)
+        if (!storeUrl) {
+            showError('Please enter your store URL');
+            return;
+        }
+        if (!validateURL(storeUrl)) {
             showError('Please enter a valid store URL');
             return;
         }
@@ -538,7 +549,8 @@
                 }),
                 name: name,
                 email: email,
-                storeUrl: storeUrl || '',
+                phone: phone,
+                storeUrl: storeUrl,
                 message: message || 'Voice note only - see audio file',
                 hasVoiceNote: hasAudio ? 'Yes' : 'No',
                 voiceNoteData: ''

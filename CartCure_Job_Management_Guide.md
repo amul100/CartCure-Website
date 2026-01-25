@@ -166,7 +166,7 @@ The system now tracks:
 ### Record Payment
 1. Go to **CartCure > Invoices > Mark as Paid**
 2. Enter the Invoice #
-3. Enter payment method (Bank Transfer, Stripe, etc.)
+3. Payment method is Bank Transfer
 4. Enter reference number (optional)
 
 ---

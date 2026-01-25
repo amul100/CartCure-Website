@@ -17,6 +17,9 @@ This includes:
 
 The guide must stay synchronized with the actual implementation to ensure users have accurate documentation.
 
+## Email Template Previews
+The `email-previews/` folder contains static HTML preview files for all email templates. When updating email templates in Code.gs, also update the corresponding preview HTML files manually to keep them in sync.
+
 ## Apps Script Debugging
 **IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
 
