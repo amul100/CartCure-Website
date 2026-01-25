@@ -7651,6 +7651,10 @@ function sendQuoteEmail(jobNumber) {
   const gstAmount = isGSTRegistered ? quoteAmount * JOB_CONFIG.GST_RATE : 0;
   const totalAmount = quoteAmount + gstAmount;
 
+  // Check if deposit is required ($200+ jobs)
+  const requiresDeposit = totalAmount >= 200;
+  const depositAmount = requiresDeposit ? totalAmount * 0.5 : 0;
+
   // Calculate validity date
   const now = new Date();
   const validUntil = new Date(now);
@@ -7683,7 +7687,9 @@ function sendQuoteEmail(jobNumber) {
     adminEmail: adminEmail,
     businessName: businessName,
     gstNumber: gstNumber,
-    isGSTRegistered: isGSTRegistered
+    isGSTRegistered: isGSTRegistered,
+    requiresDeposit: requiresDeposit,
+    depositAmount: formatCurrency(depositAmount)
   });
 
   const plainBody = generateQuotePlainText({
@@ -7697,7 +7703,9 @@ function sendQuoteEmail(jobNumber) {
     validUntil: formatNZDate(validUntil),
     bankName: bankName,
     bankAccount: bankAccount,
-    isGSTRegistered: isGSTRegistered
+    isGSTRegistered: isGSTRegistered,
+    requiresDeposit: requiresDeposit,
+    depositAmount: formatCurrency(depositAmount)
   });
 
   try {
@@ -7757,7 +7765,9 @@ function generateQuoteEmailHtml(data) {
     inkGray: '#5a5a5a',
     inkLight: '#8a8a8a',
     alertBg: '#fff8e6',
-    alertBorder: '#f5d76e'
+    alertBorder: '#f5d76e',
+    alertRed: '#c62828',
+    alertRedBg: '#ffebee'
   };
 
   // Build pricing rows based on GST registration
@@ -7797,6 +7807,20 @@ function generateQuoteEmailHtml(data) {
         </td>
         <td align="right" style="padding: 15px;">
           <span style="color: #ffffff; font-size: 20px; font-weight: bold;">${data.total}</span>
+        </td>
+      </tr>
+    `;
+  }
+
+  // Add deposit row if required ($200+ jobs)
+  if (data.requiresDeposit) {
+    pricingRows += `
+      <tr style="background-color: ${colors.alertRedBg};">
+        <td style="padding: 15px;">
+          <span style="color: ${colors.alertRed}; font-weight: bold;">50% DEPOSIT DUE UPFRONT</span>
+        </td>
+        <td align="right" style="padding: 15px;">
+          <span style="color: ${colors.alertRed}; font-size: 20px; font-weight: bold;">${data.depositAmount}</span>
         </td>
       </tr>
     `;
@@ -7873,6 +7897,24 @@ function generateQuoteEmailHtml(data) {
                   </table>
                 </td>
               </tr>
+
+              <!-- Deposit Notice (for $200+ jobs) -->
+              ${data.requiresDeposit ? `
+              <tr>
+                <td style="padding: 0 40px 25px 40px;">
+                  <div style="background-color: ${colors.alertRedBg}; border: 2px solid ${colors.alertRed}; padding: 20px;">
+                    <p style="margin: 0 0 10px 0; color: ${colors.alertRed}; font-size: 16px; font-weight: bold;">
+                      💰 50% Deposit Required
+                    </p>
+                    <p style="margin: 0; color: ${colors.inkBlack}; font-size: 14px; line-height: 1.6;">
+                      For jobs over $200, we require a <strong style="color: ${colors.alertRed};">50% deposit (${data.depositAmount})</strong> before work begins.<br><br>
+                      Once you accept this quote, you'll receive a deposit invoice. Work will commence upon receipt of payment.<br><br>
+                      The remaining balance of <strong>${data.depositAmount}</strong> will be invoiced upon completion.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+              ` : ''}
 
               <!-- Timeline & Terms -->
               <tr>
@@ -7995,15 +8037,29 @@ ${data.jobDescription}
 PRICING
 ───────────────────────────────────────────────────
 ${pricingSection}
-
+${data.requiresDeposit ? `
+★★★ 50% DEPOSIT DUE UPFRONT: ${data.depositAmount} ★★★
+` : ''}
 Estimated Turnaround: ${data.turnaround} days
 Quote Valid Until: ${data.validUntil}
+${data.requiresDeposit ? `
+───────────────────────────────────────────────────
+DEPOSIT REQUIRED
+───────────────────────────────────────────────────
 
+For jobs over $200, we require a 50% deposit (${data.depositAmount}) before
+work begins.
+
+Once you accept this quote, you'll receive a deposit invoice.
+Work will commence upon receipt of payment.
+
+The remaining balance of ${data.depositAmount} will be invoiced upon completion.
+` : ''}
 ───────────────────────────────────────────────────
 HOW TO ACCEPT
 ───────────────────────────────────────────────────
 
-Simply reply to this email with "Approved" and we'll get started right away!
+Simply reply to this email with "Approved" and we'll get started${data.requiresDeposit ? ' once the deposit is received' : ' right away'}!
 
 ───────────────────────────────────────────────────
 BEFORE WE BEGIN
