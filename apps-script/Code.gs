@@ -677,6 +677,7 @@ function runAllTests() {
       timestamp: new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }),
       name: 'Test User',
       email: 'test@example.com',
+      phone: '021 123 4567',
       storeUrl: 'https://example.com',
       message: 'Test message',
       hasVoiceNote: false
@@ -695,6 +696,7 @@ function runAllTests() {
       parameter: {
         name: 'Test User',
         email: 'test@example.com',
+        phone: '021 123 4567',
         storeUrl: 'https://example.com',
         message: 'Test submission from runAllTests()',
         hasVoiceNote: 'No',
@@ -1173,6 +1175,7 @@ function logSubmission(data) {
   Logger.log('- Submission #: ' + data.submissionNumber);
   Logger.log('- Name: ' + data.name);
   Logger.log('- Email: ' + data.email);
+  Logger.log('- Phone: ' + data.phone);
   Logger.log('- Store URL: ' + data.storeUrl);
   Logger.log('- Has Voice Note: ' + data.hasVoiceNote);
   Logger.log('- Timestamp: ' + data.timestamp);
@@ -1202,7 +1205,8 @@ function saveDebugFileToDrive(data) {
       '--- Submission Details ---',
       'Name: ' + data.name,
       'Email: ' + data.email,
-      'Store URL: ' + (data.storeUrl || 'Not provided'),
+      'Phone: ' + data.phone,
+      'Store URL: ' + data.storeUrl,
       'Message: ' + (data.message || 'Voice note only'),
       'Has Voice Note: ' + (data.hasVoiceNote ? 'Yes' : 'No'),
       '',
@@ -5646,6 +5650,7 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
     const status = row[headers.indexOf('Status')] || row[0];
 
     if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
+      // Fallback indices match new column order: Status(0), Submission#(1), Timestamp(2), Name(3), Email(4), Phone(5), StoreURL(6), Message(7)
       const name = row[headers.indexOf('Name')] || row[3];
       const email = row[headers.indexOf('Email')] || row[4];
       const timestampCol = headers.indexOf('Timestamp');
@@ -6294,12 +6299,12 @@ function createJobFromSubmission(submissionNumber) {
     jobNumber = submissionNumber.replace(/^CC-/, 'J-') + '-' + (existingJobCount + 1);
   }
 
-  // Extract submission data
-  const name = submissionRow[headers.indexOf('Name')] || submissionRow[2];
-  const email = submissionRow[headers.indexOf('Email')] || submissionRow[3];
-  const phone = submissionRow[headers.indexOf('Phone')] || submissionRow[4];
-  const storeUrl = submissionRow[headers.indexOf('Store URL')] || submissionRow[5];
-  const message = submissionRow[headers.indexOf('Message')] || submissionRow[6];
+  // Extract submission data (fallback indices match new column order with Phone column)
+  const name = submissionRow[headers.indexOf('Name')] || submissionRow[3];
+  const email = submissionRow[headers.indexOf('Email')] || submissionRow[4];
+  const phone = submissionRow[headers.indexOf('Phone')] || submissionRow[5];
+  const storeUrl = submissionRow[headers.indexOf('Store URL')] || submissionRow[6];
+  const message = submissionRow[headers.indexOf('Message')] || submissionRow[7];
 
   // Create job row
   const now = new Date();
