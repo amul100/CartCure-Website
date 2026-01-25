@@ -10937,6 +10937,7 @@ function createTestSubmissions() {
         'Timestamp',
         'Name',
         'Email',
+        'Phone',
         'Store URL',
         'Message',
         'Has Voice Note',
@@ -10954,6 +10955,11 @@ function createTestSubmissions() {
       'sarah@teststore.com', 'mike@shopexample.com', 'emma@boutique.co.nz',
       'james@retailtest.com', 'lisa@onlinestore.net', 'david@ecommerce.co.nz',
       'rachel@testshop.com', 'tom@samplestore.com', 'amy@demoshop.co.nz', 'chris@testretail.com'
+    ];
+
+    const testPhones = [
+      '021 234 5678', '022 345 6789', '027 456 7890', '021 567 8901', '022 678 9012',
+      '027 789 0123', '021 890 1234', '022 901 2345', '027 012 3456', '021 123 4567'
     ];
 
     const testStores = [
@@ -11005,6 +11011,7 @@ function createTestSubmissions() {
         timestamp,
         testNames[i],
         testEmails[i],
+        testPhones[i],
         testStores[i],
         testMessages[i],
         'No',
@@ -11175,6 +11182,7 @@ function sendAllTestEmails() {
   const testSubmissionData = {
     name: 'Test Customer',
     email: testEmail,
+    phone: '021 123 4567',
     storeUrl: 'https://test-store.myshopify.com',
     message: 'This is a test submission message for email template testing.',
     submissionNumber: 'CC-TEST-001',
