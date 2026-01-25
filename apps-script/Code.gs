@@ -3156,26 +3156,26 @@ function setupJobsSheet(ss, clearData) {
     sheet.setColumnWidth(col, jobsColumnWidths[col - 1] || 100);
   }
 
-  // Add data validation for Category (column 8)
+  // Add data validation for Category (column 9)
   const categoryRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(JOB_CATEGORIES, true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 8, 500, 1).setDataValidation(categoryRule);
+  sheet.getRange(2, 9, 500, 1).setDataValidation(categoryRule);
 
-  // Add data validation for Status (column 9)
+  // Add data validation for Status (column 10)
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(Object.values(JOB_STATUS), true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 9, 500, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
 
-  // Add data validation for Payment Status (column 23)
+  // Add data validation for Payment Status (column 24)
   const paymentRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(Object.values(PAYMENT_STATUS), true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 23, 500, 1).setDataValidation(paymentRule);
+  sheet.getRange(2, 24, 500, 1).setDataValidation(paymentRule);
 
   // Add conditional formatting for SLA Status and other status columns
   addSLAConditionalFormatting(sheet);
@@ -3189,7 +3189,7 @@ function setupJobsSheet(ss, clearData) {
  * Add conditional formatting for SLA status column
  */
 function addSLAConditionalFormatting(sheet) {
-  const slaColumn = 18; // SLA Status column
+  const slaColumn = 19; // SLA Status column
   const range = sheet.getRange(2, slaColumn, 500, 1);
 
   // Clear existing rules for this column
@@ -3233,7 +3233,7 @@ function addSLAConditionalFormatting(sheet) {
  * Add conditional formatting for Job Status column
  */
 function addStatusConditionalFormatting(sheet) {
-  const statusColumn = 9; // Status column
+  const statusColumn = 10; // Status column
   const range = sheet.getRange(2, statusColumn, 500, 1);
 
   const rules = sheet.getConditionalFormatRules();
@@ -3295,7 +3295,7 @@ function addStatusConditionalFormatting(sheet) {
  * Add conditional formatting for Payment Status column
  */
 function addPaymentConditionalFormatting(sheet) {
-  const paymentColumn = 23; // Payment Status column
+  const paymentColumn = 24; // Payment Status column
   const range = sheet.getRange(2, paymentColumn, 500, 1);
 
   const rules = sheet.getConditionalFormatRules();
