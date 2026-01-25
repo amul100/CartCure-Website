@@ -1,0 +1,18 @@
+# robots.txt for CartCure NZ
+# https://cartcure.co.nz
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://cartcure.co.nz/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Block backend/development paths
+Disallow: /apps-script/
+Disallow: /email-previews/
+
+# Block duplicate content paths if any
+Disallow: /*.json$
