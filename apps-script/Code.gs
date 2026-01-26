@@ -10709,11 +10709,17 @@ function createTestJobForTestimonials() {
 /**
  * Send all email types to info@cartcure.co.nz for testing purposes
  * This function sends sample versions of every email template in the system
+ * Uses the same template rendering system as production emails
  * Accessible via: CartCure Menu > Setup > Send Test Emails
  */
 function sendAllTestEmails() {
   const ui = SpreadsheetApp.getUi();
   const testEmail = 'info@cartcure.co.nz';
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const bankName = getSetting('Bank Name') || 'Test Bank';
+  const bankAccount = getSetting('Bank Account') || '00-0000-0000000-00';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
 
   // Confirm with user
   const response = ui.alert(
@@ -10741,61 +10747,27 @@ function sendAllTestEmails() {
   let successCount = 0;
   let errors = [];
 
-  // Sample test data
-  const testSubmissionData = {
-    name: 'Test Customer',
-    email: testEmail,
-    phone: '021 123 4567',
-    storeUrl: 'https://test-store.myshopify.com',
-    message: 'This is a test submission message for email template testing.',
-    submissionNumber: 'CC-TEST-001',
-    timestamp: new Date().toISOString()
-  };
-
-  const testJobData = {
-    'Job #': 'J-TEST-001',
-    'Client Name': 'Test Customer',
-    'Client Email': testEmail,
-    'Client Phone': '021 123 4567',
-    'Store URL': 'https://test-store.myshopify.com',
-    'Job Description': 'Test job for email template testing - fix product page layout and mobile responsiveness.',
-    'Category': 'Design',
-    'Status': 'In Progress',
-    'Quote Amount (excl GST)': '150.00',
-    'GST': '22.50',
-    'Total (incl GST)': '172.50',
-    'Quote Sent Date': formatNZDate(new Date()),
-    'Quote Valid Until': formatNZDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
-    'Estimated Turnaround': '7'
-  };
-
-  const testInvoiceData = {
-    'Invoice #': 'INV-TEST-001',
-    'Job #': 'J-TEST-001',
-    'Client Name': 'Test Customer',
-    'Client Email': testEmail,
-    'Client Phone': '021 123 4567',
-    'Invoice Date': formatNZDate(new Date()),
-    'Due Date': formatNZDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-    'Amount (excl GST)': '150.00',
-    'GST': '22.50',
-    'Total': '172.50',
-    'Status': 'Sent'
-  };
+  // GST footer line helper
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
   try {
     // 1. Admin Notification Email
     Logger.log('Sending test email 1: Admin Notification');
-    const adminHtml = generateAdminNotificationHtml(testSubmissionData);
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] New Contact Form Submission - ' + testSubmissionData.submissionNumber,
-      'Test admin notification email',
-      {
-        htmlBody: adminHtml,
-        name: 'CartCure Test'
-      }
-    );
+    const adminBody = renderEmailTemplate('email-admin-notification', {
+      submissionNumber: 'CC-TEST-001',
+      timestamp: formatNZDate(new Date()),
+      clientName: 'Test Customer',
+      clientEmail: testEmail,
+      clientPhone: '021 123 4567',
+      storeUrl: 'https://test-store.myshopify.com',
+      messageHtml: 'This is a test submission message for email template testing.',
+      voiceNoteHtml: '',
+      sheetsUrl: 'https://docs.google.com/spreadsheets/d/' + CONFIG.SHEET_ID + '/edit'
+    });
+    GmailApp.sendEmail(testEmail, '[TEST] New Contact Form Submission - CC-TEST-001', 'Test admin notification', {
+      htmlBody: wrapEmailHtml(adminBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Admin notification sent');
   } catch (e) {
@@ -10806,16 +10778,18 @@ function sendAllTestEmails() {
   try {
     // 2. User Confirmation Email
     Logger.log('Sending test email 2: User Confirmation');
-    const confirmHtml = generateUserConfirmationHtml(testSubmissionData);
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Thanks for Contacting CartCure - ' + testSubmissionData.submissionNumber,
-      'Test user confirmation email',
-      {
-        htmlBody: confirmHtml,
-        name: 'CartCure Test'
-      }
-    );
+    const confirmBody = renderEmailTemplate('email-user-confirmation', {
+      clientName: 'Test Customer',
+      submissionNumber: 'CC-TEST-001',
+      timestamp: formatNZDate(new Date()),
+      storeUrlHtml: '<div style="background-color: ' + EMAIL_COLORS.paperCream + '; border-left: 4px solid ' + EMAIL_COLORS.brandGreen + '; padding: 15px 20px; margin-bottom: 15px;"><p style="margin: 0 0 8px 0; color: ' + EMAIL_COLORS.inkGray + '; font-size: 12px; text-transform: uppercase;">Your Store</p><a href="https://test-store.myshopify.com" style="color: ' + EMAIL_COLORS.brandGreen + '; font-size: 15px; text-decoration: none;">https://test-store.myshopify.com</a></div>',
+      messageHtml: 'This is a test submission message for email template testing.',
+      voiceNoteHtml: ''
+    });
+    GmailApp.sendEmail(testEmail, '[TEST] Thanks for Contacting CartCure - CC-TEST-001', 'Test user confirmation', {
+      htmlBody: wrapEmailHtml(confirmBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ User confirmation sent');
   } catch (e) {
@@ -10827,28 +10801,24 @@ function sendAllTestEmails() {
     // 3. Quote Email
     Logger.log('Sending test email 3: Quote');
     const quoteHtml = generateQuoteEmailHtml({
-      jobNumber: testJobData['Job #'],
-      clientName: testJobData['Client Name'],
-      jobDescription: testJobData['Job Description'],
-      subtotal: '$' + testJobData['Quote Amount (excl GST)'],
-      gst: '$' + testJobData['GST'],
-      total: '$' + testJobData['Total (incl GST)'],
-      turnaround: testJobData['Estimated Turnaround'],
-      validUntil: testJobData['Quote Valid Until'],
-      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
-      bankName: getSetting('Bank Name') || 'Test Bank',
-      isGSTRegistered: getSetting('GST Registered') === 'Yes',
-      gstNumber: getSetting('GST Number') || ''
+      jobNumber: 'J-TEST-001',
+      clientName: 'Test Customer',
+      jobDescription: 'Test job for email template testing - fix product page layout and mobile responsiveness.',
+      subtotal: '$150.00',
+      gst: '$22.50',
+      total: '$172.50',
+      turnaround: '7',
+      validUntil: formatNZDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
+      bankAccount: bankAccount,
+      bankName: bankName,
+      isGSTRegistered: isGSTRegistered,
+      gstNumber: gstNumber,
+      businessName: businessName
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Quote for Your Shopify Project - J-TEST-001',
-      'Test quote email',
-      {
-        htmlBody: quoteHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Quote for Your Shopify Project - J-TEST-001', 'Test quote email', {
+      htmlBody: quoteHtml,
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Quote email sent');
   } catch (e) {
@@ -10860,22 +10830,17 @@ function sendAllTestEmails() {
     // 4. Status Update - In Progress
     Logger.log('Sending test email 4: Status Update - In Progress');
     const inProgressHtml = generateStatusUpdateEmailHtml({
-      jobNumber: testJobData['Job #'],
-      clientName: testJobData['Client Name'],
+      jobNumber: 'J-TEST-001',
+      clientName: 'Test Customer',
       status: JOB_STATUS.IN_PROGRESS,
-      businessName: getSetting('Business Name') || 'CartCure',
+      businessName: businessName,
       wasOnHold: false,
       daysOnHold: 0
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Your Job is Now In Progress - J-TEST-001',
-      'Test status update email - In Progress',
-      {
-        htmlBody: inProgressHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Your Job is Now In Progress - J-TEST-001', 'Test status - In Progress', {
+      htmlBody: inProgressHtml,
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Status update (In Progress) sent');
   } catch (e) {
@@ -10887,21 +10852,16 @@ function sendAllTestEmails() {
     // 5. Status Update - On Hold
     Logger.log('Sending test email 5: Status Update - On Hold');
     const onHoldHtml = generateStatusUpdateEmailHtml({
-      jobNumber: testJobData['Job #'],
-      clientName: testJobData['Client Name'],
+      jobNumber: 'J-TEST-001',
+      clientName: 'Test Customer',
       status: JOB_STATUS.ON_HOLD,
-      businessName: getSetting('Business Name') || 'CartCure',
+      businessName: businessName,
       explanation: 'Waiting for client to provide product images and updated content.'
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Your Job is Now On Hold - J-TEST-001',
-      'Test status update email - On Hold',
-      {
-        htmlBody: onHoldHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Your Job is Now On Hold - J-TEST-001', 'Test status - On Hold', {
+      htmlBody: onHoldHtml,
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Status update (On Hold) sent');
   } catch (e) {
@@ -10913,20 +10873,15 @@ function sendAllTestEmails() {
     // 6. Status Update - Completed
     Logger.log('Sending test email 6: Status Update - Completed');
     const completedHtml = generateStatusUpdateEmailHtml({
-      jobNumber: testJobData['Job #'],
-      clientName: testJobData['Client Name'],
+      jobNumber: 'J-TEST-001',
+      clientName: 'Test Customer',
       status: JOB_STATUS.COMPLETED,
-      businessName: getSetting('Business Name') || 'CartCure'
+      businessName: businessName
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Your Job is Complete! - J-TEST-001',
-      'Test status update email - Completed',
-      {
-        htmlBody: completedHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Your Job is Complete! - J-TEST-001', 'Test status - Completed', {
+      htmlBody: completedHtml,
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Status update (Completed) sent');
   } catch (e) {
@@ -10937,23 +10892,30 @@ function sendAllTestEmails() {
   try {
     // 7. Invoice Email
     Logger.log('Sending test email 7: Invoice');
-    const invoiceHtml = generateInvoiceEmailHtml({
-      invoice: testInvoiceData,
-      job: testJobData,
-      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
-      bankName: getSetting('Bank Name') || 'Test Bank',
-      isGSTRegistered: getSetting('GST Registered') === 'Yes',
-      gstNumber: getSetting('GST Number') || ''
+    let invoicePricingHtml = '';
+    if (isGSTRegistered) {
+      invoicePricingHtml = '<tr><td style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkGray + ';">Subtotal (excl. GST)</span></td><td align="right" style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkBlack + '; font-weight: bold;">$150.00</span></td></tr><tr><td style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkGray + ';">GST (15%)</span></td><td align="right" style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkBlack + ';">$22.50</span></td></tr><tr style="background-color: ' + EMAIL_COLORS.brandGreen + ';"><td style="padding: 15px;"><span style="color: #ffffff; font-weight: bold;">TOTAL DUE (incl. GST)</span></td><td align="right" style="padding: 15px;"><span style="color: #ffffff; font-size: 20px; font-weight: bold;">$172.50</span></td></tr>';
+    } else {
+      invoicePricingHtml = '<tr style="background-color: ' + EMAIL_COLORS.brandGreen + ';"><td style="padding: 15px;"><span style="color: #ffffff; font-weight: bold;">TOTAL DUE</span></td><td align="right" style="padding: 15px;"><span style="color: #ffffff; font-size: 20px; font-weight: bold;">$150.00</span></td></tr>';
+    }
+    const invoiceBody = renderEmailTemplate('email-invoice', {
+      headingTitle: 'Invoice',
+      invoiceNumber: 'INV-TEST-001',
+      jobNumber: 'J-TEST-001',
+      clientName: 'Test Customer',
+      greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
+      invoiceDate: formatNZDate(new Date()),
+      dueDate: formatNZDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+      pricingRowsHtml: invoicePricingHtml,
+      depositNoticeHtml: '',
+      bankDetailsHtml: 'Bank: ' + bankName + '<br>Account: ' + bankAccount + '<br>',
+      gstFooterLine: gstFooterLine,
+      businessName: businessName
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Invoice INV-TEST-001 from CartCure',
-      'Test invoice email',
-      {
-        htmlBody: invoiceHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Invoice INV-TEST-001 from CartCure', 'Test invoice email', {
+      htmlBody: wrapEmailHtml(invoiceBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Invoice email sent');
   } catch (e) {
@@ -10964,23 +10926,26 @@ function sendAllTestEmails() {
   try {
     // 8. Payment Receipt Email
     Logger.log('Sending test email 8: Payment Receipt');
-    const receiptHtml = generatePaymentReceiptHtml({
-      invoice: testInvoiceData,
-      job: testJobData,
-      method: 'Bank Transfer',
-      reference: 'TEST-REF-12345',
-      isGSTRegistered: getSetting('GST Registered') === 'Yes',
-      gstNumber: getSetting('GST Number') || ''
+    let receiptPricingHtml = '';
+    if (isGSTRegistered) {
+      receiptPricingHtml = '<tr><td style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkGray + ';">Subtotal (excl. GST)</span></td><td align="right" style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkBlack + ';">$150.00</span></td></tr><tr><td style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkGray + ';">GST (15%)</span></td><td align="right" style="padding: 12px 15px; border-bottom: 1px solid ' + EMAIL_COLORS.paperBorder + ';"><span style="color: ' + EMAIL_COLORS.inkBlack + ';">$22.50</span></td></tr><tr style="background-color: ' + EMAIL_COLORS.brandGreen + ';"><td style="padding: 15px; color: #ffffff; font-size: 16px; font-weight: bold;">Total Paid</td><td style="padding: 15px; color: #ffffff; font-size: 18px; font-weight: bold; text-align: right;">$172.50</td></tr>';
+    } else {
+      receiptPricingHtml = '<tr style="background-color: ' + EMAIL_COLORS.brandGreen + ';"><td style="padding: 15px; color: #ffffff; font-size: 16px; font-weight: bold;">Total Paid</td><td style="padding: 15px; color: #ffffff; font-size: 18px; font-weight: bold; text-align: right;">$150.00</td></tr>';
+    }
+    const receiptBody = renderEmailTemplate('email-payment-receipt', {
+      invoiceNumber: 'INV-TEST-001',
+      clientName: 'Test Customer',
+      paidDate: formatNZDate(new Date()),
+      paymentMethod: 'Bank Transfer',
+      pricingHtml: receiptPricingHtml,
+      feedbackUrl: 'https://cartcure.co.nz/feedback.html?job=J-TEST-001',
+      businessName: businessName,
+      gstFooterLine: gstFooterLine
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Payment Receipt - INV-TEST-001',
-      'Test payment receipt email',
-      {
-        htmlBody: receiptHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Payment Receipt - INV-TEST-001', 'Test payment receipt', {
+      htmlBody: wrapEmailHtml(receiptBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Payment receipt sent');
   } catch (e) {
@@ -10988,57 +10953,25 @@ function sendAllTestEmails() {
     Logger.log('✗ Payment receipt failed: ' + e.message);
   }
 
-  // Create pre-due invoice test data for friendly reminder
-  const preDueInvoiceData = {
-    'Invoice #': 'INV-TEST-002',
-    'Job #': 'J-TEST-001',
-    'Client Name': 'Test Customer',
-    'Client Email': testEmail,
-    'Client Phone': '021 123 4567',
-    'Invoice Date': formatNZDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)), // 6 days ago
-    'Due Date': formatNZDate(new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)), // Tomorrow (due soon)
-    'Amount (excl GST)': '250.00',
-    'GST': '37.50',
-    'Total': '287.50',
-    'Status': 'Sent'
-  };
-
-  // Create overdue invoice test data for overdue notice and late fee emails
-  const overdueInvoiceData = {
-    'Invoice #': 'INV-TEST-003',
-    'Job #': 'J-TEST-001',
-    'Client Name': 'Test Customer',
-    'Client Email': testEmail,
-    'Client Phone': '021 123 4567',
-    'Invoice Date': formatNZDate(new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)), // 21 days ago
-    'Due Date': formatNZDate(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)), // 14 days ago (overdue)
-    'Amount (excl GST)': '250.00',
-    'GST': '37.50',
-    'Total': '287.50',
-    'Status': 'Overdue'
-  };
-
   try {
     // 9. Invoice Reminder Email (pre-due friendly reminder)
     Logger.log('Sending test email 9: Invoice Reminder (pre-due)');
-    const reminderHtml = generateInvoiceReminderHtml({
-      invoice: preDueInvoiceData,
-      job: testJobData,
-      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
-      bankName: getSetting('Bank Name') || 'Test Bank',
-      isGSTRegistered: getSetting('GST Registered') === 'Yes',
-      gstNumber: getSetting('GST Number') || '',
-      daysUntilDue: 1
+    const reminderPaymentHtml = bankAccount ? '<tr><td style="padding: 0 40px 25px 40px;"><div style="background-color: #e8f5e9; border: 2px solid #4caf50; padding: 15px;"><p style="margin: 0 0 10px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-weight: bold;">Payment Details:</p><p style="margin: 0; color: ' + EMAIL_COLORS.inkGray + '; font-size: 14px; line-height: 1.6;">Bank: ' + bankName + '<br>Account: ' + bankAccount + '<br>Reference: INV-TEST-002</p></div></td></tr>' : '';
+    const reminderBody = renderEmailTemplate('email-invoice-reminder', {
+      invoiceNumber: 'INV-TEST-002',
+      clientName: 'Test Customer',
+      dueDateText: '<strong>tomorrow</strong>',
+      dueDate: formatNZDate(new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)),
+      jobNumber: 'J-TEST-001',
+      displayTotal: isGSTRegistered ? '$287.50' : '$250.00',
+      paymentDetailsHtml: reminderPaymentHtml,
+      businessName: businessName,
+      gstFooterLine: gstFooterLine
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] Friendly Reminder: Invoice INV-TEST-002 Due Soon',
-      'Test invoice reminder email (pre-due)',
-      {
-        htmlBody: reminderHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] Friendly Reminder: Invoice INV-TEST-002 Due Soon', 'Test invoice reminder', {
+      htmlBody: wrapEmailHtml(reminderBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Invoice reminder (pre-due) sent');
   } catch (e) {
@@ -11049,26 +10982,31 @@ function sendAllTestEmails() {
   try {
     // 10. Overdue Invoice Email (combined notice + late fees)
     Logger.log('Sending test email 10: Overdue Invoice');
-    const overdueInvoiceHtml = generateOverdueInvoiceHtml({
-      invoice: overdueInvoiceData,
-      job: testJobData,
-      bankAccount: getSetting('Bank Account') || '00-0000-0000000-00',
-      bankName: getSetting('Bank Name') || 'Test Bank',
-      isGSTRegistered: getSetting('GST Registered') === 'Yes',
-      gstNumber: getSetting('GST Number') || '',
+    let overduePricingHtml = '';
+    if (isGSTRegistered) {
+      overduePricingHtml = '<tr><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkGray + '; font-size: 14px;">Subtotal (excl GST)</td><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; text-align: right;">$250.00</td></tr><tr><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkGray + '; font-size: 14px;">GST (15%)</td><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; text-align: right;">$37.50</td></tr><tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 1px solid ' + EMAIL_COLORS.paperBorder + ';"></td></tr><tr><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; font-weight: bold;">Original Total</td><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; text-align: right; font-weight: bold;">$287.50</td></tr>';
+    } else {
+      overduePricingHtml = '<tr><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; font-weight: bold;">Original Total</td><td style="padding: 8px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-size: 14px; text-align: right; font-weight: bold;">$250.00</td></tr>';
+    }
+    const overduePaymentHtml = bankAccount ? '<tr><td style="padding: 0 40px 25px 40px;"><div style="background-color: #e8f5e9; border: 2px solid #4caf50; padding: 15px;"><p style="margin: 0 0 10px 0; color: ' + EMAIL_COLORS.inkBlack + '; font-weight: bold;">Payment Details:</p><p style="margin: 0; color: ' + EMAIL_COLORS.inkGray + '; font-size: 14px; line-height: 1.6;">Bank: ' + bankName + '<br>Account: ' + bankAccount + '<br>Reference: INV-TEST-003</p></div></td></tr>' : '';
+    const overdueBody = renderEmailTemplate('email-overdue-invoice', {
+      invoiceNumber: 'INV-TEST-003',
+      clientName: 'Test Customer',
       daysOverdue: 14,
-      lateFee: 80.50,
-      totalWithFees: 368.00
+      jobNumber: 'J-TEST-001',
+      invoiceDate: formatNZDate(new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)),
+      dueDate: formatNZDate(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)),
+      pricingRowsHtml: overduePricingHtml,
+      lateFee: '$80.50',
+      totalWithFees: isGSTRegistered ? '$368.00' : '$330.50',
+      paymentDetailsHtml: overduePaymentHtml,
+      businessName: businessName,
+      gstFooterLine: gstFooterLine
     });
-    GmailApp.sendEmail(
-      testEmail,
-      '[TEST] OVERDUE: Invoice INV-TEST-003 - Updated Amount Due',
-      'Test overdue invoice email (with late fees)',
-      {
-        htmlBody: overdueInvoiceHtml,
-        name: 'CartCure Test'
-      }
-    );
+    GmailApp.sendEmail(testEmail, '[TEST] OVERDUE: Invoice INV-TEST-003 - Updated Amount Due', 'Test overdue invoice', {
+      htmlBody: wrapEmailHtml(overdueBody),
+      name: 'CartCure Test'
+    });
     successCount++;
     Logger.log('✓ Overdue invoice sent');
   } catch (e) {
@@ -11090,779 +11028,4 @@ function sendAllTestEmails() {
   );
 
   Logger.log('Test emails complete: ' + successCount + '/10 successful');
-}
-
-/**
- * Generate admin notification HTML for testing
- * (Simplified version of the email sent when a new submission arrives)
- */
-function generateAdminNotificationHtml(data) {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
-        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { padding: 30px; }
-        .field { margin-bottom: 15px; }
-        .label { font-weight: bold; color: #2d5d3f; }
-        .value { margin-top: 5px; }
-        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>New Contact Form Submission</h1>
-        </div>
-        <div class="content">
-          <div class="field">
-            <div class="label">Submission Number:</div>
-            <div class="value">${data.submissionNumber}</div>
-          </div>
-          <div class="field">
-            <div class="label">Name:</div>
-            <div class="value">${data.name}</div>
-          </div>
-          <div class="field">
-            <div class="label">Email:</div>
-            <div class="value">${data.email}</div>
-          </div>
-          <div class="field">
-            <div class="label">Store URL:</div>
-            <div class="value">${data.storeUrl}</div>
-          </div>
-          <div class="field">
-            <div class="label">Message:</div>
-            <div class="value">${data.message}</div>
-          </div>
-        </div>
-        <div class="footer">
-          This is a test email from CartCure Job Management System
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Generate user confirmation HTML for testing
- */
-function generateUserConfirmationHtml(data) {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Georgia, serif; background: #f9f7f3; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border: 1px solid #d4cfc3; border-radius: 8px; }
-        .header { background: #2d5d3f; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { padding: 30px; }
-        .ref-box { background: #f5f3ef; padding: 15px; border-radius: 4px; text-align: center; margin: 20px 0; }
-        .ref-number { font-size: 24px; font-weight: bold; color: #2d5d3f; }
-        .footer { background: #f5f3ef; padding: 15px; text-align: center; font-size: 12px; color: #8a8a8a; border-radius: 0 0 8px 8px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Thanks for Reaching Out!</h1>
-        </div>
-        <div class="content">
-          <p>Hi ${data.name},</p>
-          <p>Thank you for contacting CartCure. We've received your enquiry and will review it shortly.</p>
-          <div class="ref-box">
-            <div>Your Reference Number:</div>
-            <div class="ref-number">${data.submissionNumber}</div>
-          </div>
-          <p><strong>What happens next?</strong></p>
-          <ul>
-            <li>We'll review your request within 24-48 hours</li>
-            <li>You'll receive a fixed-price quote via email</li>
-            <li>Once approved, we'll complete your project within 7 days</li>
-          </ul>
-          <p>Please keep this reference number for your records.</p>
-        </div>
-        <div class="footer">
-          This is a test email from CartCure Job Management System
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Generate invoice email HTML for testing
- */
-function generateInvoiceEmailHtml(data) {
-  const { invoice, job, bankAccount, bankName, isGSTRegistered, gstNumber } = data;
-
-  // Paperlike theme colors
-  const colors = {
-    brandGreen: '#2d5d3f',
-    paperWhite: '#f9f7f3',
-    paperCream: '#faf8f4',
-    paperBorder: '#d4cfc3',
-    inkBlack: '#2b2b2b',
-    inkGray: '#5a5a5a',
-    inkLight: '#8a8a8a',
-    alertBg: '#fff8e6',
-    alertBorder: '#f5d76e'
-  };
-
-  // Build pricing rows based on GST registration
-  let pricingRowsHtml = '';
-  if (isGSTRegistered) {
-    pricingRowsHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Amount (excl GST)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${invoice['Amount (excl GST)']}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">GST (15%)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${invoice['GST']}</td>
-      </tr>
-      <tr style="border-top: 2px solid ${colors.paperBorder};">
-        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total (incl GST)</td>
-        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${invoice['Total']}</td>
-      </tr>
-    `;
-  } else {
-    pricingRowsHtml = `
-      <tr>
-        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total</td>
-        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${invoice['Amount (excl GST)']}</td>
-      </tr>
-    `;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
-        <tr>
-          <td align="center" style="padding: 40px 20px;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
-
-              <!-- Header with Logo -->
-              <tr>
-                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
-                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
-                </td>
-              </tr>
-
-              <!-- Main Heading -->
-              <tr>
-                <td style="padding: 0;">
-                  <div style="background-color: ${colors.brandGreen}; padding: 25px 40px; text-align: center;">
-                    <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: bold; font-family: Georgia, 'Times New Roman', serif;">
-                      Invoice for Completed Work
-                    </h1>
-                    <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                      Invoice: ${invoice['Invoice #']}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Greeting -->
-              <tr>
-                <td style="padding: 25px 40px 20px 40px;">
-                  <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Hi ${invoice['Client Name']},
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Thank you for choosing CartCure! Please find your invoice below for the completed work.
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Invoice Details -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Job Reference</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">${invoice['Job #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Due Date</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Due Date']}</td>
-                      </tr>
-                      <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 1px solid ${colors.paperBorder};"></td></tr>
-                      ${pricingRowsHtml}
-                    </table>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Payment Details -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.alertBg}; border: 2px solid ${colors.alertBorder}; padding: 15px;">
-                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-weight: bold;">Payment Details:</p>
-                    <p style="margin: 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
-                      Bank: ${bankName}<br>
-                      Account: ${bankAccount}<br>
-                      Reference: ${invoice['Invoice #']}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Closing -->
-              <tr>
-                <td style="padding: 0 40px 30px 40px;">
-                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    If you have any questions about this invoice, just reply to this email.
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px;">
-                    Thanks for your business!<br>
-                    <strong style="color: ${colors.brandGreen};">The CartCure Team</strong>
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder};">
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    This is a test email from CartCure Job Management System<br>
-                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen}; text-decoration: none;">cartcure.co.nz</a>
-                  </p>
-                </td>
-              </tr>
-
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Generate payment receipt HTML for testing
- */
-function generatePaymentReceiptHtml(data) {
-  const { invoice, job, method, reference, isGSTRegistered, gstNumber } = data;
-
-  // Paperlike theme colors
-  const colors = {
-    brandGreen: '#2d5d3f',
-    paperWhite: '#f9f7f3',
-    paperCream: '#faf8f4',
-    paperBorder: '#d4cfc3',
-    inkBlack: '#2b2b2b',
-    inkGray: '#5a5a5a',
-    inkLight: '#8a8a8a'
-  };
-
-  // Build pricing rows based on GST registration
-  let pricingHtml = '';
-  if (isGSTRegistered) {
-    pricingHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Amount (excl GST)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${invoice['Amount (excl GST)']}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">GST (15%)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${invoice['GST']}</td>
-      </tr>
-      <tr style="border-top: 2px solid ${colors.paperBorder};">
-        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total Paid</td>
-        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${invoice['Total']}</td>
-      </tr>
-    `;
-  } else {
-    pricingHtml = `
-      <tr>
-        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Total Paid</td>
-        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${invoice['Amount (excl GST)']}</td>
-      </tr>
-    `;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
-        <tr>
-          <td align="center" style="padding: 40px 20px;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
-
-              <!-- Header with Logo -->
-              <tr>
-                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
-                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
-                </td>
-              </tr>
-
-              <!-- Main Heading -->
-              <tr>
-                <td style="padding: 30px 40px 0 40px;">
-                  <h1 style="margin: 0 0 10px 0; color: ${colors.brandGreen}; font-size: 28px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
-                    Payment Received
-                  </h1>
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    Invoice: ${invoice['Invoice #']}
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Content -->
-              <tr>
-                <td style="padding: 25px 40px 40px 40px;">
-                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Hi ${invoice['Client Name']},
-                  </p>
-                  <p style="margin: 0 0 25px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Thank you for your payment! This email confirms that we've received your payment for the completed work.
-                  </p>
-
-                  <!-- Receipt Details Box -->
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px; margin: 25px 0;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Job Reference</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">${invoice['Job #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Invoice Number</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Invoice #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Payment Date</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${formatNZDate(new Date())}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Payment Method</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${method}</td>
-                      </tr>
-                      ${reference ? `
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Reference</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${reference}</td>
-                      </tr>
-                      ` : ''}
-                      <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 1px solid ${colors.paperBorder};"></td></tr>
-                      ${pricingHtml}
-                    </table>
-                  </div>
-
-                  <p style="margin: 25px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Thank you for choosing CartCure for your Shopify store needs. We truly appreciate your business!
-                  </p>
-
-                  <!-- Review Request Section -->
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px; margin: 30px 0; text-align: center;">
-                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-size: 18px; font-weight: bold;">
-                      How was your experience?
-                    </p>
-                    <p style="margin: 0 0 20px 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
-                      We'd love to hear your feedback! Your review helps us improve<br>and helps other store owners find us.
-                    </p>
-                    <a href="https://cartcure.co.nz/feedback.html?job=${encodeURIComponent(invoice['Job #'])}"
-                       style="display: inline-block; background-color: ${colors.brandGreen}; color: #ffffff; padding: 14px 35px; text-decoration: none; font-size: 15px; font-weight: bold; border: 2px solid ${colors.inkBlack};">
-                      Leave a Review
-                    </a>
-                  </div>
-
-                  <p style="margin: 20px 0 0 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    If you have any questions, just reply to this email.
-                  </p>
-                  <p style="margin: 20px 0 0 0; color: ${colors.inkBlack}; font-size: 16px;">
-                    Thanks again!<br>
-                    <strong style="color: ${colors.brandGreen};">The CartCure Team</strong>
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder}; text-align: center;">
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    This is a test email from CartCure Job Management System<br>
-                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen}; text-decoration: none;">cartcure.co.nz</a>
-                  </p>
-                </td>
-              </tr>
-
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Generate invoice reminder HTML for testing (pre-due friendly reminder)
- */
-function generateInvoiceReminderHtml(data) {
-  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysUntilDue } = data;
-
-  // Paperlike theme colors
-  const colors = {
-    brandGreen: '#2d5d3f',
-    paperWhite: '#f9f7f3',
-    paperCream: '#faf8f4',
-    paperBorder: '#d4cfc3',
-    inkBlack: '#2b2b2b',
-    inkGray: '#5a5a5a',
-    inkLight: '#8a8a8a',
-    alertBg: '#fff8e6',
-    alertBorder: '#f5d76e',
-    successBg: '#e8f5e9',
-    successBorder: '#4caf50'
-  };
-
-  const displayTotal = isGSTRegistered ? invoice['Total'] : invoice['Amount (excl GST)'];
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
-        <tr>
-          <td align="center" style="padding: 40px 20px;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
-
-              <!-- Header with Logo -->
-              <tr>
-                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
-                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
-                </td>
-              </tr>
-
-              <!-- Main Heading -->
-              <tr>
-                <td style="padding: 30px 40px 0 40px;">
-                  <h1 style="margin: 0 0 10px 0; color: ${colors.brandGreen}; font-size: 28px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
-                    Friendly Payment Reminder
-                  </h1>
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    Invoice: ${invoice['Invoice #']}
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Greeting -->
-              <tr>
-                <td style="padding: 25px 40px 20px 40px;">
-                  <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Hi ${invoice['Client Name']},
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    This is a friendly reminder that payment for invoice <strong>${invoice['Invoice #']}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + invoice['Due Date'] + '</strong>'}.
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Late Fee Warning -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.alertBg}; border: 2px solid ${colors.alertBorder}; padding: 15px;">
-                    <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;"><strong>Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${invoice['Due Date']} to avoid any additional charges.</p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Invoice Details -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Invoice Number</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">${invoice['Invoice #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Job Reference</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Job #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Due Date</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Due Date']}</td>
-                      </tr>
-                      <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 1px solid ${colors.paperBorder};"></td></tr>
-                      <tr>
-                        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 16px; font-weight: bold;">Amount Due</td>
-                        <td style="padding: 12px 0 8px 0; color: ${colors.brandGreen}; font-size: 18px; font-weight: bold; text-align: right;">$${displayTotal}</td>
-                      </tr>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Payment Details -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.successBg}; border: 2px solid ${colors.successBorder}; padding: 15px;">
-                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-weight: bold;">Payment Details:</p>
-                    <p style="margin: 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
-                      Bank: ${bankName}<br>
-                      Account: ${bankAccount}<br>
-                      Reference: ${invoice['Invoice #']}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Closing -->
-              <tr>
-                <td style="padding: 0 40px 30px 40px;">
-                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    If you have already made payment, please disregard this reminder — thank you!
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px;">
-                    Thanks for your business!<br>
-                    <strong style="color: ${colors.brandGreen};">The CartCure Team</strong>
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder};">
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    This is a test email from CartCure Job Management System<br>
-                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen}; text-decoration: none;">cartcure.co.nz</a>
-                  </p>
-                </td>
-              </tr>
-
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Generate overdue invoice HTML for testing (combined notice + late fees)
- */
-function generateOverdueInvoiceHtml(data) {
-  const { invoice, bankAccount, bankName, isGSTRegistered, gstNumber, daysOverdue, lateFee, totalWithFees } = data;
-  const originalAmount = parseFloat(invoice['Amount (excl GST)']) || 0;
-  const originalGst = isGSTRegistered ? (parseFloat(invoice['GST']) || 0) : 0;
-  const originalTotal = isGSTRegistered ? (parseFloat(invoice['Total']) || 0) : originalAmount;
-
-  // Paperlike theme colors
-  const colors = {
-    brandGreen: '#2d5d3f',
-    paperWhite: '#f9f7f3',
-    paperCream: '#faf8f4',
-    paperBorder: '#d4cfc3',
-    inkBlack: '#2b2b2b',
-    inkGray: '#5a5a5a',
-    inkLight: '#8a8a8a',
-    alertRed: '#c62828',
-    alertRedBg: '#ffebee',
-    successBg: '#e8f5e9',
-    successBorder: '#4caf50'
-  };
-
-  // Build pricing rows based on GST registration
-  let pricingRowsHtml = '';
-  if (isGSTRegistered && originalGst > 0) {
-    pricingRowsHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Original Amount (excl GST)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${originalAmount.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">GST (15%)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">$${originalGst.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; font-weight: bold;">Original Total (incl GST)</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">$${originalTotal.toFixed(2)}</td>
-      </tr>
-    `;
-  } else {
-    pricingRowsHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; font-weight: bold;">Original Total</td>
-        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">$${originalTotal.toFixed(2)}</td>
-      </tr>
-    `;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${colors.paperCream};">
-        <tr>
-          <td align="center" style="padding: 40px 20px;">
-            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${colors.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
-
-              <!-- Header with Logo -->
-              <tr>
-                <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${colors.paperBorder};">
-                  <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
-                </td>
-              </tr>
-
-              <!-- Main Heading -->
-              <tr>
-                <td style="padding: 30px 40px 0 40px;">
-                  <h1 style="margin: 0 0 10px 0; color: ${colors.alertRed}; font-size: 28px; font-weight: normal; font-family: Georgia, 'Times New Roman', serif;">
-                    Invoice Overdue
-                  </h1>
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    Invoice: ${invoice['Invoice #']} · ${daysOverdue} days overdue
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Greeting -->
-              <tr>
-                <td style="padding: 25px 40px 20px 40px;">
-                  <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Hi ${invoice['Client Name']},
-                  </p>
-                  <p style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    This is a notice that your invoice <strong>${invoice['Invoice #']}</strong> is now <strong>${daysOverdue} days overdue</strong>.
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    Per our Terms of Service, a late payment fee of 2% per day applies to overdue balances. Please see the updated amount due below.
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Invoice Info -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Invoice Number</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right; font-weight: bold;">${invoice['Invoice #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Job Reference</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Job #']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Original Invoice Date</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Invoice Date']}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.inkGray}; font-size: 14px;">Original Due Date</td>
-                        <td style="padding: 8px 0; color: ${colors.inkBlack}; font-size: 14px; text-align: right;">${invoice['Due Date']}</td>
-                      </tr>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Amount Due Breakdown -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <h2 style="margin: 0 0 15px 0; color: ${colors.inkBlack}; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid ${colors.paperBorder}; padding-bottom: 10px;">
-                    Amount Due
-                  </h2>
-                  <div style="background-color: ${colors.paperCream}; border: 2px solid ${colors.paperBorder}; padding: 25px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      ${pricingRowsHtml}
-                      <tr>
-                        <td style="padding: 8px 0; color: ${colors.alertRed}; font-size: 14px;">Late Fee (2% x ${daysOverdue} days)</td>
-                        <td style="padding: 8px 0; color: ${colors.alertRed}; font-size: 14px; text-align: right;">$${lateFee.toFixed(2)}</td>
-                      </tr>
-                      <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 2px solid ${colors.brandGreen};"></td></tr>
-                      <tr>
-                        <td style="padding: 12px 0 8px 0; color: ${colors.inkBlack}; font-size: 18px; font-weight: bold;">TOTAL NOW DUE</td>
-                        <td style="padding: 12px 0 8px 0; color: ${colors.alertRed}; font-size: 20px; font-weight: bold; text-align: right;">$${totalWithFees.toFixed(2)}</td>
-                      </tr>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Payment Details -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.successBg}; border: 2px solid ${colors.successBorder}; padding: 15px;">
-                    <p style="margin: 0 0 10px 0; color: ${colors.inkBlack}; font-weight: bold;">Payment Details:</p>
-                    <p style="margin: 0; color: ${colors.inkGray}; font-size: 14px; line-height: 1.6;">
-                      Bank: ${bankName}<br>
-                      Account: ${bankAccount}<br>
-                      Reference: ${invoice['Invoice #']}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Warning Box -->
-              <tr>
-                <td style="padding: 0 40px 25px 40px;">
-                  <div style="background-color: ${colors.alertRedBg}; border: 2px solid ${colors.alertRed}; padding: 15px;">
-                    <p style="margin: 0; color: ${colors.alertRed}; font-size: 14px; line-height: 1.6;"><strong>Please note:</strong> Late fees continue to accrue at 2% per day until payment is received. Please arrange payment as soon as possible to avoid additional fees.</p>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Closing -->
-              <tr>
-                <td style="padding: 0 40px 30px 40px;">
-                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    If you have already made payment, please disregard this notice and accept our apologies for the crossed communication.
-                  </p>
-                  <p style="margin: 0 0 20px 0; color: ${colors.inkBlack}; font-size: 16px; line-height: 1.7;">
-                    If you have any questions or need to discuss payment arrangements, please reply to this email.
-                  </p>
-                  <p style="margin: 0; color: ${colors.inkBlack}; font-size: 16px;">
-                    Thanks,<br>
-                    <strong style="color: ${colors.brandGreen};">The CartCure Team</strong>
-                  </p>
-                </td>
-              </tr>
-
-              <!-- Footer -->
-              <tr>
-                <td style="padding: 25px 40px; background-color: ${colors.paperCream}; border-top: 2px solid ${colors.paperBorder};">
-                  <p style="margin: 0; color: ${colors.inkLight}; font-size: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-                    This is a test email from CartCure Job Management System<br>
-                    <a href="https://cartcure.co.nz" style="color: ${colors.brandGreen}; text-decoration: none;">cartcure.co.nz</a>
-                  </p>
-                </td>
-              </tr>
-
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-  `;
 }
