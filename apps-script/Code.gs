@@ -2040,7 +2040,6 @@ function onOpen() {
       .addItem('Mark Quote Declined', 'showDeclineQuoteDialog'))
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('Generate Invoice', 'showGenerateInvoiceDialog')
-      .addItem('Generate Balance Invoice', 'showGenerateBalanceInvoiceDialog')
       .addItem('Send Invoice', 'showSendInvoiceDialog')
       .addItem('Send Invoice Reminder', 'showSendInvoiceReminderDialog')
       .addItem('Mark as Paid', 'showMarkPaidDialog')
@@ -2865,9 +2864,23 @@ function setupJobsSheet(ss, clearData) {
     'Payment Method',
     'Payment Reference',
     'Invoice #',
+    'Remaining Balance',
     'Notes',
     'Last Updated'
   ];
+
+  // Check if we need to migrate existing sheet (add Remaining Balance column)
+  if (!isNew) {
+    const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const hasRemainingBalance = existingHeaders.includes('Remaining Balance');
+    const invoiceColIndex = existingHeaders.indexOf('Invoice #');
+
+    if (!hasRemainingBalance && invoiceColIndex !== -1 && sheet.getLastRow() > 1) {
+      // Insert new column after Invoice # (which shifts Notes and Last Updated)
+      sheet.insertColumnAfter(invoiceColIndex + 1);
+      Logger.log('Inserted Remaining Balance column at position ' + (invoiceColIndex + 2));
+    }
+  }
 
   // Set headers (overwrites row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -2934,6 +2947,7 @@ function setupJobsSheet(ss, clearData) {
     110,  // Payment Method
     120,  // Payment Reference
     80,   // Invoice #
+    120,  // Remaining Balance
     150,  // Notes
     110   // Last Updated
   ];
@@ -2966,6 +2980,17 @@ function setupJobsSheet(ss, clearData) {
   addSLAConditionalFormatting(sheet);
   addStatusConditionalFormatting(sheet);
   addPaymentConditionalFormatting(sheet);
+
+  // Add Remaining Balance formula (column 29)
+  // Formula: Total (incl GST) minus sum of paid invoices for this job
+  const remainingBalanceCol = 29;
+  const balanceFormulas = [];
+  for (let row = 2; row <= 501; row++) {
+    // =IF(M2="","",M2-SUMIFS('Invoice Log'!J:J,'Invoice Log'!B:B,A2,'Invoice Log'!K:K,"Paid"))
+    balanceFormulas.push(['=IF(M' + row + '="","",M' + row + '-SUMIFS(\'Invoice Log\'!J:J,\'Invoice Log\'!B:B,A' + row + ',\'Invoice Log\'!K:K,"Paid"))']);
+  }
+  sheet.getRange(2, remainingBalanceCol, 500, 1).setFormulas(balanceFormulas);
+  sheet.getRange(2, remainingBalanceCol, 500, 1).setNumberFormat('$#,##0.00');
 
   Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -6081,6 +6106,7 @@ function createJobFromSubmission(submissionNumber) {
     '',                           // Payment Method
     '',                           // Payment Reference
     '',                           // Invoice #
+    '',                           // Remaining Balance (formula will calculate)
     '',                           // Notes
     formatNZDate(now)            // Last Updated
   ];
@@ -8066,66 +8092,118 @@ function generateInvoiceForJob(jobNumber) {
     return;
   }
 
-  // Check if invoices already exist for this job
-  const existingInvoices = getInvoicesByJobNumber(jobNumber);
-
-  if (existingInvoices && existingInvoices.length > 0) {
-    const invoiceList = existingInvoices.map(inv => inv['Invoice #']).join(', ');
-    const invoiceWord = existingInvoices.length === 1 ? 'invoice' : 'invoices';
-
-    const response = ui.alert(
-      'Invoices Already Exist',
-      existingInvoices.length + ' ' + invoiceWord + ' already exist for this job: ' + invoiceList + '\n\n' +
-      'Are you sure you want to create another invoice?',
-      ui.ButtonSet.YES_NO
-    );
-
-    if (response !== ui.Button.YES) {
-      return; // User cancelled
-    }
-  }
-
   const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
   if (!invoiceSheet) {
     ui.alert('Error', 'Invoice Log sheet not found. Please run Setup first.', ui.ButtonSet.OK);
     return;
   }
 
-  // Generate invoice number based on job number
+  // Get existing invoices and analyze state
+  const existingInvoices = getInvoicesByJobNumber(jobNumber);
+  const hasDeposit = existingInvoices.some(inv => inv['Invoice Type'] === 'Deposit');
+  const hasBalance = existingInvoices.some(inv => inv['Invoice Type'] === 'Balance');
+  const depositInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+  const depositPaid = depositInvoice && depositInvoice['Status'] === 'Paid';
+
+  // Calculate amounts
+  const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
+  const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
+  const projectSize = getProjectSize(total);
+
+  // Calculate remaining balance
+  const paidAmount = calculatePaidAmount(jobNumber);
+  const remainingBalance = total - paidAmount;
+
+  // Decision tree for invoice type
+  let invoiceType, invoiceAmount, invoiceGst, invoiceTotal, invoiceTypeMessage;
+
+  if (existingInvoices.length === 0) {
+    // NO INVOICES: Create Full or Deposit based on project size
+    if (projectSize === PROJECT_SIZE.SMALL) {
+      invoiceType = 'Full';
+      invoiceAmount = amount;
+      invoiceGst = gst;
+      invoiceTotal = total;
+      invoiceTypeMessage = '';
+    } else {
+      // Medium or Large: Create 50% Deposit
+      invoiceType = 'Deposit';
+      invoiceAmount = amount * 0.5;
+      invoiceGst = gst * 0.5;
+      invoiceTotal = total * 0.5;
+      invoiceTypeMessage = '\n\nThis is a 50% DEPOSIT invoice (' + projectSize + ' project).\n' +
+        'Use Generate Invoice again after completion to create the balance invoice.';
+    }
+  } else if (hasDeposit && !hasBalance) {
+    // HAS DEPOSIT, NO BALANCE: Create Balance invoice
+    if (!depositPaid) {
+      // Deposit not paid - warn user
+      const response = ui.alert(
+        'Deposit Not Paid',
+        'The deposit invoice has not been marked as paid yet.\n\n' +
+        'Are you sure you want to generate the balance invoice anyway?',
+        ui.ButtonSet.YES_NO
+      );
+      if (response !== ui.Button.YES) {
+        return;
+      }
+    }
+
+    // Calculate balance (remaining 50%)
+    const depositAmount = parseFloat(depositInvoice['Amount (excl GST)']) || 0;
+    const depositGst = parseFloat(depositInvoice['GST']) || 0;
+
+    invoiceType = 'Balance';
+    invoiceAmount = amount - depositAmount;
+    invoiceGst = gst - depositGst;
+    invoiceTotal = invoiceAmount + invoiceGst;
+    invoiceTypeMessage = '\n\nThis is the BALANCE invoice (remaining 50%) for this job.';
+  } else if (remainingBalance > 0.01) {
+    // Has invoices but remaining balance - create Additional invoice
+    const response = ui.alert(
+      'Create Additional Invoice?',
+      'This job has existing invoices but an outstanding balance of ' + formatCurrency(remainingBalance) + '.\n\n' +
+      'Do you want to create an additional invoice for this amount?',
+      ui.ButtonSet.YES_NO
+    );
+    if (response !== ui.Button.YES) {
+      return;
+    }
+
+    invoiceType = 'Additional';
+    // Calculate based on remaining balance (reverse GST calculation)
+    if (isGSTRegistered) {
+      invoiceTotal = remainingBalance;
+      invoiceAmount = remainingBalance / 1.15; // Remove GST
+      invoiceGst = remainingBalance - invoiceAmount;
+    } else {
+      invoiceAmount = remainingBalance;
+      invoiceGst = 0;
+      invoiceTotal = remainingBalance;
+    }
+    invoiceTypeMessage = '\n\nThis is an ADDITIONAL invoice (#' + (existingInvoices.length + 1) + ') for this job.';
+  } else {
+    // Fully invoiced
+    ui.alert('Fully Invoiced',
+      'This job is already fully invoiced.\n\n' +
+      'Total: ' + formatCurrency(total) + '\n' +
+      'Invoiced: ' + formatCurrency(total - remainingBalance) + '\n' +
+      'Remaining: ' + formatCurrency(remainingBalance),
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Generate invoice number and dates
   const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices.length);
   const now = new Date();
   const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
   const dueDate = new Date(now);
   dueDate.setDate(dueDate.getDate() + paymentTerms);
 
-  const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
-  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
-  const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
-  const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
-
-  // Determine invoice type based on project size and existing invoices
-  const projectSize = getProjectSize(total);
-  let invoiceType = 'Full';
-  let invoiceAmount = amount;
-  let invoiceGst = gst;
-  let invoiceTotal = total;
-
-  if (existingInvoices && existingInvoices.length > 0) {
-    invoiceType = 'Additional';
-  } else if (projectSize === PROJECT_SIZE.MEDIUM) {
-    // Medium projects ($200-$500): 50% deposit
-    invoiceType = 'Deposit';
-    invoiceAmount = amount * 0.5;
-    invoiceGst = gst * 0.5;
-    invoiceTotal = total * 0.5;
-  } else if (projectSize === PROJECT_SIZE.LARGE) {
-    // Large projects (>$500): Ask about deposit
-    invoiceType = 'Deposit';
-    invoiceAmount = amount * 0.5;
-    invoiceGst = gst * 0.5;
-    invoiceTotal = total * 0.5;
-  }
-
+  // Create invoice row
   const invoiceRow = [
     invoiceNumber,
     jobNumber,
@@ -8153,17 +8231,6 @@ function generateInvoiceForJob(jobNumber) {
   // Update job with latest invoice number
   updateJobField(jobNumber, 'Invoice #', invoiceNumber);
 
-  // Update success message based on invoice type
-  const isAdditionalInvoice = existingInvoices && existingInvoices.length > 0;
-  let invoiceTypeMessage = '';
-
-  if (invoiceType === 'Deposit') {
-    invoiceTypeMessage = '\n\nThis is a 50% DEPOSIT invoice (' + projectSize + ' project).\n' +
-      'A balance invoice will need to be created upon completion.';
-  } else if (isAdditionalInvoice) {
-    invoiceTypeMessage = '\n\nThis is invoice #' + (existingInvoices.length + 1) + ' for this job.';
-  }
-
   ui.alert('Invoice Generated',
     'Invoice ' + invoiceNumber + ' created!' + invoiceTypeMessage + '\n\n' +
     'Type: ' + invoiceType + '\n' +
@@ -8173,8 +8240,7 @@ function generateInvoiceForJob(jobNumber) {
     ui.ButtonSet.OK
   );
 
-  Logger.log('Invoice ' + invoiceNumber + ' generated for ' + jobNumber +
-    (isAdditionalInvoice ? ' (additional invoice #' + (existingInvoices.length + 1) + ')' : ''));
+  Logger.log('Invoice ' + invoiceNumber + ' (' + invoiceType + ') generated for ' + jobNumber);
 }
 
 /**
@@ -8312,6 +8378,18 @@ function getInvoicesByJobNumber(jobNumber) {
   Logger.log('[PERF] getInvoicesByJobNumber() - Found ' + invoices.length + ' invoices for ' + jobNumber + ' in ' + executionTime + 'ms');
 
   return invoices;
+}
+
+/**
+ * Calculate total paid amount for a job from its invoices
+ * @param {string} jobNumber - The job number
+ * @returns {number} Total amount paid across all invoices
+ */
+function calculatePaidAmount(jobNumber) {
+  const invoices = getInvoicesByJobNumber(jobNumber);
+  return invoices
+    .filter(inv => inv['Status'] === 'Paid')
+    .reduce((sum, inv) => sum + (parseFloat(inv['Total']) || 0), 0);
 }
 
 /**
