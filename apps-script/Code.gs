@@ -6804,7 +6804,14 @@ cartcure.co.nz
     }
 
     // Log the email
-    logEmail(jobNumber2, clientEmail, subject, invoiceType === 'Deposit' ? 'Deposit Invoice' : 'Invoice');
+    logJobActivity(
+      jobNumber2,
+      'Email Sent',
+      subject,
+      (invoiceType === 'Deposit' ? 'Deposit Invoice' : 'Invoice') + ' sent: ' + formatCurrency(displayTotal),
+      'To: ' + clientEmail,
+      'Auto'
+    );
 
     Logger.log('Invoice ' + invoiceNumber + ' sent silently to ' + clientEmail);
 
