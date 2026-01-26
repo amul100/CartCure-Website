@@ -1,0 +1,6 @@
+# Ignore preview files (for local use only)
+index.html
+preview-config.js
+
+# Ignore markdown docs
+*.md

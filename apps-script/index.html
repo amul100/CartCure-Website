@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CartCure Email Templates - Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      background: #2d5d3f;
+      color: white;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      background: rgba(0,0,0,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .sidebar-header p {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      padding: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .settings-panel h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.7;
+      margin-bottom: 15px;
+    }
+
+    .setting-group {
+      margin-bottom: 15px;
+    }
+
+    .setting-group label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 5px;
+      opacity: 0.9;
+    }
+
+    .setting-group input[type="text"],
+    .setting-group input[type="number"],
+    .setting-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+
+    .setting-group input:focus,
+    .setting-group select:focus {
+      outline: 2px solid rgba(255,255,255,0.5);
+    }
+
+    /* Toggle Switch */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+    }
+
+    .toggle-group label {
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255,255,255,0.3);
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: #fff8e6;
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+      background-color: #2d5d3f;
+    }
+
+    /* Amount Preview */
+    .amount-preview {
+      background: rgba(0,0,0,0.2);
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    .amount-preview .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+
+    .amount-preview .row.total {
+      border-top: 1px solid rgba(255,255,255,0.2);
+      margin-top: 5px;
+      padding-top: 10px;
+      font-weight: bold;
+    }
+
+    .amount-preview .row.deposit {
+      color: #fff8e6;
+    }
+
+    /* Template List */
+    .template-list {
+      padding: 10px;
+    }
+
+    .template-list h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.7;
+      padding: 10px;
+    }
+
+    .template-item {
+      display: block;
+      padding: 12px 15px;
+      margin: 5px 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .template-item:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .template-item.active {
+      background: rgba(255,255,255,0.3);
+      font-weight: 600;
+    }
+
+    .template-item .template-number {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 24px;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      padding: 15px 20px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar h2 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .toolbar-btn {
+      padding: 8px 16px;
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toolbar-btn:hover {
+      background: #e0e0e0;
+    }
+
+    .toolbar-btn.primary {
+      background: #2d5d3f;
+      color: white;
+      border-color: #2d5d3f;
+    }
+
+    .toolbar-btn.primary:hover {
+      background: #3a7a52;
+    }
+
+    /* Preview Frame */
+    .preview-container {
+      flex: 1;
+      overflow: auto;
+      background: #e0e0e0;
+      padding: 20px;
+    }
+
+    .preview-frame {
+      width: 100%;
+      min-height: 800px;
+      border: none;
+      background: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Email Template Previewer</h1>
+        <p>Apps Script Templates - Local Preview</p>
+      </div>
+
+      <!-- Settings -->
+      <div class="settings-panel">
+        <h2>Business Settings</h2>
+
+        <div class="toggle-group">
+          <label>GST Registered</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="gstRegistered" checked onchange="updateSettings()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-group" id="gstNumberGroup">
+          <label>GST Number</label>
+          <input type="text" id="gstNumber" value="123-456-789" onchange="updateSettings()">
+        </div>
+
+        <div class="setting-group">
+          <label>Base Amount (excl GST)</label>
+          <input type="number" id="baseAmount" value="150" min="0" step="10" onchange="updateSettings()">
+        </div>
+
+        <div class="amount-preview" id="amountPreview"></div>
+      </div>
+
+      <div class="settings-panel">
+        <h2>Bank Details</h2>
+        <div class="setting-group">
+          <label>Bank Name</label>
+          <input type="text" id="bankName" value="ANZ" onchange="updateSettings()">
+        </div>
+        <div class="setting-group">
+          <label>Account Number</label>
+          <input type="text" id="bankAccount" value="01-0123-0123456-00" onchange="updateSettings()">
+        </div>
+      </div>
+
+      <div class="settings-panel">
+        <h2>Status (for Status Update)</h2>
+        <div class="setting-group">
+          <select id="jobStatus" onchange="updateSettings()">
+            <option value="In Progress">In Progress</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Template List -->
+      <div class="template-list">
+        <h2>Email Templates</h2>
+        <div class="template-item active" data-template="email-admin-notification.html">
+          <span class="template-number">1</span>Admin Notification
+        </div>
+        <div class="template-item" data-template="email-user-confirmation.html">
+          <span class="template-number">2</span>User Confirmation
+        </div>
+        <div class="template-item" data-template="email-quote.html">
+          <span class="template-number">3</span>Quote Email
+        </div>
+        <div class="template-item" data-template="email-status-update.html">
+          <span class="template-number">4</span>Status Update
+        </div>
+        <div class="template-item" data-template="email-invoice.html">
+          <span class="template-number">5</span>Invoice
+        </div>
+        <div class="template-item" data-template="email-invoice-reminder.html">
+          <span class="template-number">6</span>Invoice Reminder
+        </div>
+        <div class="template-item" data-template="email-overdue-invoice.html">
+          <span class="template-number">7</span>Overdue Invoice
+        </div>
+        <div class="template-item" data-template="email-payment-receipt.html">
+          <span class="template-number">8</span>Payment Receipt
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="toolbar">
+        <h2 id="currentTemplate">Admin Notification</h2>
+        <div class="toolbar-actions">
+          <button class="toolbar-btn" onclick="renderCurrentTemplate()">Refresh</button>
+          <button class="toolbar-btn primary" onclick="copyHtml()">Copy HTML</button>
+        </div>
+      </div>
+
+      <div class="preview-container">
+        <iframe id="previewFrame" class="preview-frame"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script src="preview-config.js"></script>
+  <script>
+    let currentTemplate = 'email-admin-notification.html';
+
+    const templateNames = {
+      'email-admin-notification.html': 'Admin Notification',
+      'email-user-confirmation.html': 'User Confirmation',
+      'email-quote.html': 'Quote Email',
+      'email-status-update.html': 'Status Update',
+      'email-invoice.html': 'Invoice',
+      'email-invoice-reminder.html': 'Invoice Reminder',
+      'email-overdue-invoice.html': 'Overdue Invoice',
+      'email-payment-receipt.html': 'Payment Receipt'
+    };
+
+    // Update settings from UI
+    function updateSettings() {
+      PREVIEW_CONFIG.isGSTRegistered = document.getElementById('gstRegistered').checked;
+      PREVIEW_CONFIG.gstNumber = document.getElementById('gstNumber').value;
+      PREVIEW_CONFIG.bankName = document.getElementById('bankName').value;
+      PREVIEW_CONFIG.bankAccount = document.getElementById('bankAccount').value;
+      PREVIEW_CONFIG.baseAmount = parseFloat(document.getElementById('baseAmount').value) || 0;
+      SAMPLE_DATA.status = document.getElementById('jobStatus').value;
+
+      document.getElementById('gstNumberGroup').style.display =
+        PREVIEW_CONFIG.isGSTRegistered ? 'block' : 'none';
+
+      updateAmountPreview();
+      renderCurrentTemplate();
+    }
+
+    // Update amount preview
+    function updateAmountPreview() {
+      const subtotal = PREVIEW_CONFIG.baseAmount;
+      const gst = PREVIEW_CONFIG.isGSTRegistered ? subtotal * PREVIEW_CONFIG.gstRate : 0;
+      const total = subtotal + gst;
+      const deposit = total / 2;
+      const requiresDeposit = total >= 200;
+
+      let html = '';
+      if (PREVIEW_CONFIG.isGSTRegistered) {
+        html += `<div class="row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>`;
+        html += `<div class="row"><span>GST (15%)</span><span>$${gst.toFixed(2)}</span></div>`;
+        html += `<div class="row total"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;
+      } else {
+        html += `<div class="row total"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
+      }
+
+      if (requiresDeposit) {
+        html += `<div class="row deposit"><span>50% Deposit</span><span>$${deposit.toFixed(2)}</span></div>`;
+      }
+
+      document.getElementById('amountPreview').innerHTML = html;
+    }
+
+    // Parse Apps Script template syntax and replace with values
+    function parseTemplate(templateHtml, variables) {
+      // Replace <?!= variable ?> (unescaped) - process first
+      let result = templateHtml.replace(/<\?!=\s*(\w+(?:\.\w+)*)\s*\?>/g, (match, varPath) => {
+        return getNestedValue(variables, varPath) || '';
+      });
+
+      // Replace <?= variable ?> (escaped - but for preview we just output as-is)
+      result = result.replace(/<\?=\s*(\w+(?:\.\w+)*)\s*\?>/g, (match, varPath) => {
+        const value = getNestedValue(variables, varPath);
+        return value !== undefined ? escapeHtml(String(value)) : '';
+      });
+
+      return result;
+    }
+
+    // Get nested object value by path (e.g., "colors.brandGreen")
+    function getNestedValue(obj, path) {
+      return path.split('.').reduce((current, key) => {
+        return current && current[key] !== undefined ? current[key] : undefined;
+      }, obj);
+    }
+
+    // Escape HTML for <?= ?> tags
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Wrap template body in full HTML document
+    function wrapInDocument(bodyContent) {
+      const colors = PREVIEW_CONFIG.colors;
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: ${colors.paperCream}; font-family: Georgia, 'Times New Roman', serif;">
+  ${bodyContent}
+</body>
+</html>`;
+    }
+
+    // Fetch and render template
+    async function renderTemplate(templateFile) {
+      try {
+        const response = await fetch(templateFile);
+        if (!response.ok) throw new Error(`Failed to load ${templateFile}`);
+
+        const templateHtml = await response.text();
+        const variables = getTemplateVariables();
+        const renderedBody = parseTemplate(templateHtml, variables);
+        const fullHtml = wrapInDocument(renderedBody);
+
+        const frame = document.getElementById('previewFrame');
+        frame.srcdoc = fullHtml;
+
+        // Store for copy function
+        window.lastRenderedHtml = fullHtml;
+      } catch (error) {
+        console.error('Error rendering template:', error);
+        const frame = document.getElementById('previewFrame');
+        frame.srcdoc = `<div style="padding: 40px; font-family: sans-serif; color: #c62828;">
+          <h2>Error Loading Template</h2>
+          <p>${error.message}</p>
+          <p style="margin-top: 20px; color: #666;">Make sure you're running this from a local server (e.g., Live Server in VS Code) rather than opening the file directly.</p>
+        </div>`;
+      }
+    }
+
+    // Render current template
+    function renderCurrentTemplate() {
+      renderTemplate(currentTemplate);
+    }
+
+    // Load template (called when clicking sidebar items)
+    function loadTemplate(templateFile) {
+      currentTemplate = templateFile;
+
+      document.querySelectorAll('.template-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.template === templateFile) {
+          item.classList.add('active');
+        }
+      });
+
+      document.getElementById('currentTemplate').textContent =
+        templateNames[templateFile] || templateFile;
+
+      renderTemplate(templateFile);
+    }
+
+    // Copy rendered HTML to clipboard
+    async function copyHtml() {
+      if (window.lastRenderedHtml) {
+        try {
+          await navigator.clipboard.writeText(window.lastRenderedHtml);
+          alert('HTML copied to clipboard!');
+        } catch (err) {
+          console.error('Failed to copy:', err);
+          alert('Failed to copy HTML');
+        }
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.template-item').forEach(item => {
+        item.addEventListener('click', function() {
+          loadTemplate(this.dataset.template);
+        });
+      });
+
+      updateAmountPreview();
+      renderCurrentTemplate();
+    });
+  </script>
+</body>
+</html>
