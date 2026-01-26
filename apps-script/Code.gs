@@ -7619,7 +7619,8 @@ function generateQuoteEmailHtml(data) {
     validUntil: data.validUntil,
     bankSectionHtml: bankSectionHtml,
     gstFooterLine: gstFooterLine,
-    businessName: data.businessName
+    businessName: data.businessName,
+    adminEmail: data.adminEmail
   });
 
   return wrapEmailHtml(bodyContent);
