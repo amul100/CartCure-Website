@@ -2004,7 +2004,25 @@ const SHEET_COLORS = {
   metricBg: '#f5f5f5',          // Light gray for metric labels
   sectionBg: '#fafafa',         // Very light gray for sections
   alertBg: '#fff8e6',           // Alert/warning background
-  alertBorder: '#f5d76e'        // Alert/warning border
+  alertBorder: '#f5d76e',       // Alert/warning border
+
+  // Additional text colors
+  navy: '#1565c0',              // Navy blue for links/accent text
+
+  // Status chart colors (Bg suffix for chart backgrounds)
+  statusPendingBg: '#fff8e1',   // Light amber - Pending Quote
+  statusQuotedBg: '#e3f2fd',    // Light blue - Quoted
+  statusAcceptedBg: '#c8e6c9',  // Light green - Accepted
+  statusActiveBg: '#bbdefb',    // Medium blue - In Progress
+  statusCompletedBg: '#a5d6a7', // Medium green - Completed
+  statusOnHoldBg: '#ffecb3',    // Light amber/yellow - On Hold
+  statusCancelledBg: '#e0e0e0', // Light gray - Cancelled
+  statusDeclinedBg: '#ffcdd2',  // Light red/pink - Declined
+
+  // Payment chart colors (Bg suffix for chart backgrounds)
+  paymentUnpaidBg: '#ffcdd2',   // Light red - Unpaid
+  paymentInvoicedBg: '#fff9c4', // Light yellow - Invoiced
+  paymentPaidBg: '#c8e6c9'      // Light green - Paid
 };
 
 // ============================================================================
@@ -3239,19 +3257,19 @@ function setupInvoiceLogSheet(ss, clearData) {
     sheet.setColumnWidth(col, invoiceColumnWidths[col - 1] || 100);
   }
 
-  // Add data validation for Status (column 10)
+  // Add data validation for Status (column 11)
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 11, 500, 1).setDataValidation(statusRule);
 
-  // Add data validation for Invoice Type (column 17)
+  // Add data validation for Invoice Type (column 18)
   const typeRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Full', 'Deposit', 'Balance', 'Additional'], true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 17, 500, 1).setDataValidation(typeRule);
+  sheet.getRange(2, 18, 500, 1).setDataValidation(typeRule);
 
   // Add conditional formatting for invoice Status
   addInvoiceStatusConditionalFormatting(sheet);
@@ -3263,7 +3281,7 @@ function setupInvoiceLogSheet(ss, clearData) {
  * Add conditional formatting for Invoice Status column
  */
 function addInvoiceStatusConditionalFormatting(sheet) {
-  const statusColumn = 10; // Status column
+  const statusColumn = 11; // Status column
   const range = sheet.getRange(2, statusColumn, 500, 1);
 
   const rules = sheet.getConditionalFormatRules();
