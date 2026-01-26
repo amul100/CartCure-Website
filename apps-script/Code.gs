@@ -6663,6 +6663,26 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     let subject = 'Invoice ' + invoiceNumber + ' from CartCure';
     if (invoiceType === 'Deposit') {
       subject = 'Deposit Invoice ' + invoiceNumber + ' from CartCure (50% Payment Required)';
+    } else if (invoiceType === 'Balance') {
+      subject = 'Balance Invoice ' + invoiceNumber + ' from CartCure (Final Payment)';
+    }
+
+    // Get deposit invoice info for balance invoices
+    let depositInfo = null;
+    let totalJobAmount = 0;
+    if (invoiceType === 'Balance') {
+      const allInvoices = getInvoicesByJobNumber(jobNumber);
+      const depositInvoice = allInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+      if (depositInvoice) {
+        const job = getJobByNumber(jobNumber);
+        const jobTotal = job ? (parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0) : 0;
+        totalJobAmount = isGSTRegistered ? jobTotal : (parseFloat(job['Quote Amount (excl GST)']) || 0);
+        depositInfo = {
+          amount: parseFloat(depositInvoice['Total']) || parseFloat(depositInvoice['Amount (excl GST)']) || 0,
+          paidDate: depositInvoice['Paid Date'] || null,
+          invoiceNumber: depositInvoice['Invoice #']
+        };
+      }
     }
 
     const gstValue = parseFloat(gst);
@@ -6727,6 +6747,7 @@ function sendInvoiceEmailSilent(invoiceNumber) {
         </tr>
       `;
     }
+    // Note: Balance invoices use a separate template (email-balance-invoice.html)
 
     // Build bank details HTML
     let bankDetailsHtml = '';
@@ -6736,38 +6757,88 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     // GST footer line
     const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
-    // Greeting text based on invoice type
-    const greetingText = invoiceType === 'Deposit'
-      ? 'Thank you for accepting our quote! Please find your deposit invoice below. Work will begin once payment is received.'
-      : 'Thank you for choosing CartCure! Please find your invoice below for the completed work.';
+    // Render template based on invoice type
+    let bodyContent;
+    if (invoiceType === 'Balance' && depositInfo) {
+      // Use dedicated balance invoice template
+      const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+      bodyContent = renderEmailTemplate('email-balance-invoice', {
+        invoiceNumber: invoiceNumber,
+        jobNumber: jobNumber,
+        clientName: clientName,
+        invoiceDate: formatNZDate(new Date()),
+        dueDate: dueDate,
+        totalJobAmount: totalJobAmount.toFixed(2),
+        depositAmount: depositInfo.amount.toFixed(2),
+        depositPaidText: depositPaidText,
+        balanceDue: displayTotal,
+        pricingRowsHtml: pricingRowsHtml,
+        bankDetailsHtml: bankDetailsHtml,
+        gstFooterLine: gstFooterLine,
+        businessName: businessName
+      });
+    } else {
+      // Use standard invoice template for Deposit and Full invoices
+      const greetingText = invoiceType === 'Deposit'
+        ? 'Thank you for accepting our quote! Please find your deposit invoice below. Work will begin once payment is received.'
+        : 'Thank you for choosing CartCure! Please find your invoice below for the completed work.';
 
-    // Render template with data
-    const bodyContent = renderEmailTemplate('email-invoice', {
-      headingTitle: invoiceType === 'Deposit' ? 'Deposit Invoice' : 'Invoice',
-      invoiceNumber: invoiceNumber,
-      jobNumber: jobNumber,
-      clientName: clientName,
-      greetingText: greetingText,
-      invoiceDate: formatNZDate(new Date()),
-      dueDate: dueDate,
-      pricingRowsHtml: pricingRowsHtml,
-      depositNoticeHtml: depositNoticeHtml,
-      bankDetailsHtml: bankDetailsHtml,
-      gstFooterLine: gstFooterLine,
-      businessName: businessName
-    });
+      bodyContent = renderEmailTemplate('email-invoice', {
+        headingTitle: invoiceType === 'Deposit' ? 'Deposit Invoice' : 'Invoice',
+        invoiceNumber: invoiceNumber,
+        jobNumber: jobNumber,
+        clientName: clientName,
+        greetingText: greetingText,
+        invoiceDate: formatNZDate(new Date()),
+        dueDate: dueDate,
+        pricingRowsHtml: pricingRowsHtml,
+        depositNoticeHtml: depositNoticeHtml,
+        bankDetailsHtml: bankDetailsHtml,
+        gstFooterLine: gstFooterLine,
+        businessName: businessName
+      });
+    }
 
     const htmlBody = wrapEmailHtml(bodyContent);
 
     // Build plain text version
-    const plainText = `
-${invoiceType === 'Deposit' ? 'DEPOSIT INVOICE' : 'INVOICE'} ${invoiceNumber}
+    let plainTextBody;
+    if (invoiceType === 'Balance' && depositInfo) {
+      const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+      plainTextBody = `BALANCE INVOICE ${invoiceNumber}
 
 Hi ${clientName},
 
-${invoiceType === 'Deposit'
-  ? 'Thank you for accepting our quote! Please find your deposit invoice below.\n\nThis is a 50% deposit invoice. Per our Terms of Service, jobs $200+ require a 50% deposit before work begins. A balance invoice for the remaining 50% will be sent upon completion.'
-  : 'Please find your invoice for ' + jobNumber + '.'}
+Your work has been completed. Please find your final balance invoice below.
+
+PAYMENT SUMMARY
+Total Job Amount: $${totalJobAmount.toFixed(2)}
+Deposit Paid${depositPaidText}: -$${depositInfo.amount.toFixed(2)}
+Remaining Balance: $${displayTotal}
+
+Job Reference: ${jobNumber}
+Due Date: ${dueDate}
+
+${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total Due: $' + displayTotal}
+
+PAYMENT DETAILS
+${bankName ? 'Bank: ' + bankName : ''}
+${bankAccount ? 'Account: ' + bankAccount : ''}
+Reference: ${invoiceNumber}
+${isGSTRegistered && gstNumber ? 'GST Number: ' + gstNumber : ''}
+
+Questions? Reply to this email.
+
+${businessName}
+cartcure.co.nz`;
+    } else if (invoiceType === 'Deposit') {
+      plainTextBody = `DEPOSIT INVOICE ${invoiceNumber}
+
+Hi ${clientName},
+
+Thank you for accepting our quote! Please find your deposit invoice below.
+
+This is a 50% deposit invoice. Per our Terms of Service, jobs $200+ require a 50% deposit before work begins. A balance invoice for the remaining 50% will be sent upon completion.
 
 Job Reference: ${jobNumber}
 Due Date: ${dueDate}
@@ -6783,8 +6854,32 @@ ${isGSTRegistered && gstNumber ? 'GST Number: ' + gstNumber : ''}
 Questions? Reply to this email.
 
 ${businessName}
-cartcure.co.nz
-    `;
+cartcure.co.nz`;
+    } else {
+      plainTextBody = `INVOICE ${invoiceNumber}
+
+Hi ${clientName},
+
+Please find your invoice for ${jobNumber}.
+
+Job Reference: ${jobNumber}
+Due Date: ${dueDate}
+
+${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total: $' + displayTotal}
+
+PAYMENT DETAILS
+${bankName ? 'Bank: ' + bankName : ''}
+${bankAccount ? 'Account: ' + bankAccount : ''}
+Reference: ${invoiceNumber}
+${isGSTRegistered && gstNumber ? 'GST Number: ' + gstNumber : ''}
+
+Questions? Reply to this email.
+
+${businessName}
+cartcure.co.nz`;
+    }
+
+    const plainText = plainTextBody;
 
     // Send the email
     GmailApp.sendEmail(clientEmail, subject, plainText, {
@@ -8494,6 +8589,7 @@ function sendInvoiceEmail(invoiceNumber) {
   const gst = invoice['GST'];
   const total = invoice['Total'];
   const dueDate = invoice['Due Date'];
+  const invoiceType = invoice['Invoice Type'] || 'Full';
 
   // Validate required fields
   if (!clientEmail) {
@@ -8506,7 +8602,29 @@ function sendInvoiceEmail(invoiceNumber) {
     return;
   }
 
-  const subject = 'Invoice ' + invoiceNumber + ' from CartCure';
+  // Determine subject based on invoice type
+  let subject = 'Invoice ' + invoiceNumber + ' from CartCure';
+  if (invoiceType === 'Balance') {
+    subject = 'Balance Invoice ' + invoiceNumber + ' from CartCure (Final Payment)';
+  }
+
+  // Get deposit invoice info for balance invoices
+  let depositInfo = null;
+  let totalJobAmount = 0;
+  if (invoiceType === 'Balance') {
+    const allInvoices = getInvoicesByJobNumber(jobNumber);
+    const depositInvoice = allInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+    if (depositInvoice) {
+      const job = getJobByNumber(jobNumber);
+      const jobTotal = job ? (parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0) : 0;
+      totalJobAmount = isGSTRegistered ? jobTotal : (parseFloat(job['Quote Amount (excl GST)']) || 0);
+      depositInfo = {
+        amount: parseFloat(depositInvoice['Total']) || parseFloat(depositInvoice['Amount (excl GST)']) || 0,
+        paidDate: depositInvoice['Paid Date'] || null,
+        invoiceNumber: depositInvoice['Invoice #']
+      };
+    }
+  }
 
   // Build pricing section - validate GST is a number
   const gstValue = parseFloat(gst);
@@ -8562,21 +8680,43 @@ function sendInvoiceEmail(invoiceNumber) {
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
-  // Render template with data (no deposit notice for standard invoices)
-  const bodyContent = renderEmailTemplate('email-invoice', {
-    headingTitle: 'Invoice',
-    invoiceNumber: invoiceNumber,
-    jobNumber: jobNumber,
-    clientName: clientName,
-    greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
-    invoiceDate: formatNZDate(new Date()),
-    dueDate: dueDate,
-    pricingRowsHtml: pricingRowsHtml,
-    depositNoticeHtml: '', // No deposit notice for standard invoices
-    bankDetailsHtml: bankDetailsHtml,
-    gstFooterLine: gstFooterLine,
-    businessName: businessName
-  });
+  // Render template based on invoice type
+  let bodyContent;
+  if (invoiceType === 'Balance' && depositInfo) {
+    // Use dedicated balance invoice template
+    const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+    bodyContent = renderEmailTemplate('email-balance-invoice', {
+      invoiceNumber: invoiceNumber,
+      jobNumber: jobNumber,
+      clientName: clientName,
+      invoiceDate: formatNZDate(new Date()),
+      dueDate: dueDate,
+      totalJobAmount: totalJobAmount.toFixed(2),
+      depositAmount: depositInfo.amount.toFixed(2),
+      depositPaidText: depositPaidText,
+      balanceDue: displayTotal,
+      pricingRowsHtml: pricingRowsHtml,
+      bankDetailsHtml: bankDetailsHtml,
+      gstFooterLine: gstFooterLine,
+      businessName: businessName
+    });
+  } else {
+    // Use standard invoice template
+    bodyContent = renderEmailTemplate('email-invoice', {
+      headingTitle: 'Invoice',
+      invoiceNumber: invoiceNumber,
+      jobNumber: jobNumber,
+      clientName: clientName,
+      greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
+      invoiceDate: formatNZDate(new Date()),
+      dueDate: dueDate,
+      pricingRowsHtml: pricingRowsHtml,
+      depositNoticeHtml: '', // No deposit notice for standard invoices
+      bankDetailsHtml: bankDetailsHtml,
+      gstFooterLine: gstFooterLine,
+      businessName: businessName
+    });
+  }
 
   const htmlBody = wrapEmailHtml(bodyContent);
 
@@ -8591,11 +8731,12 @@ function sendInvoiceEmail(invoiceNumber) {
     });
 
     // Log activity
+    const invoiceTypeLabel = invoiceType === 'Balance' ? 'Balance invoice' : 'Invoice';
     logJobActivity(
       jobNumber,
       'Email Sent',
       subject,
-      'Invoice sent: ' + formatCurrency(displayTotal),
+      invoiceTypeLabel + ' sent: ' + formatCurrency(displayTotal),
       'To: ' + clientEmail,
       'Auto'
     );
@@ -8609,7 +8750,7 @@ function sendInvoiceEmail(invoiceNumber) {
     // Update job payment status
     updateJobField(jobNumber, 'Payment Status', PAYMENT_STATUS.INVOICED);
 
-    ui.alert('Invoice Sent', 'Invoice sent to ' + clientEmail, ui.ButtonSet.OK);
+    ui.alert(invoiceTypeLabel + ' Sent', invoiceTypeLabel + ' sent to ' + clientEmail, ui.ButtonSet.OK);
     Logger.log('Invoice ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
     Logger.log('Error sending invoice: ' + error.message);

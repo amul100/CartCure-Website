@@ -17,66 +17,37 @@ This includes:
 
 The guide must stay synchronized with the actual implementation to ensure users have accurate documentation.
 
-## Email Template Previews
-**IMPORTANT**: The `email-previews/` folder contains the exact HTML email templates as they appear in Code.gs. These files and Code.gs must always stay in sync:
+## Email Template System
+**IMPORTANT**: Email templates are stored as separate `.html` files in the `apps-script/` folder (same folder as Code.gs). **NEVER write inline HTML in Code.gs** - always create or use separate template files.
 
-- **When updating emails in Code.gs**: Also update the corresponding preview HTML file in `email-previews/`
-- **When updating preview HTML files**: Also update the corresponding email template in Code.gs
+### How Templates Work
+1. Templates are `.html` files stored alongside Code.gs in `apps-script/` (e.g., `email-invoice.html`, `email-balance-invoice.html`)
+2. Google Apps Script bundles all files in the same folder - Code.gs references templates by filename (without extension)
+3. Code.gs loads templates using `renderEmailTemplate('template-name', data)` which calls `HtmlService.createTemplateFromFile()`
+4. Template syntax:
+   - `<?= variable ?>` - Escaped output (safe for user input)
+   - `<?!= htmlVariable ?>` - Unescaped HTML output (use for pre-built HTML snippets)
+   - `<?= colors.brandGreen ?>` - Access to EMAIL_COLORS object (always available)
 
-This bidirectional sync ensures:
-1. Preview files accurately reflect what customers receive
-2. Changes made in either location are not lost
-3. Email formatting can be tested locally before deployment
+### Creating New Email Templates
+When adding a new email type:
+1. Create a new `.html` file in `apps-script/` folder (same folder as Code.gs)
+2. Use existing templates as reference for structure and styling
+3. Call it from Code.gs with: `renderEmailTemplate('email-new-type', { data })` - the template name matches the filename without `.html`
+4. Update the template mapping table below
 
-### Email Template Cross-References in Code.gs
-Each email function in Code.gs includes a comment referencing its corresponding preview file(s):
-```javascript
-/**
- * Send a professional quote email
- *
- * EMAIL TEMPLATE: See email-previews/03-quote.html for preview
- */
-function sendQuoteEmail(jobNumber) {
-```
-
-The email template mapping is:
-| Preview File | Code.gs Function | Description |
-|-------------|------------------|-------------|
-| 01-admin-notification.html | sendEmailNotification() | Admin notification for new form submissions |
-| 02-user-confirmation.html | sendUserConfirmationEmail() | User confirmation after form submission |
-| 03-quote.html | sendQuoteEmail() / generateQuoteEmailHtml() | Standard quote email |
-| 04-quote-with-deposit.html | sendQuoteEmail() / generateQuoteEmailHtml() | Quote for $200+ jobs requiring deposit |
-| 05-quote-reminder.html | sendQuoteReminder() | Quote follow-up reminder |
-| 06-status-in-progress.html | sendStatusUpdateEmail() | Job status: In Progress |
-| 07-status-on-hold.html | sendStatusUpdateEmail() | Job status: On Hold |
-| 08-status-completed.html | sendStatusUpdateEmail() | Job status: Completed |
-| 09-invoice.html | sendInvoiceEmail() | Standard invoice |
-| 10-deposit-invoice.html | sendInvoiceEmailSilent() | Deposit invoice (50% for $200+ jobs) |
-| 11-invoice-reminder.html | sendInvoiceReminder() | Pre-due date payment reminder |
-| 12-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
-| 13-payment-receipt.html | sendPaymentReceiptEmail() | Payment confirmation receipt |
-
-### Email Template Sync Script
-A Python script (`sync-email-templates.py`) is available to sync HTML preview files to Code.gs:
-
-```bash
-# Preview changes without modifying files
-python sync-email-templates.py --dry-run
-
-# Sync all configured templates
-python sync-email-templates.py
-
-# Sync a specific template
-python sync-email-templates.py --template 05-quote-reminder
-```
-
-The script:
-1. Reads the HTML preview file
-2. Converts static placeholders (e.g., "Sarah", "JOB-0042") to JavaScript template variables (e.g., `${clientName}`, `${jobNumber}`)
-3. Finds the corresponding function in Code.gs
-4. Replaces the `htmlBody` template literal with the updated HTML
-
-**Note**: Not all templates are configured in the script yet. Add new template configurations to the `EMAIL_TEMPLATES` dict in the script as needed.
+### Current Template Files
+| Template File | Used By | Description |
+|--------------|---------|-------------|
+| email-admin-notification.html | sendEmailNotification() | Admin notification for new submissions |
+| email-user-confirmation.html | sendUserConfirmationEmail() | User confirmation after submission |
+| email-quote.html | sendQuoteEmail() | Quote emails |
+| email-invoice.html | sendInvoiceEmail(), sendInvoiceEmailSilent() | Standard and deposit invoices |
+| email-balance-invoice.html | sendInvoiceEmailSilent() | Balance invoice (final payment after deposit) |
+| email-status-update.html | sendStatusUpdateEmail() | Job status update emails |
+| email-payment-receipt.html | sendPaymentReceiptEmail() | Payment confirmation |
+| email-invoice-reminder.html | sendInvoiceReminder() | Pre-due date reminder |
+| email-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
 
 ## Apps Script Debugging
 **IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.

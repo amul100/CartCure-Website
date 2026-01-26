@@ -1,0 +1,129 @@
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: <?= colors.paperCream ?>;">
+  <tr>
+    <td align="center" style="padding: 40px 20px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid <?= colors.paperBorder ?>; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+        <!-- Header with Logo -->
+        <tr>
+          <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid <?= colors.paperBorder ?>;">
+            <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+          </td>
+        </tr>
+
+        <!-- Main Heading -->
+        <tr>
+          <td style="padding: 0;">
+            <div style="background-color: <?= colors.brandGreen ?>; padding: 25px 40px; text-align: center;">
+              <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: bold; font-family: Georgia, 'Times New Roman', serif;">
+                Balance Invoice
+              </h1>
+              <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                <?= invoiceNumber ?> · Job: <?= jobNumber ?>
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Balance Invoice Notice with Payment Summary -->
+        <tr>
+          <td style="padding: 25px 40px 20px 40px;">
+            <div style="background-color: <?= colors.depositBlueBg ?>; border: 3px solid <?= colors.depositBlue ?>; padding: 15px; border-radius: 4px;">
+              <p style="margin: 0; color: <?= colors.depositBlueDark ?>; font-size: 16px; font-weight: bold;">Balance Invoice - Final Payment</p>
+              <p style="margin: 10px 0 0 0; color: <?= colors.inkBlack ?>; font-size: 13px; line-height: 1.6;">
+                Your work has been completed. This invoice is for the remaining balance after your deposit.
+              </p>
+              <table style="margin-top: 15px; width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.inkGray ?>;">Total Job Amount:</td>
+                  <td align="right" style="padding: 8px 0; color: <?= colors.inkBlack ?>; font-weight: bold;">$<?= totalJobAmount ?></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.brandGreen ?>;">Deposit Paid<?= depositPaidText ?>:</td>
+                  <td align="right" style="padding: 8px 0; color: <?= colors.brandGreen ?>; font-weight: bold;">-$<?= depositAmount ?></td>
+                </tr>
+                <tr style="border-top: 2px solid <?= colors.depositBlue ?>;">
+                  <td style="padding: 12px 0 0 0; color: <?= colors.depositBlueDark ?>; font-weight: bold;">Remaining Balance:</td>
+                  <td align="right" style="padding: 12px 0 0 0; color: <?= colors.depositBlueDark ?>; font-size: 18px; font-weight: bold;">$<?= balanceDue ?></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding: 10px 40px 20px 40px;">
+            <p style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              Hi <?= clientName ?>,
+            </p>
+            <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              Thank you for your patience while we completed your work. Please find your final balance invoice below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Invoice Details -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid <?= colors.paperBorder ?>; padding-bottom: 10px;">
+              Invoice Details
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td width="48%" style="background-color: <?= colors.paperCream ?>; border: 1px solid <?= colors.paperBorder ?>; padding: 15px; vertical-align: top;">
+                  <span style="color: <?= colors.inkGray ?>; font-size: 12px; text-transform: uppercase;">Invoice Date</span>
+                  <br>
+                  <span style="color: <?= colors.brandGreen ?>; font-size: 18px; font-weight: bold;"><?= invoiceDate ?></span>
+                </td>
+                <td width="4%"></td>
+                <td width="48%" style="background-color: <?= colors.paperCream ?>; border: 1px solid <?= colors.paperBorder ?>; padding: 15px; vertical-align: top;">
+                  <span style="color: <?= colors.inkGray ?>; font-size: 12px; text-transform: uppercase;">Due Date</span>
+                  <br>
+                  <span style="color: <?= colors.brandGreen ?>; font-size: 18px; font-weight: bold;"><?= dueDate ?></span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Pricing -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid <?= colors.paperBorder ?>; padding-bottom: 10px;">
+              Amount Due
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: <?= colors.paperCream ?>; border: 1px solid <?= colors.paperBorder ?>;">
+              <?!= pricingRowsHtml ?>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Payment Details -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <div style="background-color: <?= colors.alertBg ?>; border: 2px solid <?= colors.alertBorder ?>; padding: 15px;">
+              <p style="margin: 0 0 10px 0; color: <?= colors.inkBlack ?>; font-weight: bold;">Payment Details:</p>
+              <p style="margin: 0; color: <?= colors.inkGray ?>; font-size: 14px; line-height: 1.6;">
+                <?!= bankDetailsHtml ?>
+                Reference: <?= invoiceNumber ?>
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 25px 40px; background-color: <?= colors.paperCream ?>; border-top: 2px solid <?= colors.paperBorder ?>;">
+            <p style="margin: 0; color: <?= colors.inkLight ?>; font-size: 12px; text-align: center;">
+              Questions? Just reply to this email.<br>
+              <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
+              <?!= gstFooterLine ?>
+              <a href="https://cartcure.co.nz" style="color: <?= colors.brandGreen ?>;">cartcure.co.nz</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
