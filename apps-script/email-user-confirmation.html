@@ -1,0 +1,124 @@
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: <?= colors.paperCream ?>;">
+  <tr>
+    <td align="center" style="padding: 40px 20px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid <?= colors.paperBorder ?>; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+        <!-- Header with Logo -->
+        <tr>
+          <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid <?= colors.paperBorder ?>;">
+            <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+          </td>
+        </tr>
+
+        <!-- Main Heading -->
+        <tr>
+          <td style="padding: 0;">
+            <div style="background-color: <?= colors.brandGreen ?>; padding: 25px 40px; text-align: center;">
+              <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 26px; font-weight: bold; font-family: Georgia, 'Times New Roman', serif;">
+                Thanks for reaching out, <?= clientName ?>!
+              </h1>
+              <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                Your reference number: <?= submissionNumber ?>
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding: 25px 40px 20px 40px;">
+            <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              We've received your request and we're excited to help with your Shopify store. Our team will review the details and get back to you within <strong>1-2 business days</strong> with a quote or any follow-up questions.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Submission Details -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid <?= colors.paperBorder ?>; padding-bottom: 10px;">
+              What You Shared With Us
+            </h2>
+
+            <div style="background-color: <?= colors.paperCream ?>; border-left: 4px solid <?= colors.brandGreen ?>; padding: 15px 20px; margin-bottom: 15px;">
+              <p style="margin: 0 0 8px 0; color: <?= colors.inkGray ?>; font-size: 12px; text-transform: uppercase;">Submitted</p>
+              <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 15px;"><?= timestamp ?></p>
+            </div>
+            <?!= storeUrlHtml ?>
+            <div style="background-color: <?= colors.paperCream ?>; border-left: 4px solid <?= colors.brandGreen ?>; padding: 15px 20px;">
+              <p style="margin: 0 0 8px 0; color: <?= colors.inkGray ?>; font-size: 12px; text-transform: uppercase;">Your Message</p>
+              <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 15px; line-height: 1.7; white-space: pre-wrap;"><?!= messageHtml ?></p>
+            </div>
+            <?!= voiceNoteHtml ?>
+          </td>
+        </tr>
+
+        <!-- What's Next -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid <?= colors.paperBorder ?>; padding-bottom: 10px;">
+              What Happens Next
+            </h2>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="padding: 10px 0;">
+                  <table role="presentation" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="width: 30px; vertical-align: top; color: <?= colors.brandGreen ?>; font-size: 18px; font-weight: bold;">1.</td>
+                      <td style="color: <?= colors.inkBlack ?>; font-size: 15px; line-height: 1.6;">We review your request and assess the work needed</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0;">
+                  <table role="presentation" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="width: 30px; vertical-align: top; color: <?= colors.brandGreen ?>; font-size: 18px; font-weight: bold;">2.</td>
+                      <td style="color: <?= colors.inkBlack ?>; font-size: 15px; line-height: 1.6;">We'll email you a clear quote (no surprises!)</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0;">
+                  <table role="presentation" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="width: 30px; vertical-align: top; color: <?= colors.brandGreen ?>; font-size: 18px; font-weight: bold;">3.</td>
+                      <td style="color: <?= colors.inkBlack ?>; font-size: 15px; line-height: 1.6;">Once approved, we get to work — most fixes are completed within 7 days</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Closing -->
+        <tr>
+          <td style="padding: 0 40px 30px 40px;">
+            <p style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              Have questions in the meantime? Just reply to this email — we're happy to help.
+            </p>
+            <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 16px;">
+              Cheers,<br><br>
+              <strong style="color: <?= colors.brandGreen ?>;">The CartCure Team</strong>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 25px 40px; background-color: <?= colors.paperCream ?>; border-top: 2px solid <?= colors.paperBorder ?>;">
+            <p style="margin: 0; color: <?= colors.inkLight ?>; font-size: 12px; text-align: center;">
+              Questions? Just reply to this email.<br>
+              CartCure | Quick Shopify Fixes for NZ Businesses<br>
+              <a href="https://cartcure.co.nz" style="color: <?= colors.brandGreen ?>;">cartcure.co.nz</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>

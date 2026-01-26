@@ -1,0 +1,132 @@
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: <?= colors.paperCream ?>;">
+  <tr>
+    <td align="center" style="padding: 40px 20px;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid <?= colors.paperBorder ?>; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+        <!-- Header with Logo -->
+        <tr>
+          <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid <?= colors.paperBorder ?>;">
+            <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+          </td>
+        </tr>
+
+        <!-- Main Heading -->
+        <tr>
+          <td style="padding: 0;">
+            <div style="background-color: <?= colors.alertRed ?>; padding: 25px 40px; text-align: center;">
+              <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 28px; font-weight: bold; font-family: Georgia, 'Times New Roman', serif;">
+                INVOICE OVERDUE
+              </h1>
+              <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+                Invoice: <?= invoiceNumber ?> · <?= daysOverdue ?> days overdue
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding: 25px 40px 20px 40px;">
+            <p style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              Hi <?= clientName ?>,
+            </p>
+            <p style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              This is an <strong style="color: <?= colors.alertRed ?>;">urgent notice</strong> that your invoice <strong><?= invoiceNumber ?></strong> is now <strong style="color: <?= colors.alertRed ?>;"><?= daysOverdue ?> days overdue</strong>.
+            </p>
+            <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              Per our Terms of Service, a late payment fee of 2% per day applies to overdue balances. Please see the updated amount due below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Invoice Info -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <div style="background-color: <?= colors.paperCream ?>; border: 2px solid <?= colors.paperBorder ?>; padding: 25px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.inkGray ?>; font-size: 14px;">Invoice Number</td>
+                  <td style="padding: 8px 0; color: <?= colors.inkBlack ?>; font-size: 14px; text-align: right; font-weight: bold;"><?= invoiceNumber ?></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.inkGray ?>; font-size: 14px;">Job Reference</td>
+                  <td style="padding: 8px 0; color: <?= colors.inkBlack ?>; font-size: 14px; text-align: right;"><?= jobNumber ?></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.inkGray ?>; font-size: 14px;">Original Invoice Date</td>
+                  <td style="padding: 8px 0; color: <?= colors.inkBlack ?>; font-size: 14px; text-align: right;"><?= invoiceDate ?></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.inkGray ?>; font-size: 14px;">Original Due Date</td>
+                  <td style="padding: 8px 0; color: <?= colors.inkBlack ?>; font-size: 14px; text-align: right;"><?= dueDate ?></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Amount Due Breakdown -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: <?= colors.alertRed ?>; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid <?= colors.alertRed ?>; padding-bottom: 10px; font-weight: bold;">
+              Amount Due
+            </h2>
+            <div style="background-color: <?= colors.paperCream ?>; border: 2px solid <?= colors.paperBorder ?>; padding: 25px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <?!= pricingRowsHtml ?>
+                <tr>
+                  <td style="padding: 8px 0; color: <?= colors.alertRed ?>; font-size: 14px;">Late Fee (2% x <?= daysOverdue ?> days)</td>
+                  <td style="padding: 8px 0; color: <?= colors.alertRed ?>; font-size: 14px; text-align: right;"><?= lateFee ?></td>
+                </tr>
+                <tr><td colspan="2" style="padding: 10px 0;"><hr style="border: none; border-top: 2px solid <?= colors.brandGreen ?>;"></td></tr>
+                <tr style="background-color: <?= colors.alertRedBg ?>;">
+                  <td style="padding: 12px 8px; color: <?= colors.alertRed ?>; font-size: 18px; font-weight: bold;">TOTAL NOW DUE</td>
+                  <td style="padding: 12px 8px; color: <?= colors.alertRed ?>; font-size: 22px; font-weight: bold; text-align: right;"><?= totalWithFees ?></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <?!= paymentDetailsHtml ?>
+
+        <!-- Warning Box -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <div style="background-color: <?= colors.alertRedBg ?>; border: 3px solid <?= colors.alertRed ?>; padding: 20px;">
+              <p style="margin: 0; color: <?= colors.alertRed ?>; font-size: 15px; line-height: 1.6; font-weight: bold;">IMPORTANT: Late fees continue to accrue at 2% per day until payment is received. Please arrange payment immediately to avoid additional fees.</p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Closing -->
+        <tr>
+          <td style="padding: 0 40px 30px 40px;">
+            <p style="margin: 0 0 20px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              If you have already made payment, please disregard this notice and accept our apologies for the crossed communication.
+            </p>
+            <p style="margin: 0 0 20px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
+              If you have any questions or need to discuss payment arrangements, please reply to this email.
+            </p>
+            <p style="margin: 0; color: <?= colors.inkBlack ?>; font-size: 16px;">
+              Thanks,<br>
+              <strong style="color: <?= colors.brandGreen ?>;">The CartCure Team</strong>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 25px 40px; background-color: <?= colors.paperCream ?>; border-top: 2px solid <?= colors.paperBorder ?>;">
+            <p style="margin: 0; color: <?= colors.inkLight ?>; font-size: 12px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+              <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
+              <?!= gstFooterLine ?>
+              <a href="https://cartcure.co.nz" style="color: <?= colors.brandGreen ?>; text-decoration: none;">cartcure.co.nz</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
