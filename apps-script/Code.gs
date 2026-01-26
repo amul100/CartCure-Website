@@ -5276,99 +5276,6 @@ function showOverdueInvoicesWithFees() {
   );
 }
 
-/**
- * Generate a balance invoice for a job that had a deposit
- * Used for medium/large projects after work completion
- */
-function generateBalanceInvoice(jobNumber) {
-  const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const job = getJobByNumber(jobNumber);
-
-  if (!job) {
-    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
-    return;
-  }
-
-  // Get existing invoices
-  const existingInvoices = getInvoicesByJobNumber(jobNumber);
-  const depositInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
-
-  if (!depositInvoice) {
-    ui.alert('No Deposit Found',
-      'No deposit invoice found for this job.\nUse Generate Invoice for a full invoice.',
-      ui.ButtonSet.OK
-    );
-    return;
-  }
-
-  // Check if balance already exists
-  const balanceInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Balance');
-  if (balanceInvoice) {
-    ui.alert('Balance Exists',
-      'A balance invoice (' + balanceInvoice['Invoice #'] + ') already exists for this job.',
-      ui.ButtonSet.OK
-    );
-    return;
-  }
-
-  const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
-  const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices.length);
-  const now = new Date();
-  const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
-  const dueDate = new Date(now);
-  dueDate.setDate(dueDate.getDate() + paymentTerms);
-
-  // Calculate balance (total - deposit)
-  const totalAmount = parseFloat(job['Quote Amount (excl GST)']) || 0;
-  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
-  const totalGst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
-  const totalWithGst = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || 0) : totalAmount;
-
-  const depositAmount = parseFloat(depositInvoice['Amount (excl GST)']) || 0;
-  const depositGst = isGSTRegistered ? (parseFloat(depositInvoice['GST']) || 0) : 0;
-
-  const balanceAmount = totalAmount - depositAmount;
-  const balanceGst = totalGst - depositGst;
-  const balanceTotal = balanceAmount + balanceGst;
-
-  const invoiceRow = [
-    invoiceNumber,
-    jobNumber,
-    job['Client Name'],
-    job['Client Email'],
-    job['Client Phone'] || '',
-    formatNZDate(now),
-    formatNZDate(dueDate),
-    balanceAmount.toFixed(2),
-    balanceGst.toFixed(2),
-    balanceTotal.toFixed(2),
-    'Draft',
-    '',  // Sent Date
-    '',  // Paid Date
-    '',  // Payment Reference
-    '',  // Days Overdue
-    '',  // Late Fee
-    balanceTotal.toFixed(2),  // Total With Fees
-    'Balance',
-    ''   // Notes
-  ];
-
-  invoiceSheet.appendRow(invoiceRow);
-  updateJobField(jobNumber, 'Invoice #', invoiceNumber);
-
-  ui.alert('Balance Invoice Generated',
-    'Invoice ' + invoiceNumber + ' created!\n\n' +
-    'Type: Balance (remaining 50%)\n' +
-    'Amount: ' + formatCurrency(balanceTotal) + '\n' +
-    'Due Date: ' + formatNZDate(dueDate) + '\n\n' +
-    'Use CartCure > Invoices > Send Invoice to email it.',
-    ui.ButtonSet.OK
-  );
-
-  Logger.log('Balance invoice ' + invoiceNumber + ' generated for ' + jobNumber);
-}
-
 // ============================================================================
 // DROPDOWN HELPER FUNCTIONS
 // ============================================================================
@@ -8134,7 +8041,9 @@ function markQuoteDeclined(jobNumber) {
  */
 function showGenerateInvoiceDialog() {
   const selectedJob = getSelectedJobNumber();
-  const jobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
+  // Show jobs that may need invoices: Completed jobs (for full/balance invoices)
+  // and Accepted jobs (for deposit invoices on $200+ jobs)
+  const jobs = getJobsByStatus([JOB_STATUS.COMPLETED, JOB_STATUS.ACCEPTED, JOB_STATUS.IN_PROGRESS]);
   showContextAwareDialog(
     'Generate Invoice',
     jobs,
@@ -8145,40 +8054,7 @@ function showGenerateInvoiceDialog() {
 }
 
 /**
- * Show dialog to generate balance invoice for jobs with deposits
- */
-function showGenerateBalanceInvoiceDialog() {
-  const selectedJob = getSelectedJobNumber();
-  // Get completed jobs that have a deposit invoice
-  const completedJobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
-
-  // Filter to only jobs with deposit invoices
-  const jobsWithDeposits = completedJobs.filter(job => {
-    const invoices = getInvoicesByJobNumber(job['Job #']);
-    return invoices.some(inv => inv['Invoice Type'] === 'Deposit') &&
-           !invoices.some(inv => inv['Invoice Type'] === 'Balance');
-  });
-
-  if (jobsWithDeposits.length === 0) {
-    SpreadsheetApp.getUi().alert('No Jobs Need Balance Invoice',
-      'No completed jobs with pending balance invoices found.\n\n' +
-      'Balance invoices are for jobs that had a deposit invoice.',
-      SpreadsheetApp.getUi().ButtonSet.OK
-    );
-    return;
-  }
-
-  showContextAwareDialog(
-    'Generate Balance Invoice',
-    jobsWithDeposits,
-    'Job',
-    'generateBalanceInvoice',
-    selectedJob
-  );
-}
-
-/**
- * Generate an invoice for a job
+ * Generate an invoice for a job (unified function - auto-detects Full/Deposit/Balance)
  */
 function generateInvoiceForJob(jobNumber) {
   const ui = SpreadsheetApp.getUi();
