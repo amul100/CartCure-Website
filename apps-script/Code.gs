@@ -2280,6 +2280,636 @@ const SHEET_COLORS = {
 };
 
 // ============================================================================
+// COLUMN CONFIGURATION SYSTEM
+// ============================================================================
+// Single source of truth for all sheet column definitions.
+// To reorder columns, just change the order here - no other code changes needed.
+//
+// Each column can have:
+// - name: (required) Header text and identifier
+// - width: (required) Column width in pixels
+// - validation: (optional) { type: 'list'|'checkbox', values: [...], allowInvalid: bool }
+// - format: (optional) { conditionalRules: [...], numberFormat, wrapText }
+// - formula: (optional) Template string with {{COL_NAME}} placeholders for column letters
+// - defaultValue: (optional) Default value for new rows
+// ============================================================================
+
+const COLUMN_CONFIG = {
+  // -------------------------------------------------------------------------
+  // JOBS SHEET (31 columns)
+  // -------------------------------------------------------------------------
+  JOBS: [
+    {
+      name: 'Status',
+      width: 100,
+      validation: { type: 'list', values: Object.values(JOB_STATUS), allowInvalid: false },
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: JOB_STATUS.IN_PROGRESS, background: SHEET_COLORS.statusActive, fontColor: SHEET_COLORS.statusActiveText, bold: true },
+          { when: 'equals', value: JOB_STATUS.COMPLETED, background: SHEET_COLORS.statusCompleted, fontColor: SHEET_COLORS.statusCompletedText },
+          { when: 'equals', value: JOB_STATUS.CANCELLED, background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText },
+          { when: 'equals', value: JOB_STATUS.ON_HOLD, background: SHEET_COLORS.slaAtRisk, fontColor: SHEET_COLORS.slaAtRiskText },
+          { when: 'equals', value: JOB_STATUS.DECLINED, background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText }
+        ]
+      },
+      defaultValue: JOB_STATUS.PENDING_QUOTE
+    },
+    { name: 'Total (incl GST)', width: 100, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Job #', width: 60 },
+    { name: 'Created Date', width: 100 },
+    { name: 'Client Name', width: 120 },
+    { name: 'Client Email', width: 180 },
+    { name: 'Client Phone', width: 120 },
+    { name: 'Store URL', width: 150 },
+    { name: 'Job Description', width: 200 },
+    {
+      name: 'Category',
+      width: 100,
+      validation: { type: 'list', values: JOB_CATEGORIES, allowInvalid: false }
+    },
+    { name: 'Quote Amount (excl GST)', width: 130, format: { numberFormat: '$#,##0.00' } },
+    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Quote Sent Date', width: 110 },
+    { name: 'Quote Valid Until', width: 110 },
+    { name: 'Quote Accepted Date', width: 120 },
+    { name: 'Days Since Accepted', width: 120 },
+    { name: 'Days Remaining', width: 100 },
+    {
+      name: 'SLA Status',
+      width: 80,
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: 'OVERDUE', background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
+          { when: 'equals', value: 'AT RISK', background: SHEET_COLORS.slaAtRisk, fontColor: SHEET_COLORS.slaAtRiskText, bold: true },
+          { when: 'equals', value: 'On Track', background: SHEET_COLORS.slaOnTrack, fontColor: SHEET_COLORS.slaOnTrackText }
+        ]
+      }
+    },
+    { name: 'Estimated Turnaround', width: 130, defaultValue: JOB_CONFIG.DEFAULT_SLA_DAYS },
+    { name: 'Due Date', width: 90 },
+    { name: 'Actual Start Date', width: 110 },
+    { name: 'Actual Completion Date', width: 140 },
+    {
+      name: 'Payment Status',
+      width: 110,
+      validation: { type: 'list', values: Object.values(PAYMENT_STATUS), allowInvalid: false },
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: PAYMENT_STATUS.PAID, background: SHEET_COLORS.paymentPaid, fontColor: SHEET_COLORS.paymentPaidText },
+          { when: 'equals', value: PAYMENT_STATUS.INVOICED, background: SHEET_COLORS.paymentPending, fontColor: SHEET_COLORS.paymentPendingText },
+          { when: 'equals', value: PAYMENT_STATUS.UNPAID, background: SHEET_COLORS.paperWhite, fontColor: SHEET_COLORS.inkGray },
+          { when: 'equals', value: PAYMENT_STATUS.OVERDUE, background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
+          { when: 'equals', value: PAYMENT_STATUS.REFUNDED, background: SHEET_COLORS.paperBeige, fontColor: SHEET_COLORS.inkGray }
+        ]
+      },
+      defaultValue: PAYMENT_STATUS.UNPAID
+    },
+    { name: 'Payment Date', width: 100 },
+    { name: 'Payment Method', width: 110 },
+    { name: 'Payment Reference', width: 120 },
+    { name: 'Invoice #', width: 80 },
+    {
+      name: 'Remaining Balance',
+      width: 120,
+      // Formula uses column name placeholders: {{Total (incl GST)}} and {{Job #}}
+      formula: '=IF({{Total (incl GST)}}{{row}}="","",{{Total (incl GST)}}{{row}}-SUMIFS(\'Invoice Log\'!{{INVOICES.Total}}:{{INVOICES.Total}},\'Invoice Log\'!{{INVOICES.Job #}}:{{INVOICES.Job #}},{{Job #}}{{row}},\'Invoice Log\'!{{INVOICES.Status}}:{{INVOICES.Status}},"Paid"))',
+      format: { numberFormat: '$#,##0.00' }
+    },
+    { name: 'Notes', width: 150 },
+    { name: 'Submission #', width: 90 },
+    { name: 'Last Updated', width: 110 }
+  ],
+
+  // -------------------------------------------------------------------------
+  // INVOICE LOG SHEET (19 columns)
+  // -------------------------------------------------------------------------
+  INVOICES: [
+    { name: 'Invoice #', width: 80 },
+    { name: 'Job #', width: 60 },
+    { name: 'Client Name', width: 120 },
+    { name: 'Client Email', width: 180 },
+    { name: 'Client Phone', width: 120 },
+    { name: 'Invoice Date', width: 100 },
+    { name: 'Due Date', width: 90 },
+    { name: 'Amount (excl GST)', width: 120, format: { numberFormat: '$#,##0.00' } },
+    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total', width: 80, format: { numberFormat: '$#,##0.00' } },
+    {
+      name: 'Status',
+      width: 80,
+      validation: { type: 'list', values: ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], allowInvalid: false },
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: 'Paid', background: SHEET_COLORS.paymentPaid, fontColor: SHEET_COLORS.paymentPaidText },
+          { when: 'equals', value: 'Sent', background: SHEET_COLORS.paymentPending, fontColor: SHEET_COLORS.paymentPendingText },
+          { when: 'equals', value: 'Overdue', background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
+          { when: 'equals', value: 'Cancelled', background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText }
+        ]
+      }
+    },
+    { name: 'Sent Date', width: 90 },
+    { name: 'Paid Date', width: 90 },
+    { name: 'Payment Reference', width: 130 },
+    { name: 'Days Overdue', width: 90 },
+    { name: 'Late Fee', width: 80, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total With Fees', width: 100, format: { numberFormat: '$#,##0.00' } },
+    {
+      name: 'Invoice Type',
+      width: 90,
+      validation: { type: 'list', values: ['Full', 'Deposit', 'Balance', 'Additional'], allowInvalid: false }
+    },
+    { name: 'Notes', width: 150 }
+  ],
+
+  // -------------------------------------------------------------------------
+  // SUBMISSIONS SHEET (10 columns)
+  // -------------------------------------------------------------------------
+  SUBMISSIONS: [
+    {
+      name: 'Status',
+      width: 70,
+      validation: { type: 'list', values: ['New', 'In Review', 'Job Created', 'Declined', 'Spam'], allowInvalid: false },
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: 'In Review', background: SHEET_COLORS.statusActive, fontColor: SHEET_COLORS.statusActiveText },
+          { when: 'equals', value: 'Job Created', background: SHEET_COLORS.statusCompleted, fontColor: SHEET_COLORS.statusCompletedText },
+          { when: 'equals', value: 'Declined', background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText },
+          { when: 'equals', value: 'Spam', background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText }
+        ]
+      }
+    },
+    { name: 'Submission #', width: 100 },
+    { name: 'Timestamp', width: 140 },
+    { name: 'Name', width: 120 },
+    { name: 'Email', width: 180 },
+    { name: 'Phone', width: 120 },
+    { name: 'Store URL', width: 150 },
+    { name: 'Message', width: 350, format: { wrapText: true } },
+    { name: 'Has Voice Note', width: 100 },
+    { name: 'Voice Note Link', width: 150 }
+  ],
+
+  // -------------------------------------------------------------------------
+  // TESTIMONIALS SHEET (9 columns)
+  // -------------------------------------------------------------------------
+  TESTIMONIALS: [
+    { name: 'Show on Website', width: 110, validation: { type: 'checkbox' } },
+    { name: 'Submitted', width: 140 },
+    { name: 'Name', width: 120 },
+    { name: 'Business', width: 150 },
+    { name: 'Location', width: 100 },
+    { name: 'Rating', width: 60, validation: { type: 'list', values: ['1', '2', '3', '4', '5'], allowInvalid: false } },
+    { name: 'Testimonial', width: 400, format: { wrapText: true } },
+    { name: 'Job Number', width: 100 },
+    { name: 'Email', width: 180 }
+  ],
+
+  // -------------------------------------------------------------------------
+  // ACTIVITY LOG SHEET (7 columns)
+  // -------------------------------------------------------------------------
+  ACTIVITY_LOG: [
+    { name: 'Timestamp', width: 150 },
+    { name: 'Job #', width: 80 },
+    { name: 'Activity Type', width: 120 },
+    { name: 'Subject/Summary', width: 250 },
+    { name: 'Details', width: 350, format: { wrapText: true } },
+    { name: 'From/To', width: 200 },
+    { name: 'Logged By', width: 80 }
+  ]
+};
+
+// ============================================================================
+// COLUMN HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Gets the 1-based column index for a column name in a specific sheet config.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG (e.g., 'JOBS', 'INVOICES')
+ * @param {string} columnName - The column header name
+ * @returns {number} 1-based column index, or -1 if not found
+ */
+function getColIndex(sheetKey, columnName) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) {
+    Logger.log('Warning: Unknown sheet key: ' + sheetKey);
+    return -1;
+  }
+  const index = config.findIndex(col => col.name === columnName);
+  return index === -1 ? -1 : index + 1; // Convert to 1-based
+}
+
+/**
+ * Gets the Excel-style column letter for a column name.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG (e.g., 'JOBS', 'INVOICES')
+ * @param {string} columnName - The column header name
+ * @returns {string} Column letter (A, B, ... Z, AA, AB...), or '' if not found
+ */
+function getColLetter(sheetKey, columnName) {
+  const index = getColIndex(sheetKey, columnName);
+  if (index === -1) return '';
+  return colIndexToLetter(index);
+}
+
+/**
+ * Converts a 1-based column index to Excel-style letter(s).
+ * @param {number} index - 1-based column index
+ * @returns {string} Column letter (A, B, ... Z, AA, AB...)
+ */
+function colIndexToLetter(index) {
+  let letter = '';
+  let temp = index;
+  while (temp > 0) {
+    temp--;
+    letter = String.fromCharCode(65 + (temp % 26)) + letter;
+    temp = Math.floor(temp / 26);
+  }
+  return letter;
+}
+
+/**
+ * Gets all column headers as an array for a sheet.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @returns {string[]} Array of header names
+ */
+function getColHeaders(sheetKey) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return [];
+  return config.map(col => col.name);
+}
+
+/**
+ * Gets all column widths as an array for a sheet.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @returns {number[]} Array of column widths
+ */
+function getColWidths(sheetKey) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return [];
+  return config.map(col => col.width);
+}
+
+/**
+ * Gets the column configuration for a specific column.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {string} columnName - The column header name
+ * @returns {Object|null} Column config object or null
+ */
+function getColConfig(sheetKey, columnName) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return null;
+  return config.find(col => col.name === columnName) || null;
+}
+
+/**
+ * Builds a row array from a data object using column config.
+ * This ensures row arrays always match the column order defined in COLUMN_CONFIG.
+ *
+ * @param {string} sheetKey - Key in COLUMN_CONFIG (e.g., 'JOBS')
+ * @param {Object} data - Object with column names as keys
+ * @returns {Array} Row array in correct column order
+ *
+ * Example:
+ *   buildRowFromConfig('JOBS', {
+ *     'Status': 'Pending Quote',
+ *     'Job #': 'J-001',
+ *     'Client Name': 'John Doe'
+ *   })
+ *   // Returns: ['Pending Quote', '', 'J-001', '', 'John Doe', '', ...]
+ */
+function buildRowFromConfig(sheetKey, data) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) {
+    throw new Error('Unknown sheet key: ' + sheetKey);
+  }
+
+  return config.map(col => {
+    // Use provided value if exists
+    if (data.hasOwnProperty(col.name)) {
+      return data[col.name];
+    }
+    // Use default value if defined
+    if (col.hasOwnProperty('defaultValue')) {
+      return col.defaultValue;
+    }
+    // Otherwise empty string
+    return '';
+  });
+}
+
+/**
+ * Converts a row array to an object using column config.
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {Array} rowArray - Array of values
+ * @returns {Object} Object with column names as keys
+ */
+function rowToObject(sheetKey, rowArray) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return {};
+
+  const obj = {};
+  config.forEach((col, index) => {
+    obj[col.name] = index < rowArray.length ? rowArray[index] : '';
+  });
+  return obj;
+}
+
+/**
+ * Resolves formula template placeholders with actual column letters.
+ * Supports two placeholder formats:
+ * - {{Column Name}} - column in same sheet
+ * - {{SHEET_KEY.Column Name}} - column in different sheet
+ * - {{row}} - row number
+ *
+ * @param {string} sheetKey - The sheet this formula belongs to (for same-sheet columns)
+ * @param {string} formulaTemplate - Template with placeholders
+ * @param {number} row - Row number to substitute
+ * @returns {string} Formula with column letters substituted
+ */
+function resolveFormula(sheetKey, formulaTemplate, row) {
+  let formula = formulaTemplate;
+
+  // Replace {{row}} with row number
+  formula = formula.replace(/\{\{row\}\}/g, row.toString());
+
+  // Replace {{SHEET_KEY.Column Name}} patterns (cross-sheet references)
+  formula = formula.replace(/\{\{(\w+)\.([^}]+)\}\}/g, (match, otherSheetKey, colName) => {
+    const letter = getColLetter(otherSheetKey, colName);
+    if (!letter) {
+      Logger.log('Warning: Column "' + colName + '" not found in ' + otherSheetKey);
+      return match;
+    }
+    return letter;
+  });
+
+  // Replace {{Column Name}} patterns (same-sheet references)
+  formula = formula.replace(/\{\{([^}]+)\}\}/g, (match, colName) => {
+    const letter = getColLetter(sheetKey, colName);
+    if (!letter) {
+      Logger.log('Warning: Column "' + colName + '" not found in ' + sheetKey);
+      return match;
+    }
+    return letter;
+  });
+
+  return formula;
+}
+
+/**
+ * Builds Dashboard formula with dynamic column references.
+ * @param {string} formulaTemplate - Template using {{JOBS.Column Name}} syntax
+ * @returns {string} Formula with column letters
+ */
+function buildDashboardFormula(formulaTemplate) {
+  return resolveFormula('JOBS', formulaTemplate, 0).replace(/0/g, ''); // Remove any leftover row refs
+}
+
+// ============================================================================
+// SHEET SETUP HELPERS (using column config)
+// ============================================================================
+
+/**
+ * Applies all data validation rules for a sheet based on COLUMN_CONFIG.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row (usually 2)
+ * @param {number} numRows - Number of rows to apply validation to
+ */
+function applyConfigValidation(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  config.forEach((col, index) => {
+    if (!col.validation) return;
+
+    const colIndex = index + 1;
+    const range = sheet.getRange(startRow, colIndex, numRows, 1);
+
+    if (col.validation.type === 'list') {
+      const rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(col.validation.values, true)
+        .setAllowInvalid(col.validation.allowInvalid !== false)
+        .build();
+      range.setDataValidation(rule);
+    } else if (col.validation.type === 'checkbox') {
+      range.insertCheckboxes();
+    }
+  });
+}
+
+/**
+ * Applies all conditional formatting rules for a sheet based on COLUMN_CONFIG.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row (usually 2)
+ * @param {number} numRows - Number of rows to apply formatting to
+ */
+function applyConfigConditionalFormatting(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  // Collect all new rules
+  const newRules = [];
+
+  config.forEach((col, index) => {
+    if (!col.format || !col.format.conditionalRules) return;
+
+    const colIndex = index + 1;
+    const range = sheet.getRange(startRow, colIndex, numRows, 1);
+
+    col.format.conditionalRules.forEach(ruleConfig => {
+      let builder = SpreadsheetApp.newConditionalFormatRule();
+
+      if (ruleConfig.when === 'equals') {
+        builder = builder.whenTextEqualTo(ruleConfig.value);
+      } else if (ruleConfig.when === 'formula') {
+        builder = builder.whenFormulaSatisfied(ruleConfig.formula);
+      }
+
+      if (ruleConfig.background) builder = builder.setBackground(ruleConfig.background);
+      if (ruleConfig.fontColor) builder = builder.setFontColor(ruleConfig.fontColor);
+      if (ruleConfig.bold) builder = builder.setBold(true);
+
+      builder = builder.setRanges([range]);
+      newRules.push(builder.build());
+    });
+  });
+
+  // Get existing rules and filter out rules for columns we're setting
+  const existingRules = sheet.getConditionalFormatRules();
+  const colsWithRules = new Set();
+  config.forEach((col, index) => {
+    if (col.format && col.format.conditionalRules) {
+      colsWithRules.add(index + 1);
+    }
+  });
+
+  const filteredRules = existingRules.filter(rule => {
+    const ranges = rule.getRanges();
+    return !ranges.some(r => colsWithRules.has(r.getColumn()));
+  });
+
+  // Combine filtered existing rules with new rules
+  sheet.setConditionalFormatRules([...filteredRules, ...newRules]);
+}
+
+/**
+ * Applies formulas from COLUMN_CONFIG to a sheet.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row (usually 2)
+ * @param {number} numRows - Number of rows to apply formulas to
+ */
+function applyConfigFormulas(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  config.forEach((col, index) => {
+    if (!col.formula) return;
+
+    const colIndex = index + 1;
+    const formulas = [];
+
+    for (let row = startRow; row < startRow + numRows; row++) {
+      formulas.push([resolveFormula(sheetKey, col.formula, row)]);
+    }
+
+    sheet.getRange(startRow, colIndex, numRows, 1).setFormulas(formulas);
+
+    // Apply number format if specified
+    if (col.format && col.format.numberFormat) {
+      sheet.getRange(startRow, colIndex, numRows, 1).setNumberFormat(col.format.numberFormat);
+    }
+  });
+}
+
+/**
+ * Applies column widths from COLUMN_CONFIG to a sheet.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ */
+function applyConfigColumnWidths(sheet, sheetKey) {
+  const widths = getColWidths(sheetKey);
+  for (let col = 1; col <= widths.length; col++) {
+    sheet.setColumnWidth(col, widths[col - 1]);
+  }
+}
+
+/**
+ * Applies wrap text settings from COLUMN_CONFIG.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row
+ * @param {number} numRows - Number of rows
+ */
+function applyConfigWrapText(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  config.forEach((col, index) => {
+    if (col.format && col.format.wrapText) {
+      const colIndex = index + 1;
+      sheet.getRange(startRow, colIndex, numRows, 1).setWrap(true);
+    }
+  });
+}
+
+/**
+ * Applies number formats from COLUMN_CONFIG.
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row
+ * @param {number} numRows - Number of rows
+ */
+function applyConfigNumberFormats(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  config.forEach((col, index) => {
+    if (col.format && col.format.numberFormat && !col.formula) {
+      // Only apply to non-formula columns (formulas handle their own format)
+      const colIndex = index + 1;
+      sheet.getRange(startRow, colIndex, numRows, 1).setNumberFormat(col.format.numberFormat);
+    }
+  });
+}
+
+// ============================================================================
+// COLUMN MIGRATION UTILITIES
+// ============================================================================
+
+/**
+ * Migrates sheet data when column order changes.
+ * Compares current sheet structure with COLUMN_CONFIG and reorders if needed.
+ *
+ * @param {Sheet} sheet - The sheet to migrate
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @returns {Object} { migrated: boolean, message: string }
+ */
+function migrateSheetColumns(sheet, sheetKey) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) {
+    return { migrated: false, message: 'Unknown sheet key: ' + sheetKey };
+  }
+
+  const expectedHeaders = getColHeaders(sheetKey);
+  const lastCol = sheet.getLastColumn();
+
+  if (lastCol === 0) {
+    return { migrated: false, message: 'Sheet is empty, no migration needed' };
+  }
+
+  const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  // Check if headers match exactly
+  const headersMatch = expectedHeaders.every((h, i) => h === currentHeaders[i]) &&
+                       expectedHeaders.length === currentHeaders.length;
+
+  if (headersMatch) {
+    return { migrated: false, message: 'Headers already match, no migration needed' };
+  }
+
+  Logger.log('Migration needed for ' + sheetKey);
+  Logger.log('Current headers: ' + currentHeaders.join(', '));
+  Logger.log('Expected headers: ' + expectedHeaders.join(', '));
+
+  // Find missing and extra columns
+  const missingColumns = expectedHeaders.filter(h => !currentHeaders.includes(h));
+  const extraColumns = currentHeaders.filter(h => !expectedHeaders.includes(h) && h !== '');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    // No data rows, just set headers
+    sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+    return { migrated: true, message: 'Set headers (no data to migrate)' };
+  }
+
+  // Get all data including headers
+  const allData = sheet.getRange(1, 1, lastRow, currentHeaders.length).getValues();
+
+  // Build new data with correct column order
+  const newData = allData.map((row, rowIndex) => {
+    if (rowIndex === 0) {
+      return expectedHeaders; // Header row
+    }
+    return expectedHeaders.map(expectedCol => {
+      const currentIndex = currentHeaders.indexOf(expectedCol);
+      return currentIndex >= 0 ? row[currentIndex] : '';
+    });
+  });
+
+  // Clear sheet and write new data
+  sheet.clear();
+  sheet.getRange(1, 1, newData.length, expectedHeaders.length).setValues(newData);
+
+  const message = 'Migrated ' + (lastRow - 1) + ' rows. ' +
+                  (missingColumns.length > 0 ? 'Added columns: ' + missingColumns.join(', ') + '. ' : '') +
+                  (extraColumns.length > 0 ? 'Removed columns: ' + extraColumns.join(', ') : '');
+
+  Logger.log(message);
+  return { migrated: true, message: message };
+}
+
+// ============================================================================
 // CUSTOM MENU
 // ============================================================================
 
@@ -3107,51 +3737,14 @@ function setupJobsSheet(ss, clearData) {
     sheet = ss.insertSheet(SHEETS.JOBS);
   }
 
-  // Define headers
-  const headers = [
-    'Status',
-    'Total (incl GST)',
-    'Job #',
-    'Created Date',
-    'Client Name',
-    'Client Email',
-    'Client Phone',
-    'Store URL',
-    'Job Description',
-    'Category',
-    'Quote Amount (excl GST)',
-    'GST',
-    'Quote Sent Date',
-    'Quote Valid Until',
-    'Quote Accepted Date',
-    'Days Since Accepted',
-    'Days Remaining',
-    'SLA Status',
-    'Estimated Turnaround',
-    'Due Date',
-    'Actual Start Date',
-    'Actual Completion Date',
-    'Payment Status',
-    'Payment Date',
-    'Payment Method',
-    'Payment Reference',
-    'Invoice #',
-    'Remaining Balance',
-    'Notes',
-    'Submission #',
-    'Last Updated'
-  ];
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('JOBS');
 
-  // Check if we need to migrate existing sheet (add Remaining Balance column)
-  if (!isNew) {
-    const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const hasRemainingBalance = existingHeaders.includes('Remaining Balance');
-    const invoiceColIndex = existingHeaders.indexOf('Invoice #');
-
-    if (!hasRemainingBalance && invoiceColIndex !== -1 && sheet.getLastRow() > 1) {
-      // Insert new column after Invoice # (which shifts Notes and Last Updated)
-      sheet.insertColumnAfter(invoiceColIndex + 1);
-      Logger.log('Inserted Remaining Balance column at position ' + (invoiceColIndex + 2));
+  // Migrate existing data if column order has changed
+  if (!isNew && sheet.getLastColumn() > 0) {
+    const migration = migrateSheetColumns(sheet, 'JOBS');
+    if (migration.migrated) {
+      Logger.log('Jobs migration: ' + migration.message);
     }
   }
 
@@ -3190,81 +3783,20 @@ function setupJobsSheet(ss, clearData) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths based on header content (no wrap, fixed widths)
-  const jobsColumnWidths = [
-    100,  // Status
-    100,  // Total (incl GST)
-    60,   // Job #
-    100,  // Created Date
-    120,  // Client Name
-    180,  // Client Email
-    120,  // Client Phone
-    150,  // Store URL
-    200,  // Job Description
-    100,  // Category
-    130,  // Quote Amount (excl GST)
-    60,   // GST
-    110,  // Quote Sent Date
-    110,  // Quote Valid Until
-    120,  // Quote Accepted Date
-    120,  // Days Since Accepted
-    100,  // Days Remaining
-    80,   // SLA Status
-    130,  // Estimated Turnaround
-    90,   // Due Date
-    110,  // Actual Start Date
-    140,  // Actual Completion Date
-    110,  // Payment Status
-    100,  // Payment Date
-    110,  // Payment Method
-    120,  // Payment Reference
-    80,   // Invoice #
-    120,  // Remaining Balance
-    150,  // Notes
-    90,   // Submission #
-    110   // Last Updated
-  ];
-  for (let col = 1; col <= headers.length; col++) {
-    sheet.setColumnWidth(col, jobsColumnWidths[col - 1] || 100);
-  }
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'JOBS');
 
-  // Add data validation for Status (column 1)
-  const statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(Object.values(JOB_STATUS), true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, 500, 1).setDataValidation(statusRule);
+  // Apply data validation from config (Status, Category, Payment Status dropdowns)
+  applyConfigValidation(sheet, 'JOBS', 2, 500);
 
-  // Add data validation for Category (column 10)
-  const categoryRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(JOB_CATEGORIES, true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 10, 500, 1).setDataValidation(categoryRule);
+  // Apply conditional formatting from config (Status, SLA, Payment colors)
+  applyConfigConditionalFormatting(sheet, 'JOBS', 2, 500);
 
-  // Add data validation for Payment Status (column 23)
-  const paymentRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(Object.values(PAYMENT_STATUS), true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 23, 500, 1).setDataValidation(paymentRule);
+  // Apply formulas from config (Remaining Balance)
+  applyConfigFormulas(sheet, 'JOBS', 2, 500);
 
-  // Add conditional formatting for SLA Status and other status columns
-  addSLAConditionalFormatting(sheet);
-  addStatusConditionalFormatting(sheet);
-  addPaymentConditionalFormatting(sheet);
-
-  // Add Remaining Balance formula (column 28)
-  // Formula: Total (incl GST) minus sum of paid invoices for this job
-  // Total is column B, Job # is column C
-  const remainingBalanceCol = 28;
-  const balanceFormulas = [];
-  for (let row = 2; row <= 501; row++) {
-    // =IF(B2="","",B2-SUMIFS('Invoice Log'!J:J,'Invoice Log'!B:B,C2,'Invoice Log'!K:K,"Paid"))
-    balanceFormulas.push(['=IF(B' + row + '="","",B' + row + '-SUMIFS(\'Invoice Log\'!J:J,\'Invoice Log\'!B:B,C' + row + ',\'Invoice Log\'!K:K,"Paid"))']);
-  }
-  sheet.getRange(2, remainingBalanceCol, 500, 1).setFormulas(balanceFormulas);
-  sheet.getRange(2, remainingBalanceCol, 500, 1).setNumberFormat('$#,##0.00');
+  // Apply number formats from config
+  applyConfigNumberFormats(sheet, 'JOBS', 2, 500);
 
   Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -3440,27 +3972,16 @@ function setupInvoiceLogSheet(ss, clearData) {
     sheet = ss.insertSheet(SHEETS.INVOICES);
   }
 
-  const headers = [
-    'Invoice #',
-    'Job #',
-    'Client Name',
-    'Client Email',
-    'Client Phone',
-    'Invoice Date',
-    'Due Date',
-    'Amount (excl GST)',
-    'GST',
-    'Total',
-    'Status',
-    'Sent Date',
-    'Paid Date',
-    'Payment Reference',
-    'Days Overdue',
-    'Late Fee',
-    'Total With Fees',
-    'Invoice Type',
-    'Notes'
-  ];
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('INVOICES');
+
+  // Migrate existing data if column order has changed
+  if (!isNew && sheet.getLastColumn() > 0) {
+    const migration = migrateSheetColumns(sheet, 'INVOICES');
+    if (migration.migrated) {
+      Logger.log('Invoices migration: ' + migration.message);
+    }
+  }
 
   // Set headers (row 1 only)
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -3487,48 +4008,17 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   sheet.setFrozenRows(1);
 
-  // Set column widths based on header content (no wrap, fixed widths)
-  const invoiceColumnWidths = [
-    80,   // Invoice #
-    60,   // Job #
-    120,  // Client Name
-    180,  // Client Email
-    120,  // Client Phone
-    100,  // Invoice Date
-    90,   // Due Date
-    120,  // Amount (excl GST)
-    60,   // GST
-    80,   // Total
-    80,   // Status
-    90,   // Sent Date
-    90,   // Paid Date
-    130,  // Payment Reference
-    90,   // Days Overdue
-    80,   // Late Fee
-    100,  // Total With Fees
-    90,   // Invoice Type
-    150   // Notes
-  ];
-  for (let col = 1; col <= headers.length; col++) {
-    sheet.setColumnWidth(col, invoiceColumnWidths[col - 1] || 100);
-  }
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'INVOICES');
 
-  // Add data validation for Status (column 11)
-  const statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 11, 500, 1).setDataValidation(statusRule);
+  // Apply data validation from config (Status, Invoice Type dropdowns)
+  applyConfigValidation(sheet, 'INVOICES', 2, 500);
 
-  // Add data validation for Invoice Type (column 18)
-  const typeRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Full', 'Deposit', 'Balance', 'Additional'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 18, 500, 1).setDataValidation(typeRule);
+  // Apply conditional formatting from config (Status colors)
+  applyConfigConditionalFormatting(sheet, 'INVOICES', 2, 500);
 
-  // Add conditional formatting for invoice Status
-  addInvoiceStatusConditionalFormatting(sheet);
+  // Apply number formats from config
+  applyConfigNumberFormats(sheet, 'INVOICES', 2, 500);
 
   Logger.log('Invoice Log sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -3751,9 +4241,24 @@ function formatDashboardSheet(sheet) {
   sheet.getRange('A4').setValue('📈 Metrics');
   applySectionHeaderStyle(sheet.getRange('A4'));
 
+  // Get column letters dynamically from COLUMN_CONFIG (no hardcoded letters!)
+  const slaCol = getColLetter('JOBS', 'SLA Status');
+  const statusCol = getColLetter('JOBS', 'Status');
+  const totalCol = getColLetter('JOBS', 'Total (incl GST)');
+  const paymentStatusCol = getColLetter('JOBS', 'Payment Status');
+  const paymentDateCol = getColLetter('JOBS', 'Payment Date');
+
   const metricsLabels = [
     ['OVERDUE', 'AT RISK', 'In Progress', 'Pending Quote', 'Quoted', 'Unpaid $', 'Revenue MTD'],
-    ['=COUNTIF(Jobs!R:R,"OVERDUE")', '=COUNTIF(Jobs!R:R,"AT RISK")', '=COUNTIF(Jobs!A:A,"In Progress")', '=COUNTIF(Jobs!A:A,"Pending Quote")', '=COUNTIF(Jobs!A:A,"Quoted")', '=SUMIF(Jobs!W:W,"Unpaid",Jobs!B:B)+SUMIF(Jobs!W:W,"Invoiced",Jobs!B:B)', '=SUMIFS(Jobs!B:B,Jobs!W:W,"Paid",Jobs!X:X,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))']
+    [
+      '=COUNTIF(Jobs!' + slaCol + ':' + slaCol + ',"OVERDUE")',
+      '=COUNTIF(Jobs!' + slaCol + ':' + slaCol + ',"AT RISK")',
+      '=COUNTIF(Jobs!' + statusCol + ':' + statusCol + ',"In Progress")',
+      '=COUNTIF(Jobs!' + statusCol + ':' + statusCol + ',"Pending Quote")',
+      '=COUNTIF(Jobs!' + statusCol + ':' + statusCol + ',"Quoted")',
+      '=SUMIF(Jobs!' + paymentStatusCol + ':' + paymentStatusCol + ',"Unpaid",Jobs!' + totalCol + ':' + totalCol + ')+SUMIF(Jobs!' + paymentStatusCol + ':' + paymentStatusCol + ',"Invoiced",Jobs!' + totalCol + ':' + totalCol + ')',
+      '=SUMIFS(Jobs!' + totalCol + ':' + totalCol + ',Jobs!' + paymentStatusCol + ':' + paymentStatusCol + ',"Paid",Jobs!' + paymentDateCol + ':' + paymentDateCol + ',">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))'
+    ]
   ];
 
   sheet.getRange(5, 1, 2, 7).setValues(metricsLabels);
@@ -4381,65 +4886,40 @@ function refreshAnalytics() {
  */
 function setupSubmissionsSheet(ss) {
   let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  const isNew = !sheet;
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
     Logger.log('Created new Submissions sheet');
   } else {
-    // Clear formatting but keep data
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) {
       Logger.log('Submissions sheet exists with ' + (lastRow - 1) + ' submissions - preserving data');
     }
   }
 
-  // Define headers with Status column first for quick visibility
-  const headers = [
-    'Status',
-    'Submission #',
-    'Timestamp',
-    'Name',
-    'Email',
-    'Phone',
-    'Store URL',
-    'Message',
-    'Has Voice Note',
-    'Voice Note Link'
-  ];
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('SUBMISSIONS');
 
-  // Check if we need to migrate the column order (Status should be column A)
-  const currentHeaders = sheet.getLastRow() > 0 ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
-  const statusIsFirst = currentHeaders[0] === 'Status';
-  const needsStatusColumn = !currentHeaders.includes('Status');
-
-  if (sheet.getLastRow() === 0) {
-    // New sheet - set headers
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  } else if (needsStatusColumn) {
-    // Old format without Status column - insert Status as column A
-    Logger.log('Adding Status column as first column to existing Submissions sheet');
-    sheet.insertColumnBefore(1);
-    sheet.getRange(1, 1).setValue('Status');
-    // Set all existing submissions to 'New' status
-    if (sheet.getLastRow() > 1) {
+  // Migrate existing data if column order has changed
+  if (!isNew && sheet.getLastColumn() > 0) {
+    // Special handling: if Status column doesn't exist, add it with 'New' values
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (!currentHeaders.includes('Status') && sheet.getLastRow() > 1) {
+      Logger.log('Adding Status column as first column to existing Submissions sheet');
+      sheet.insertColumnBefore(1);
+      sheet.getRange(1, 1).setValue('Status');
       sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).setValue('New');
     }
-  } else if (!statusIsFirst) {
-    // Status exists but not in first position - need to migrate
-    Logger.log('Migrating Status column to first position');
-    const statusColIndex = currentHeaders.indexOf('Status') + 1; // 1-based
-    if (statusColIndex > 1) {
-      // Get all Status data
-      const lastRow = sheet.getLastRow();
-      const statusData = sheet.getRange(1, statusColIndex, lastRow, 1).getValues();
-      // Delete the old Status column
-      sheet.deleteColumn(statusColIndex);
-      // Insert new column A
-      sheet.insertColumnBefore(1);
-      // Set Status data in column A
-      sheet.getRange(1, 1, lastRow, 1).setValues(statusData);
+    // Now run standard migration
+    const migration = migrateSheetColumns(sheet, 'SUBMISSIONS');
+    if (migration.migrated) {
+      Logger.log('Submissions migration: ' + migration.message);
     }
   }
+
+  // Set headers
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   // Apply paper-like background
   applyPaperBackground(sheet);
@@ -4464,41 +4944,28 @@ function setupSubmissionsSheet(ss) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths (fixed widths based on header content + padding)
-  const submissionsColumnWidths = [
-    70,   // Status
-    100,  // Submission #
-    140,  // Timestamp
-    120,  // Name
-    180,  // Email
-    120,  // Phone
-    150,  // Store URL
-    350,  // Message (wider, with wrap)
-    100,  // Has Voice Note
-    150   // Voice Note Link
-  ];
-  for (let col = 1; col <= headers.length; col++) {
-    sheet.setColumnWidth(col, submissionsColumnWidths[col - 1] || 100);
-  }
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'SUBMISSIONS');
 
-  // Message column (column 8): enable wrap text only for this column
-  const messageColumn = sheet.getRange(2, 8, 1000, 1);
-  messageColumn.setWrap(true);
+  // Apply wrap text from config (Message column)
+  applyConfigWrapText(sheet, 'SUBMISSIONS', 2, 1000);
 
-  // Add data validation for Status column (now column 1)
-  const statusValues = ['New', 'In Review', 'Job Created', 'Declined', 'Spam'];
-  const statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(statusValues, true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(statusRule);
+  // Apply data validation from config (Status dropdown)
+  applyConfigValidation(sheet, 'SUBMISSIONS', 2, 1000);
 
-  // Add conditional formatting for Status column
-  addSubmissionStatusFormatting(sheet);
+  // Apply conditional formatting from config (Status colors)
+  applyConfigConditionalFormatting(sheet, 'SUBMISSIONS', 2, 1000);
 
   // Enable filtering for all columns
-  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
-  dataRange.createFilter();
+  try {
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
+  } catch (e) {
+    // Filter may already exist
+    Logger.log('Filter already exists or could not be created');
+  }
 
   // Protect the header row from accidental edits
   const protection = sheet.getRange(1, 1, 1, headers.length).protect();
@@ -4583,6 +5050,7 @@ function updateSubmissionsSheet(ss) {
  */
 function setupTestimonialsSheet(ss, clearData) {
   let sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+  const isNew = !sheet;
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.TESTIMONIALS);
@@ -4597,18 +5065,16 @@ function setupTestimonialsSheet(ss, clearData) {
     }
   }
 
-  // Define headers
-  const headers = [
-    'Show on Website',  // Checkbox - TRUE to display on website
-    'Submitted',        // Timestamp
-    'Name',             // Customer name
-    'Business',         // Business name/type
-    'Location',         // City/Region
-    'Rating',           // 1-5 stars
-    'Testimonial',      // The feedback text
-    'Job Number',       // Optional - link to job
-    'Email'             // Customer email (for internal reference only)
-  ];
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('TESTIMONIALS');
+
+  // Migrate existing data if column order has changed
+  if (!isNew && !clearData && sheet.getLastColumn() > 0) {
+    const migration = migrateSheetColumns(sheet, 'TESTIMONIALS');
+    if (migration.migrated) {
+      Logger.log('Testimonials migration: ' + migration.message);
+    }
+  }
 
   // Set headers if sheet is empty or was cleared
   if (sheet.getLastRow() === 0) {
@@ -4638,38 +5104,25 @@ function setupTestimonialsSheet(ss, clearData) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths
-  const columnWidths = [
-    110,  // Show on Website (checkbox)
-    140,  // Submitted
-    120,  // Name
-    150,  // Business
-    100,  // Location
-    60,   // Rating
-    400,  // Testimonial (wider)
-    100,  // Job Number
-    180   // Email
-  ];
-  for (let col = 1; col <= headers.length; col++) {
-    sheet.setColumnWidth(col, columnWidths[col - 1] || 100);
-  }
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'TESTIMONIALS');
 
-  // Enable wrap text for Testimonial column (column 7)
-  // Only apply to existing data rows, not pre-emptively to 1000 rows
+  // Apply wrap text from config (Testimonial column)
   const existingRows = Math.max(sheet.getLastRow() - 1, 1);
-  const testimonialColumn = sheet.getRange(2, 7, existingRows, 1);
-  testimonialColumn.setWrap(true);
+  applyConfigWrapText(sheet, 'TESTIMONIALS', 2, existingRows);
 
   // NOTE: We do NOT pre-populate checkboxes or rating validation for empty rows
   // This was causing getLastRow() to return incorrect values
   // Instead, validation is applied when new testimonials are added (see applyTestimonialRowValidation)
 
   // Add conditional formatting for approved testimonials (green background when checked)
+  // This is a row-level rule using formula, so we apply it manually
+  const showOnWebsiteCol = getColLetter('TESTIMONIALS', 'Show on Website');
   const rules = sheet.getConditionalFormatRules();
   const approvedRange = sheet.getRange(2, 1, 1000, headers.length);
 
   const approvedRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$A2=TRUE')
+    .whenFormulaSatisfied('=$' + showOnWebsiteCol + '2=TRUE')
     .setBackground('#e6f4ea')  // Light green
     .setRanges([approvedRange])
     .build();
@@ -4678,11 +5131,12 @@ function setupTestimonialsSheet(ss, clearData) {
   sheet.setConditionalFormatRules(rules);
 
   // Enable filtering for all columns
-  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
   try {
-    dataRange.createFilter();
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
   } catch (e) {
-    // Filter may already exist
     Logger.log('Filter already exists or could not be created: ' + e.message);
   }
 
@@ -4782,6 +5236,7 @@ function setupActivityLogSheet(ss, clearData) {
   }
 
   let sheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+  const isNew = !sheet;
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.ACTIVITY_LOG);
@@ -4796,16 +5251,16 @@ function setupActivityLogSheet(ss, clearData) {
     }
   }
 
-  // Define headers
-  const headers = [
-    'Timestamp',        // When the activity occurred
-    'Job #',            // Related job number (e.g., J-001)
-    'Activity Type',    // Email Sent, Status Change, Note Added, etc.
-    'Subject/Summary',  // Email subject or brief description
-    'Details',          // Full details or email snippet
-    'From/To',          // Email addresses involved
-    'Logged By'         // Auto or Manual
-  ];
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('ACTIVITY_LOG');
+
+  // Migrate existing data if column order has changed
+  if (!isNew && !clearData && sheet.getLastColumn() > 0) {
+    const migration = migrateSheetColumns(sheet, 'ACTIVITY_LOG');
+    if (migration.migrated) {
+      Logger.log('Activity Log migration: ' + migration.message);
+    }
+  }
 
   // Set headers if sheet is empty or was cleared
   if (sheet.getLastRow() === 0) {
@@ -4835,30 +5290,19 @@ function setupActivityLogSheet(ss, clearData) {
   // Freeze header row
   sheet.setFrozenRows(1);
 
-  // Set column widths
-  const columnWidths = [
-    150,  // Timestamp
-    80,   // Job #
-    120,  // Activity Type
-    250,  // Subject/Summary
-    350,  // Details
-    200,  // From/To
-    80    // Logged By
-  ];
-  for (let col = 1; col <= headers.length; col++) {
-    sheet.setColumnWidth(col, columnWidths[col - 1] || 100);
-  }
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'ACTIVITY_LOG');
 
-  // Enable wrap text for Details column (column 5)
-  const detailsColumn = sheet.getRange(2, 5, 1000, 1);
-  detailsColumn.setWrap(true);
+  // Apply wrap text from config (Details column)
+  applyConfigWrapText(sheet, 'ACTIVITY_LOG', 2, 1000);
 
   // Enable filtering for all columns
-  const dataRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
   try {
-    dataRange.createFilter();
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
   } catch (e) {
-    // Filter may already exist
     Logger.log('Filter already exists or could not be created: ' + e.message);
   }
 
@@ -4867,22 +5311,23 @@ function setupActivityLogSheet(ss, clearData) {
   protection.setDescription('Protected header row');
   protection.setWarningOnly(true);
 
-  // Add refresh checkbox for manual email scan (column I)
-  const refreshLabelCell = sheet.getRange('H1');
+  // Add refresh checkbox for manual email scan (column H+1)
+  const extraCol = headers.length + 1; // Column after main headers
+  const refreshLabelCell = sheet.getRange(1, extraCol);
   refreshLabelCell.setValue('Scan Emails →');
   refreshLabelCell.setFontWeight('bold');
   refreshLabelCell.setFontSize(9);
   refreshLabelCell.setFontColor(SHEET_COLORS.navy);
   refreshLabelCell.setHorizontalAlignment('right');
   refreshLabelCell.setVerticalAlignment('middle');
-  sheet.setColumnWidth(8, 100);
+  sheet.setColumnWidth(extraCol, 100);
 
-  const refreshCheckbox = sheet.getRange('I1');
+  const refreshCheckbox = sheet.getRange(1, extraCol + 1);
   refreshCheckbox.insertCheckboxes();
   refreshCheckbox.setValue(false);
   refreshCheckbox.setBackground('#E8F5E9');
   refreshCheckbox.setBorder(true, true, true, true, false, false, '#4CAF50', SpreadsheetApp.BorderStyle.SOLID);
-  sheet.setColumnWidth(9, 30);
+  sheet.setColumnWidth(extraCol + 1, 30);
 
   Logger.log('Activity Log sheet setup completed successfully');
 }
@@ -6404,41 +6849,20 @@ function createJobFromSubmission(submissionNumber) {
   const storeUrl = submissionRow[headers.indexOf('Store URL')] || submissionRow[6];
   const message = submissionRow[headers.indexOf('Message')] || submissionRow[7];
 
-  // Create job row - matches new column order (Status, Total first)
+  // Create job row using config-based helper (auto-orders columns from COLUMN_CONFIG)
   const now = new Date();
-  const jobRow = [
-    JOB_STATUS.PENDING_QUOTE,    // 1. Status
-    '',                           // 2. Total (incl GST) - calculated from Quote + GST
-    jobNumber,                    // 3. Job #
-    formatNZDate(now),           // 4. Created Date
-    name,                         // 5. Client Name
-    email,                        // 6. Client Email
-    phone,                        // 7. Client Phone
-    storeUrl,                     // 8. Store URL
-    message,                      // 9. Job Description (initially from message)
-    '',                           // 10. Category (to be filled)
-    '',                           // 11. Quote Amount (excl GST)
-    '',                           // 12. GST
-    '',                           // 13. Quote Sent Date
-    '',                           // 14. Quote Valid Until
-    '',                           // 15. Quote Accepted Date
-    '',                           // 16. Days Since Accepted
-    '',                           // 17. Days Remaining
-    '',                           // 18. SLA Status
-    JOB_CONFIG.DEFAULT_SLA_DAYS, // 19. Estimated Turnaround
-    '',                           // 20. Due Date
-    '',                           // 21. Actual Start Date
-    '',                           // 22. Actual Completion Date
-    PAYMENT_STATUS.UNPAID,       // 23. Payment Status
-    '',                           // 24. Payment Date
-    '',                           // 25. Payment Method
-    '',                           // 26. Payment Reference
-    '',                           // 27. Invoice #
-    '',                           // 28. Remaining Balance (formula will calculate)
-    '',                           // 29. Notes
-    submissionNumber,             // 30. Submission #
-    formatNZDate(now)            // 31. Last Updated
-  ];
+  const jobRow = buildRowFromConfig('JOBS', {
+    'Job #': jobNumber,
+    'Created Date': formatNZDate(now),
+    'Client Name': name,
+    'Client Email': email,
+    'Client Phone': phone,
+    'Store URL': storeUrl,
+    'Job Description': message,
+    'Submission #': submissionNumber,
+    'Last Updated': formatNZDate(now)
+    // Status, Payment Status, Estimated Turnaround use defaultValue from COLUMN_CONFIG
+  });
 
   // Add to Jobs sheet
   if (!jobsSheet) {
@@ -6542,10 +6966,11 @@ function getJobByNumber(jobNumber) {
     return null;
   }
 
-  // Verify the found cell is in column A (Job # column)
+  // Verify the found cell is in the Job # column (using config for dynamic lookup)
   // This prevents false positives if job number appears in other columns
-  if (foundRange.getColumn() !== 1) {
-    Logger.log('[PERF] getJobByNumber() - Job number found in wrong column for: ' + jobNumber);
+  const jobNumCol = getColIndex('JOBS', 'Job #');
+  if (foundRange.getColumn() !== jobNumCol) {
+    Logger.log('[PERF] getJobByNumber() - Job number found in wrong column for: ' + jobNumber + ' (expected col ' + jobNumCol + ', found col ' + foundRange.getColumn() + ')');
     return null;
   }
 
@@ -6850,28 +7275,23 @@ function generateAndSendDepositInvoice(jobNumber, job) {
     const depositGst = gst * 0.5;
     const depositTotal = total * 0.5;
 
-    // Create invoice row
-    const invoiceRow = [
-      invoiceNumber,
-      jobNumber,
-      job['Client Name'],
-      job['Client Email'],
-      job['Client Phone'] || '',
-      formatNZDate(now),
-      formatNZDate(dueDate),
-      depositAmount.toFixed(2),
-      depositGst.toFixed(2),
-      depositTotal.toFixed(2),
-      'Draft',  // Will be updated to 'Sent' after email
-      '',  // Sent Date
-      '',  // Paid Date
-      '',  // Payment Reference
-      '',  // Days Overdue
-      '',  // Late Fee
-      depositTotal.toFixed(2),  // Total With Fees
-      'Deposit',  // Invoice Type
-      'Auto-generated on quote acceptance'  // Notes
-    ];
+    // Create invoice row using config-based helper (auto-orders columns from COLUMN_CONFIG)
+    const invoiceRow = buildRowFromConfig('INVOICES', {
+      'Invoice #': invoiceNumber,
+      'Job #': jobNumber,
+      'Client Name': job['Client Name'],
+      'Client Email': job['Client Email'],
+      'Client Phone': job['Client Phone'] || '',
+      'Invoice Date': formatNZDate(now),
+      'Due Date': formatNZDate(dueDate),
+      'Amount (excl GST)': depositAmount.toFixed(2),
+      'GST': depositGst.toFixed(2),
+      'Total': depositTotal.toFixed(2),
+      'Status': 'Draft',
+      'Total With Fees': depositTotal.toFixed(2),
+      'Invoice Type': 'Deposit',
+      'Notes': 'Auto-generated on quote acceptance'
+    });
 
     invoiceSheet.appendRow(invoiceRow);
 
@@ -8575,28 +8995,22 @@ function generateInvoiceForJob(jobNumber) {
     dueDate.setDate(dueDate.getDate() + paymentTerms);
   }
 
-  // Create invoice row
-  const invoiceRow = [
-    invoiceNumber,
-    jobNumber,
-    job['Client Name'],
-    job['Client Email'],
-    job['Client Phone'] || '',
-    formatNZDate(now),
-    formatNZDate(dueDate),
-    invoiceAmount.toFixed(2),
-    invoiceGst.toFixed(2),
-    invoiceTotal.toFixed(2),
-    'Draft',
-    '',  // Sent Date
-    '',  // Paid Date
-    '',  // Payment Reference
-    '',  // Days Overdue (calculated)
-    '',  // Late Fee (calculated)
-    invoiceTotal.toFixed(2),  // Total With Fees (initially same as total)
-    invoiceType,
-    ''   // Notes
-  ];
+  // Create invoice row using config-based helper (auto-orders columns from COLUMN_CONFIG)
+  const invoiceRow = buildRowFromConfig('INVOICES', {
+    'Invoice #': invoiceNumber,
+    'Job #': jobNumber,
+    'Client Name': job['Client Name'],
+    'Client Email': job['Client Email'],
+    'Client Phone': job['Client Phone'] || '',
+    'Invoice Date': formatNZDate(now),
+    'Due Date': formatNZDate(dueDate),
+    'Amount (excl GST)': invoiceAmount.toFixed(2),
+    'GST': invoiceGst.toFixed(2),
+    'Total': invoiceTotal.toFixed(2),
+    'Status': 'Draft',
+    'Total With Fees': invoiceTotal.toFixed(2),
+    'Invoice Type': invoiceType
+  });
 
   invoiceSheet.appendRow(invoiceRow);
 
@@ -11411,11 +11825,8 @@ function createTestJobForTestimonials() {
     const now = new Date();
     const timestamp = formatNZDate(now);
 
-    // Get headers to find column indices
-    const headers = jobsSheet.getRange(1, 1, 1, jobsSheet.getLastColumn()).getValues()[0];
-
-    // Create job data object
-    const jobData = {
+    // Build row array using config-based helper (auto-orders columns from COLUMN_CONFIG)
+    const rowData = buildRowFromConfig('JOBS', {
       'Job #': jobNumber,
       'Submission #': 'TEST-' + randomNum,
       'Created Date': timestamp,
@@ -11437,10 +11848,7 @@ function createTestJobForTestimonials() {
       'Payment Date': timestamp,
       'Notes': 'AUTO-CREATED: Test job for testimonial form testing',
       'Last Updated': timestamp
-    };
-
-    // Build row array based on headers
-    const rowData = headers.map(header => jobData[header] || '');
+    });
 
     // Find first empty row (checking Status column A)
     const jobCol = jobsSheet.getRange('A:A').getValues();
