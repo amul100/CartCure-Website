@@ -2247,12 +2247,18 @@ const SHEET_COLORS = {
   paymentUnpaidText: '#c62828', // Dark red
 
   // Status colors - Job
-  statusActive: '#e3f2fd',      // Light blue for active jobs
-  statusActiveText: '#1565c0',  // Blue text
-  statusCompleted: '#e8f5e9',   // Light green
-  statusCompletedText: '#2d5d3f',// Brand green
-  statusCancelled: '#fafafa',   // Light gray
-  statusCancelledText: '#757575',// Gray text
+  statusPendingQuote: '#fff3e0',    // Light orange - needs our action
+  statusPendingQuoteText: '#e65100',// Dark orange text
+  statusQuoted: '#f3e5f5',          // Light purple - waiting for client
+  statusQuotedText: '#7b1fa2',      // Purple text
+  statusAccepted: '#e8f5e9',        // Light green - ready to start
+  statusAcceptedText: '#2e7d32',    // Green text
+  statusActive: '#e3f2fd',          // Light blue for active jobs
+  statusActiveText: '#1565c0',      // Blue text
+  statusCompleted: '#c8e6c9',       // Medium green - done
+  statusCompletedText: '#1b5e20',   // Dark green text
+  statusCancelled: '#f5f5f5',       // Light gray
+  statusCancelledText: '#757575',   // Gray text
 
   // Dashboard accent colors
   metricBg: '#f5f5f5',          // Light gray for metric labels
@@ -2305,10 +2311,13 @@ const COLUMN_CONFIG = {
       validation: { type: 'list', values: Object.values(JOB_STATUS), allowInvalid: false },
       format: {
         conditionalRules: [
+          { when: 'equals', value: JOB_STATUS.PENDING_QUOTE, background: SHEET_COLORS.statusPendingQuote, fontColor: SHEET_COLORS.statusPendingQuoteText },
+          { when: 'equals', value: JOB_STATUS.QUOTED, background: SHEET_COLORS.statusQuoted, fontColor: SHEET_COLORS.statusQuotedText },
+          { when: 'equals', value: JOB_STATUS.ACCEPTED, background: SHEET_COLORS.statusAccepted, fontColor: SHEET_COLORS.statusAcceptedText },
           { when: 'equals', value: JOB_STATUS.IN_PROGRESS, background: SHEET_COLORS.statusActive, fontColor: SHEET_COLORS.statusActiveText, bold: true },
           { when: 'equals', value: JOB_STATUS.COMPLETED, background: SHEET_COLORS.statusCompleted, fontColor: SHEET_COLORS.statusCompletedText },
-          { when: 'equals', value: JOB_STATUS.CANCELLED, background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText },
           { when: 'equals', value: JOB_STATUS.ON_HOLD, background: SHEET_COLORS.slaAtRisk, fontColor: SHEET_COLORS.slaAtRiskText },
+          { when: 'equals', value: JOB_STATUS.CANCELLED, background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText },
           { when: 'equals', value: JOB_STATUS.DECLINED, background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText }
         ]
       },
