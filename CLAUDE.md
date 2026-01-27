@@ -114,9 +114,13 @@ This ensures you get a debug file even if the function fails immediately.
 
 1. **For menu functions, triggers, and spreadsheet UI code**: Just git push. Clasp is linked and runs automatically. Changes take effect immediately.
 
-2. **For the web app endpoint (`doPost()`)**: After git push, you also need to create a new version via "Manage Deployments" in Apps Script. Select the deployment and create a new version.
+2. **For the web app endpoint (`doPost()` or `doGet()`)**: After git push, you MUST also deploy a new version using clasp:
+   ```bash
+   cd apps-script && npx @google/clasp deploy -i AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg -d "Description of changes"
+   ```
+   **AUTOMATICALLY run this command** whenever `doPost()` or `doGet()` functions are modified. Do not wait to be asked.
 
-**DO NOT say "redeploy"** - this is incorrect terminology. The correct process is to manage deployments and create a new version if needed for web app changes.
+**DO NOT say "redeploy"** - this is incorrect terminology. The correct process is to deploy a new version which updates the existing deployment.
 
 ## Git Commands
 ```bash
