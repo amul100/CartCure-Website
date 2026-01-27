@@ -2058,6 +2058,7 @@ function onOpen() {
       .addItem('Mark Quote Declined', 'showDeclineQuoteDialog'))
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('Generate Invoice', 'showGenerateInvoiceDialog')
+      .addItem('View Invoice', 'showViewInvoiceDialog')
       .addItem('Send Invoice', 'showSendInvoiceDialog')
       .addItem('Send Invoice Reminder', 'showSendInvoiceReminderDialog')
       .addItem('Mark as Paid', 'showMarkPaidDialog')
@@ -8250,16 +8251,10 @@ function generateInvoiceForJob(jobNumber) {
   // Update job with latest invoice number
   updateJobField(jobNumber, 'Invoice #', invoiceNumber);
 
-  ui.alert('Invoice Generated',
-    'Invoice ' + invoiceNumber + ' created!' + invoiceTypeMessage + '\n\n' +
-    'Type: ' + invoiceType + '\n' +
-    'Amount: ' + formatCurrency(invoiceTotal) + '\n' +
-    'Due Date: ' + formatNZDate(dueDate) + '\n\n' +
-    'Use CartCure > Invoices > Send Invoice to email it.',
-    ui.ButtonSet.OK
-  );
-
   Logger.log('Invoice ' + invoiceNumber + ' (' + invoiceType + ') generated for ' + jobNumber);
+
+  // Show preview of the generated invoice
+  previewInvoiceEmail(invoiceNumber);
 }
 
 /**
@@ -8729,6 +8724,292 @@ function sendInvoiceEmail(invoiceNumber) {
     Logger.log('Error sending invoice: ' + error.message);
     ui.alert('Error', 'Failed to send invoice: ' + error.message, ui.ButtonSet.OK);
   }
+}
+
+/**
+ * Render invoice email HTML for preview (without sending)
+ * This reuses the same logic as sendInvoiceEmail but returns HTML instead
+ *
+ * @param {string} invoiceNumber - The invoice number to preview
+ * @returns {Object} Result with success, html, subject, or error
+ */
+function renderInvoiceEmailPreview(invoiceNumber) {
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    return { success: false, error: 'Invoice ' + invoiceNumber + ' not found.' };
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const clientEmail = invoice['Client Email'];
+  const jobNumber = invoice['Job #'];
+  const amount = invoice['Amount (excl GST)'];
+  const gst = invoice['GST'];
+  const total = invoice['Total'];
+  const dueDate = invoice['Due Date'];
+  const invoiceType = invoice['Invoice Type'] || 'Full';
+  const status = invoice['Status'] || 'Draft';
+
+  // Determine subject based on invoice type
+  let subject = 'Invoice ' + invoiceNumber + ' from CartCure';
+  if (invoiceType === 'Balance') {
+    subject = 'Balance Invoice ' + invoiceNumber + ' from CartCure (Final Payment)';
+  }
+
+  // Get deposit invoice info for balance invoices
+  let depositInfo = null;
+  let totalJobAmount = 0;
+  if (invoiceType === 'Balance') {
+    const allInvoices = getInvoicesByJobNumber(jobNumber);
+    const depositInvoice = allInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+    if (depositInvoice) {
+      const job = getJobByNumber(jobNumber);
+      const jobTotal = job ? (parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0) : 0;
+      totalJobAmount = isGSTRegistered ? jobTotal : (parseFloat(job['Quote Amount (excl GST)']) || 0);
+      depositInfo = {
+        amount: parseFloat(depositInvoice['Total']) || parseFloat(depositInvoice['Amount (excl GST)']) || 0,
+        paidDate: depositInvoice['Paid Date'] || null,
+        invoiceNumber: depositInvoice['Invoice #']
+      };
+    }
+  }
+
+  // Build pricing section
+  const gstValue = parseFloat(gst);
+  const displayTotal = isGSTRegistered ? total : amount;
+
+  // Build pricing rows HTML
+  let pricingRowsHtml = '';
+  if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
+    pricingRowsHtml = `
+      <tr>
+        <td style="padding: 12px 15px; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+          <span style="color: ${EMAIL_COLORS.inkGray};">Subtotal (excl. GST)</span>
+        </td>
+        <td align="right" style="padding: 12px 15px; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+          <span style="color: ${EMAIL_COLORS.inkBlack}; font-weight: bold;">$${amount}</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 12px 15px; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+          <span style="color: ${EMAIL_COLORS.inkGray};">GST (15%)</span>
+        </td>
+        <td align="right" style="padding: 12px 15px; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+          <span style="color: ${EMAIL_COLORS.inkBlack};">$${gst}</span>
+        </td>
+      </tr>
+      <tr style="background-color: ${EMAIL_COLORS.brandGreen};">
+        <td style="padding: 15px;">
+          <span style="color: #ffffff; font-weight: bold;">TOTAL DUE (incl. GST)</span>
+        </td>
+        <td align="right" style="padding: 15px;">
+          <span style="color: #ffffff; font-size: 20px; font-weight: bold;">$${total}</span>
+        </td>
+      </tr>
+    `;
+  } else {
+    pricingRowsHtml = `
+      <tr style="background-color: ${EMAIL_COLORS.brandGreen};">
+        <td style="padding: 15px;">
+          <span style="color: #ffffff; font-weight: bold;">TOTAL DUE</span>
+        </td>
+        <td align="right" style="padding: 15px;">
+          <span style="color: #ffffff; font-size: 20px; font-weight: bold;">$${displayTotal}</span>
+        </td>
+      </tr>
+    `;
+  }
+
+  // Build bank details HTML
+  let bankDetailsHtml = '';
+  if (bankName) bankDetailsHtml += 'Bank: ' + bankName + '<br>';
+  if (bankAccount) bankDetailsHtml += 'Account: ' + bankAccount + '<br>';
+
+  // GST footer line
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+  // Render template based on invoice type
+  let bodyContent;
+  if (invoiceType === 'Balance' && depositInfo) {
+    const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+    bodyContent = renderEmailTemplate('email-balance-invoice', {
+      invoiceNumber: invoiceNumber,
+      jobNumber: jobNumber,
+      clientName: clientName,
+      invoiceDate: formatNZDate(new Date()),
+      dueDate: dueDate,
+      totalJobAmount: totalJobAmount.toFixed(2),
+      depositAmount: depositInfo.amount.toFixed(2),
+      depositPaidText: depositPaidText,
+      balanceDue: displayTotal,
+      pricingRowsHtml: pricingRowsHtml,
+      bankDetailsHtml: bankDetailsHtml,
+      gstFooterLine: gstFooterLine,
+      businessName: businessName
+    });
+  } else {
+    bodyContent = renderEmailTemplate('email-invoice', {
+      headingTitle: 'Invoice',
+      invoiceNumber: invoiceNumber,
+      jobNumber: jobNumber,
+      clientName: clientName,
+      greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
+      invoiceDate: formatNZDate(new Date()),
+      dueDate: dueDate,
+      pricingRowsHtml: pricingRowsHtml,
+      depositNoticeHtml: '',
+      bankDetailsHtml: bankDetailsHtml,
+      gstFooterLine: gstFooterLine,
+      businessName: businessName
+    });
+  }
+
+  const htmlBody = wrapEmailHtml(bodyContent);
+
+  return {
+    success: true,
+    html: htmlBody,
+    subject: subject,
+    invoiceNumber: invoiceNumber,
+    invoiceType: invoiceType,
+    status: status,
+    clientEmail: clientEmail,
+    clientName: clientName,
+    total: displayTotal
+  };
+}
+
+/**
+ * Show invoice email preview in a modal dialog
+ * Uses iframe to render the email HTML exactly as it would appear in an email client
+ *
+ * @param {string} invoiceNumber - The invoice number to preview
+ */
+function previewInvoiceEmail(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const result = renderInvoiceEmailPreview(invoiceNumber);
+
+  if (!result.success) {
+    ui.alert('Error', result.error, ui.ButtonSet.OK);
+    return;
+  }
+
+  // Escape the HTML for use in srcdoc attribute
+  const escapedHtml = result.html
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;');
+
+  // Create preview dialog with iframe to render email exactly
+  const previewHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .header { background: #f5f5f5; padding: 10px 15px; border-bottom: 1px solid #ddd; font-size: 12px; }
+        .header-row { margin: 2px 0; }
+        .header-row strong { color: #666; }
+        .status { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-sent { background: #d4edda; color: #155724; }
+        .status-paid { background: #cce5ff; color: #004085; }
+        .status-overdue { background: #f8d7da; color: #721c24; }
+        .email-frame { flex: 1; border: none; width: 100%; }
+        .actions { padding: 10px; text-align: right; background: #f5f5f5; border-top: 1px solid #ddd; }
+        .btn { padding: 8px 16px; margin-left: 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-send { background: #2d5d3f; color: white; }
+        .btn-send:hover { background: #1e4a2f; }
+        .btn-close { background: #6c757d; color: white; }
+        .btn-close:hover { background: #545b62; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-row"><strong>To:</strong> ${result.clientName} &lt;${result.clientEmail}&gt;</div>
+        <div class="header-row"><strong>Subject:</strong> ${result.subject}</div>
+        <div class="header-row"><strong>Invoice:</strong> ${result.invoiceNumber} (${result.invoiceType}) <span class="status status-${result.status.toLowerCase()}">${result.status}</span></div>
+      </div>
+      <iframe class="email-frame" srcdoc="${escapedHtml}"></iframe>
+      <div class="actions">
+        <button class="btn btn-close" onclick="google.script.host.close()">Close</button>
+        ${result.status === 'Draft' ? '<button class="btn btn-send" onclick="sendInvoice()">Send Invoice</button>' : ''}
+      </div>
+      <script>
+        function sendInvoice() {
+          document.querySelector('.btn-send').disabled = true;
+          document.querySelector('.btn-send').textContent = 'Sending...';
+          google.script.run
+            .withSuccessHandler(function() {
+              google.script.host.close();
+            })
+            .withFailureHandler(function(err) {
+              alert('Failed to send: ' + err);
+              document.querySelector('.btn-send').disabled = false;
+              document.querySelector('.btn-send').textContent = 'Send Invoice';
+            })
+            .sendInvoiceEmail('${result.invoiceNumber}');
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  const htmlOutput = HtmlService.createHtmlOutput(previewHtml)
+    .setWidth(700)
+    .setHeight(650);
+
+  ui.showModalDialog(htmlOutput, 'Invoice Preview - ' + invoiceNumber);
+}
+
+/**
+ * Show dialog to view/preview any invoice
+ */
+function showViewInvoiceDialog() {
+  const selectedInvoice = getSelectedInvoiceNumber();
+  const invoices = getAllInvoices();
+  showContextAwareDialog(
+    'View Invoice',
+    invoices,
+    'Invoice',
+    'previewInvoiceEmail',
+    selectedInvoice
+  );
+}
+
+/**
+ * Get all invoices for the view dialog
+ * @returns {Array} Array of invoice objects
+ */
+function getAllInvoices() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheet = ss.getSheetByName(SHEETS.INVOICES);
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  const headers = data[0];
+  const invoices = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[0]) {  // Has invoice number
+      const invoice = {};
+      headers.forEach((header, index) => {
+        invoice[header] = row[index];
+      });
+      invoices.push(invoice);
+    }
+  }
+
+  return invoices;
 }
 
 /**
