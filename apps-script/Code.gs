@@ -2330,7 +2330,7 @@ const COLUMN_CONFIG = {
     { name: 'Client Email', width: 180 },
     { name: 'Client Phone', width: 120 },
     { name: 'Store URL', width: 150 },
-    { name: 'Job Description', width: 200 },
+    { name: 'Job Description', width: 300, format: { wrapText: true } },
     {
       name: 'Category',
       width: 100,
@@ -4357,7 +4357,7 @@ function formatDashboardSheet(sheet) {
   // Right section (columns 9-15): Active Jobs + Pending Quotes
   sheet.setColumnWidth(9, 60);   // Job #
   sheet.setColumnWidth(10, 100); // Client
-  sheet.setColumnWidth(11, 150); // Description
+  sheet.setColumnWidth(11, 200); // Description
   sheet.setColumnWidth(12, 80);  // Amount
   sheet.setColumnWidth(13, 70);  // Days Left / Waiting
   sheet.setColumnWidth(14, 80);  // SLA / Valid Until
