@@ -2953,7 +2953,7 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('Setup/Repair Sheets', 'showSetupDialog')
-      .addItem('📐 Auto-fit Column Widths', 'autoFitAllColumns')
+      .addItem('📐 Reset Column Widths', 'resetColumnWidths')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
       .addSeparator()
       .addItem('📧 Enable Email Activity Logging (Hourly)', 'setupEmailScanTrigger')
@@ -3106,54 +3106,49 @@ function showSetupDialog() {
 }
 
 /**
- * Auto-fit column widths for all sheets to fit their content (with UI feedback)
+ * Reset column widths to the values defined in COLUMN_CONFIG (with UI feedback)
  */
-function autoFitAllColumns() {
+function resetColumnWidths() {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const ui = SpreadsheetApp.getUi();
 
-  const fittedCount = autoFitColumnsInternal(ss);
+  const resetCount = resetColumnWidthsInternal(ss);
 
   ui.alert(
-    '✅ Columns Resized',
-    'Auto-fitted column widths for ' + fittedCount + ' sheets:\n\n' +
-    '• Submissions\n• Jobs\n• Invoices\n• Settings\n• Testimonials\n• Activity Log\n\n' +
-    'Note: Dashboard and Analytics sheets use fixed layouts.',
+    '✅ Column Widths Reset',
+    'Reset column widths for ' + resetCount + ' sheets:\n\n' +
+    '• Submissions\n• Jobs\n• Invoices\n• Testimonials\n• Activity Log\n\n' +
+    'Widths have been set to the predefined values in COLUMN_CONFIG.',
     ui.ButtonSet.OK
   );
 }
 
 /**
- * Internal function to auto-fit column widths (no UI)
+ * Internal function to reset column widths to COLUMN_CONFIG values (no UI)
  * @param {Spreadsheet} ss - The spreadsheet object
- * @returns {number} Number of sheets that were fitted
+ * @returns {number} Number of sheets that were reset
  */
-function autoFitColumnsInternal(ss) {
-  // Sheets to auto-fit (exclude Dashboard and Analytics which have custom layouts)
-  const sheetsToFit = [
-    SHEETS.SUBMISSIONS,
-    SHEETS.JOBS,
-    SHEETS.INVOICES,
-    SHEETS.SETTINGS,
-    SHEETS.TESTIMONIALS,
-    SHEETS.ACTIVITY_LOG
+function resetColumnWidthsInternal(ss) {
+  // Map sheet names to their COLUMN_CONFIG keys
+  const sheetsToReset = [
+    { name: SHEETS.SUBMISSIONS, key: 'SUBMISSIONS' },
+    { name: SHEETS.JOBS, key: 'JOBS' },
+    { name: SHEETS.INVOICES, key: 'INVOICES' },
+    { name: SHEETS.TESTIMONIALS, key: 'TESTIMONIALS' },
+    { name: SHEETS.ACTIVITY_LOG, key: 'ACTIVITY_LOG' }
   ];
 
-  let fittedCount = 0;
+  let resetCount = 0;
 
-  for (const sheetName of sheetsToFit) {
-    const sheet = ss.getSheetByName(sheetName);
-    if (sheet) {
-      const lastColumn = sheet.getLastColumn();
-      if (lastColumn > 0) {
-        // Auto-resize all columns to fit content
-        sheet.autoResizeColumns(1, lastColumn);
-        fittedCount++;
-      }
+  for (const sheetInfo of sheetsToReset) {
+    const sheet = ss.getSheetByName(sheetInfo.name);
+    if (sheet && COLUMN_CONFIG[sheetInfo.key]) {
+      applyConfigColumnWidths(sheet, sheetInfo.key);
+      resetCount++;
     }
   }
 
-  return fittedCount;
+  return resetCount;
 }
 
 /**
@@ -3503,9 +3498,9 @@ function setupSheets(clearData) {
       logDebug('Step 8: SKIPPED (clearData=false)');
     }
 
-    // Step 9: Auto-fit column widths
-    logDebug('Step 9: Auto-fitting column widths...');
-    autoFitColumnsInternal(ss);
+    // Step 9: Reset column widths to config values
+    logDebug('Step 9: Resetting column widths...');
+    resetColumnWidthsInternal(ss);
     logDebug('Step 9 COMPLETE');
 
     logAllSheets('FINAL STATE');
