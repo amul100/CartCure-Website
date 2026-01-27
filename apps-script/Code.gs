@@ -3109,8 +3109,9 @@ function setupJobsSheet(ss, clearData) {
 
   // Define headers
   const headers = [
+    'Status',
+    'Total (incl GST)',
     'Job #',
-    'Submission #',
     'Created Date',
     'Client Name',
     'Client Email',
@@ -3118,10 +3119,8 @@ function setupJobsSheet(ss, clearData) {
     'Store URL',
     'Job Description',
     'Category',
-    'Status',
     'Quote Amount (excl GST)',
     'GST',
-    'Total (incl GST)',
     'Quote Sent Date',
     'Quote Valid Until',
     'Quote Accepted Date',
@@ -3139,6 +3138,7 @@ function setupJobsSheet(ss, clearData) {
     'Invoice #',
     'Remaining Balance',
     'Notes',
+    'Submission #',
     'Last Updated'
   ];
 
@@ -3192,8 +3192,9 @@ function setupJobsSheet(ss, clearData) {
 
   // Set column widths based on header content (no wrap, fixed widths)
   const jobsColumnWidths = [
+    100,  // Status
+    100,  // Total (incl GST)
     60,   // Job #
-    90,   // Submission #
     100,  // Created Date
     120,  // Client Name
     180,  // Client Email
@@ -3201,10 +3202,8 @@ function setupJobsSheet(ss, clearData) {
     150,  // Store URL
     200,  // Job Description
     100,  // Category
-    100,  // Status
     130,  // Quote Amount (excl GST)
     60,   // GST
-    100,  // Total (incl GST)
     110,  // Quote Sent Date
     110,  // Quote Valid Until
     120,  // Quote Accepted Date
@@ -3222,45 +3221,47 @@ function setupJobsSheet(ss, clearData) {
     80,   // Invoice #
     120,  // Remaining Balance
     150,  // Notes
+    90,   // Submission #
     110   // Last Updated
   ];
   for (let col = 1; col <= headers.length; col++) {
     sheet.setColumnWidth(col, jobsColumnWidths[col - 1] || 100);
   }
 
-  // Add data validation for Category (column 9)
-  const categoryRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(JOB_CATEGORIES, true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 9, 500, 1).setDataValidation(categoryRule);
-
-  // Add data validation for Status (column 10)
+  // Add data validation for Status (column 1)
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(Object.values(JOB_STATUS), true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 10, 500, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 1, 500, 1).setDataValidation(statusRule);
 
-  // Add data validation for Payment Status (column 24)
+  // Add data validation for Category (column 10)
+  const categoryRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(JOB_CATEGORIES, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 10, 500, 1).setDataValidation(categoryRule);
+
+  // Add data validation for Payment Status (column 23)
   const paymentRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(Object.values(PAYMENT_STATUS), true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 24, 500, 1).setDataValidation(paymentRule);
+  sheet.getRange(2, 23, 500, 1).setDataValidation(paymentRule);
 
   // Add conditional formatting for SLA Status and other status columns
   addSLAConditionalFormatting(sheet);
   addStatusConditionalFormatting(sheet);
   addPaymentConditionalFormatting(sheet);
 
-  // Add Remaining Balance formula (column 29)
+  // Add Remaining Balance formula (column 28)
   // Formula: Total (incl GST) minus sum of paid invoices for this job
-  const remainingBalanceCol = 29;
+  // Total is column B, Job # is column C
+  const remainingBalanceCol = 28;
   const balanceFormulas = [];
   for (let row = 2; row <= 501; row++) {
-    // =IF(M2="","",M2-SUMIFS('Invoice Log'!J:J,'Invoice Log'!B:B,A2,'Invoice Log'!K:K,"Paid"))
-    balanceFormulas.push(['=IF(M' + row + '="","",M' + row + '-SUMIFS(\'Invoice Log\'!J:J,\'Invoice Log\'!B:B,A' + row + ',\'Invoice Log\'!K:K,"Paid"))']);
+    // =IF(B2="","",B2-SUMIFS('Invoice Log'!J:J,'Invoice Log'!B:B,C2,'Invoice Log'!K:K,"Paid"))
+    balanceFormulas.push(['=IF(B' + row + '="","",B' + row + '-SUMIFS(\'Invoice Log\'!J:J,\'Invoice Log\'!B:B,C' + row + ',\'Invoice Log\'!K:K,"Paid"))']);
   }
   sheet.getRange(2, remainingBalanceCol, 500, 1).setFormulas(balanceFormulas);
   sheet.getRange(2, remainingBalanceCol, 500, 1).setNumberFormat('$#,##0.00');
@@ -3272,7 +3273,7 @@ function setupJobsSheet(ss, clearData) {
  * Add conditional formatting for SLA status column
  */
 function addSLAConditionalFormatting(sheet) {
-  const slaColumn = 19; // SLA Status column
+  const slaColumn = 18; // SLA Status column
   const range = sheet.getRange(2, slaColumn, 500, 1);
 
   // Clear existing rules for this column
@@ -3316,7 +3317,7 @@ function addSLAConditionalFormatting(sheet) {
  * Add conditional formatting for Job Status column
  */
 function addStatusConditionalFormatting(sheet) {
-  const statusColumn = 10; // Status column
+  const statusColumn = 1; // Status column
   const range = sheet.getRange(2, statusColumn, 500, 1);
 
   const rules = sheet.getConditionalFormatRules();
@@ -3378,7 +3379,7 @@ function addStatusConditionalFormatting(sheet) {
  * Add conditional formatting for Payment Status column
  */
 function addPaymentConditionalFormatting(sheet) {
-  const paymentColumn = 24; // Payment Status column
+  const paymentColumn = 23; // Payment Status column
   const range = sheet.getRange(2, paymentColumn, 500, 1);
 
   const rules = sheet.getConditionalFormatRules();
@@ -3752,7 +3753,7 @@ function formatDashboardSheet(sheet) {
 
   const metricsLabels = [
     ['OVERDUE', 'AT RISK', 'In Progress', 'Pending Quote', 'Quoted', 'Unpaid $', 'Revenue MTD'],
-    ['=COUNTIF(Jobs!R:R,"OVERDUE")', '=COUNTIF(Jobs!R:R,"AT RISK")', '=COUNTIF(Jobs!I:I,"In Progress")', '=COUNTIF(Jobs!I:I,"Pending Quote")', '=COUNTIF(Jobs!I:I,"Quoted")', '=SUMIF(Jobs!W:W,"Unpaid",Jobs!L:L)+SUMIF(Jobs!W:W,"Invoiced",Jobs!L:L)', '=SUMIFS(Jobs!L:L,Jobs!W:W,"Paid",Jobs!X:X,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))']
+    ['=COUNTIF(Jobs!R:R,"OVERDUE")', '=COUNTIF(Jobs!R:R,"AT RISK")', '=COUNTIF(Jobs!A:A,"In Progress")', '=COUNTIF(Jobs!A:A,"Pending Quote")', '=COUNTIF(Jobs!A:A,"Quoted")', '=SUMIF(Jobs!W:W,"Unpaid",Jobs!B:B)+SUMIF(Jobs!W:W,"Invoiced",Jobs!B:B)', '=SUMIFS(Jobs!B:B,Jobs!W:W,"Paid",Jobs!X:X,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1))']
   ];
 
   sheet.getRange(5, 1, 2, 7).setValues(metricsLabels);
@@ -5621,10 +5622,11 @@ function getAvailableSubmissions() {
   const existingJobSubmissions = new Set();
   if (jobsSheet && jobsSheet.getLastRow() > 1) {
     const jobsData = jobsSheet.getDataRange().getValues();
-    // Column B (index 1) is Submission #
+    const jobsHeaders = jobsData[0];
+    const jobSubNumColIdx = jobsHeaders.indexOf('Submission #'); // Column AD (index 29)
     for (let i = 1; i < jobsData.length; i++) {
-      if (jobsData[i][1]) {
-        existingJobSubmissions.add(jobsData[i][1]);
+      if (jobsData[i][jobSubNumColIdx]) {
+        existingJobSubmissions.add(jobsData[i][jobSubNumColIdx]);
       }
     }
   }
@@ -6347,12 +6349,16 @@ function createJobFromSubmission(submissionNumber) {
 
   if (jobsSheet) {
     const jobsData = jobsSheet.getDataRange().getValues();
+    const jobsHeaders = jobsData[0];
+    const jobNumColIdx = jobsHeaders.indexOf('Job #');      // Column 3 (index 2)
+    const subNumColIdx = jobsHeaders.indexOf('Submission #'); // Column 30 (index 29)
     debugLog.push('Jobs sheet has ' + jobsData.length + ' rows');
+    debugLog.push('Job # column index: ' + jobNumColIdx + ', Submission # column index: ' + subNumColIdx);
     for (let i = 1; i < jobsData.length; i++) {
       // Use String comparison to handle type mismatches
-      if (String(jobsData[i][1]) === String(submissionNumber)) {
+      if (String(jobsData[i][subNumColIdx]) === String(submissionNumber)) {
         existingJobCount++;
-        existingJobNumbers.push(jobsData[i][0]);
+        existingJobNumbers.push(jobsData[i][jobNumColIdx]);
       }
     }
     debugLog.push('Existing jobs for this submission: ' + existingJobCount);
@@ -6398,40 +6404,40 @@ function createJobFromSubmission(submissionNumber) {
   const storeUrl = submissionRow[headers.indexOf('Store URL')] || submissionRow[6];
   const message = submissionRow[headers.indexOf('Message')] || submissionRow[7];
 
-  // Create job row
+  // Create job row - matches new column order (Status, Total first)
   const now = new Date();
   const jobRow = [
-    jobNumber,                    // Job #
-    submissionNumber,             // Submission #
-    formatNZDate(now),           // Created Date
-    name,                         // Client Name
-    email,                        // Client Email
-    phone,                        // Client Phone
-    storeUrl,                     // Store URL
-    message,                      // Job Description (initially from message)
-    '',                           // Category (to be filled)
-    JOB_STATUS.PENDING_QUOTE,    // Status
-    '',                           // Quote Amount
-    '',                           // GST
-    '',                           // Total
-    '',                           // Quote Sent Date
-    '',                           // Quote Valid Until
-    '',                           // Quote Accepted Date
-    '',                           // Days Since Accepted
-    '',                           // Days Remaining
-    '',                           // SLA Status
-    JOB_CONFIG.DEFAULT_SLA_DAYS, // Estimated Turnaround
-    '',                           // Due Date
-    '',                           // Actual Start Date
-    '',                           // Actual Completion Date
-    PAYMENT_STATUS.UNPAID,       // Payment Status
-    '',                           // Payment Date
-    '',                           // Payment Method
-    '',                           // Payment Reference
-    '',                           // Invoice #
-    '',                           // Remaining Balance (formula will calculate)
-    '',                           // Notes
-    formatNZDate(now)            // Last Updated
+    JOB_STATUS.PENDING_QUOTE,    // 1. Status
+    '',                           // 2. Total (incl GST) - calculated from Quote + GST
+    jobNumber,                    // 3. Job #
+    formatNZDate(now),           // 4. Created Date
+    name,                         // 5. Client Name
+    email,                        // 6. Client Email
+    phone,                        // 7. Client Phone
+    storeUrl,                     // 8. Store URL
+    message,                      // 9. Job Description (initially from message)
+    '',                           // 10. Category (to be filled)
+    '',                           // 11. Quote Amount (excl GST)
+    '',                           // 12. GST
+    '',                           // 13. Quote Sent Date
+    '',                           // 14. Quote Valid Until
+    '',                           // 15. Quote Accepted Date
+    '',                           // 16. Days Since Accepted
+    '',                           // 17. Days Remaining
+    '',                           // 18. SLA Status
+    JOB_CONFIG.DEFAULT_SLA_DAYS, // 19. Estimated Turnaround
+    '',                           // 20. Due Date
+    '',                           // 21. Actual Start Date
+    '',                           // 22. Actual Completion Date
+    PAYMENT_STATUS.UNPAID,       // 23. Payment Status
+    '',                           // 24. Payment Date
+    '',                           // 25. Payment Method
+    '',                           // 26. Payment Reference
+    '',                           // 27. Invoice #
+    '',                           // 28. Remaining Balance (formula will calculate)
+    '',                           // 29. Notes
+    submissionNumber,             // 30. Submission #
+    formatNZDate(now)            // 31. Last Updated
   ];
 
   // Add to Jobs sheet
@@ -6445,7 +6451,7 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Creating job: ' + jobNumber);
   debugLog.push('Job row data: ' + JSON.stringify(jobRow));
 
-  // Find actual last row with data by checking column A (Job #)
+  // Find actual last row with data by checking column A (Status)
   // This avoids issues with empty formatted rows that appendRow() would skip to
   const jobsColumnA = jobsSheet.getRange('A:A').getValues();
   let actualLastRow = 1; // Start at 1 (header row)
@@ -11436,7 +11442,7 @@ function createTestJobForTestimonials() {
     // Build row array based on headers
     const rowData = headers.map(header => jobData[header] || '');
 
-    // Find first empty row (checking Job # column)
+    // Find first empty row (checking Status column A)
     const jobCol = jobsSheet.getRange('A:A').getValues();
     let insertRow = 2; // Start after header
     for (let i = 1; i < jobCol.length; i++) {
