@@ -6435,8 +6435,22 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Creating job: ' + jobNumber);
   debugLog.push('Job row data: ' + JSON.stringify(jobRow));
 
-  jobsSheet.appendRow(jobRow);
-  debugLog.push('Job row appended successfully');
+  // Find actual last row with data by checking column A (Job #)
+  // This avoids issues with empty formatted rows that appendRow() would skip to
+  const jobsColumnA = jobsSheet.getRange('A:A').getValues();
+  let actualLastRow = 1; // Start at 1 (header row)
+  for (let i = jobsColumnA.length - 1; i >= 0; i--) {
+    if (jobsColumnA[i][0] !== '') {
+      actualLastRow = i + 1; // Convert to 1-indexed
+      break;
+    }
+  }
+  const insertRow = actualLastRow + 1;
+  debugLog.push('Inserting at row: ' + insertRow + ' (actual last row with data: ' + actualLastRow + ')');
+
+  // Use getRange().setValues() instead of appendRow() to insert at correct position
+  jobsSheet.getRange(insertRow, 1, 1, jobRow.length).setValues([jobRow]);
+  debugLog.push('Job row inserted successfully at row ' + insertRow);
 
   // Update the submission status to "Job Created"
   const statusColumnIndex = headers.indexOf('Status');
