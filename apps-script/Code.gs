@@ -6647,11 +6647,76 @@ function showContextAwareDialog(title, items, itemType, callback, selectedValue)
         eval(callback + '("' + selectedValue.replace(/"/g, '\\"') + '")');
         return;
       }
+    } else if (items && items.length > 0) {
+      // Selected item exists but isn't valid for this action - explain why
+      // Get the status of the selected job/item to provide helpful feedback
+      const statusInfo = getItemStatusInfo(selectedValue, itemType);
+      const validStatuses = getValidStatusesForAction(callback);
+
+      let message = itemType + ' ' + selectedValue + ' was detected from your selection, but it cannot be used for this action.';
+      if (statusInfo) {
+        message += '\n\nCurrent status: ' + statusInfo;
+      }
+      if (validStatuses) {
+        message += '\nRequired status: ' + validStatuses;
+      }
+      message += '\n\nPlease select from the available options below.';
+
+      ui.alert('Selection Not Valid', message, ui.ButtonSet.OK);
     }
   }
 
   // Fall back to dropdown dialog
   showDropdownDialog(title, items, itemType, callback);
+}
+
+/**
+ * Get the current status of a job or submission
+ * @param {string} itemNumber - The job/submission/invoice number
+ * @param {string} itemType - 'Job', 'Submission', or 'Invoice'
+ * @returns {string|null} The current status or null if not found
+ */
+function getItemStatusInfo(itemNumber, itemType) {
+  try {
+    if (itemType === 'Job') {
+      const job = getJobByNumber(itemNumber);
+      if (job) {
+        return job['Status'] || 'Unknown';
+      }
+    } else if (itemType === 'Submission') {
+      // Submissions don't have a status field - return null
+      return null;
+    } else if (itemType === 'Invoice') {
+      const invoice = getInvoiceByNumber(itemNumber);
+      if (invoice) {
+        return invoice['Payment Status'] || 'Unknown';
+      }
+    }
+  } catch (e) {
+    // Silently fail - status info is optional
+  }
+  return null;
+}
+
+/**
+ * Get the valid statuses for a given action/callback
+ * @param {string} callback - The callback function name
+ * @returns {string|null} Description of valid statuses or null
+ */
+function getValidStatusesForAction(callback) {
+  const actionStatusMap = {
+    'sendQuoteEmail': 'Pending Quote',
+    'processQuoteAcceptance': 'Quoted',
+    'processQuoteRejection': 'Quoted',
+    'markJobStarted': 'Accepted or On Hold',
+    'markJobCompleted': 'In Progress',
+    'sendStatusUpdateEmail': 'Accepted, In Progress, or On Hold',
+    'createInvoice': 'Accepted, In Progress, or On Hold',
+    'sendPaymentReceiptEmail': 'Paid invoice required',
+    'sendInvoiceReminder': 'Pending invoice required',
+    'sendOverdueInvoice': 'Overdue invoice required'
+  };
+  return actionStatusMap[callback] || null;
 }
 
 /**
