@@ -100,11 +100,14 @@
         <tr>
           <td style="padding: 0 40px 30px 40px;" align="center">
             <p style="margin: 0 0 15px 0; color: <?= colors.inkGray ?>; font-size: 14px;">
-              Ready to proceed? Click the button below or reply to this email with "Approved".
+              Ready to proceed? Click the button below to review terms and accept.
             </p>
-            <a href="mailto:<?= adminEmail ?>?subject=Quote%20Accepted%20-%20<?= jobNumber ?>&body=Hi%20CartCure%2C%0A%0AI%20approve%20quote%20<?= jobNumber ?>.%20Please%20proceed%20with%20the%20work.%0A%0AThanks%2C%0A<?= clientName ?>" style="display: inline-block; background-color: <?= colors.brandGreen ?>; color: #ffffff; padding: 15px 40px; text-decoration: none; font-size: 16px; font-weight: bold; border: 3px solid <?= colors.inkBlack ?>; box-shadow: 3px 3px 0 rgba(0,0,0,0.2);">
+            <a href="<?= acceptQuoteUrl ?>" style="display: inline-block; background-color: <?= colors.brandGreen ?>; color: #ffffff; padding: 15px 40px; text-decoration: none; font-size: 16px; font-weight: bold; border: 3px solid <?= colors.inkBlack ?>; box-shadow: 3px 3px 0 rgba(0,0,0,0.2);">
               Accept Quote
             </a>
+            <p style="margin: 15px 0 0 0; color: <?= colors.inkLight ?>; font-size: 12px;">
+              Or reply to this email with "Approved"
+            </p>
           </td>
         </tr>
 

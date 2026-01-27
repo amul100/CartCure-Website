@@ -269,6 +269,11 @@ function doPost(e) {
       return handleTestimonialSubmission(data);
     }
 
+    // Handle quote acceptance from web form
+    if (action === 'acceptQuote') {
+      return handleQuoteAcceptance(data);
+    }
+
     const origin = e.parameter.origin || '';
 
     // Security validations
@@ -761,6 +766,237 @@ Submitted: ${sanitizedData.submitted}`;
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Handle quote acceptance from web form
+ * Called when a client accepts a quote via the quote-acceptance.html page
+ *
+ * @param {Object} data - The form data containing:
+ *   - jobNumber: The job reference number
+ *   - fullName: Client's full name
+ *   - acceptanceDate: Date of acceptance
+ *   - comments: Optional comments from client
+ *   - signatureData: Base64-encoded signature image
+ *   - termsAccepted: Boolean confirming terms acceptance
+ * @returns {Object} JSON response with success/failure
+ */
+function handleQuoteAcceptance(data) {
+  try {
+    // Validate required fields
+    const jobNumber = (data.jobNumber || '').trim().toUpperCase();
+    const fullName = (data.fullName || '').trim();
+    const acceptanceDate = (data.acceptanceDate || '').trim();
+    const signatureData = (data.signatureData || '').trim();
+    const comments = (data.comments || '').trim();
+    const termsAccepted = data.termsAccepted === true || data.termsAccepted === 'true';
+
+    if (!jobNumber) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Job number is required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!fullName) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Full name is required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!signatureData) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Signature is required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (!termsAccepted) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'You must accept the Terms of Service to proceed'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Get the job
+    const job = getJobByNumber(jobNumber);
+
+    if (!job) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Job not found. Please check the job number and try again.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check if job is in Quoted status
+    if (job['Status'] !== JOB_STATUS.QUOTED) {
+      // Job might already be accepted
+      if (job['Status'] === JOB_STATUS.ACCEPTED || job['Status'] === JOB_STATUS.IN_PROGRESS || job['Status'] === JOB_STATUS.COMPLETED) {
+        return ContentService
+          .createTextOutput(JSON.stringify({
+            success: false,
+            message: 'This quote has already been accepted. If you have questions, please contact us.'
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'This job is not in a quotable status. Current status: ' + job['Status']
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Save signature to Google Drive
+    let signatureFileUrl = '';
+    try {
+      const signatureFolder = getOrCreateSignaturesFolder();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = 'Signature_' + jobNumber + '_' + timestamp + '.png';
+
+      // Convert base64 to blob
+      const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
+      const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', fileName);
+
+      // Save to Drive
+      const file = signatureFolder.createFile(blob);
+      signatureFileUrl = file.getUrl();
+
+      Logger.log('Signature saved: ' + signatureFileUrl);
+    } catch (sigError) {
+      Logger.log('Error saving signature: ' + sigError.message);
+      // Continue without signature URL - still process acceptance
+    }
+
+    // Prepare acceptance notes
+    const now = new Date();
+    const acceptanceNotes = [
+      '--- Quote Accepted via Web Form ---',
+      'Accepted by: ' + escapeHtml(fullName),
+      'Date: ' + (acceptanceDate || formatNZDate(now)),
+      'Terms Accepted: Yes',
+      signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
+      comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
+    ].filter(Boolean).join('\n');
+
+    // Calculate due date
+    const turnaround = parseInt(job['Estimated Turnaround']) || JOB_CONFIG.DEFAULT_SLA_DAYS;
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + turnaround);
+
+    // Get existing notes and append acceptance notes
+    const existingNotes = job['Notes'] || '';
+    const updatedNotes = existingNotes ? existingNotes + '\n\n' + acceptanceNotes : acceptanceNotes;
+
+    // Update job fields
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.ACCEPTED,
+      'Quote Accepted Date': formatNZDate(now),
+      'Days Since Accepted': 0,
+      'Days Remaining': turnaround,
+      'SLA Status': 'On Track',
+      'Due Date': formatNZDate(dueDate),
+      'Notes': updatedNotes
+    });
+
+    // Check if deposit is required and generate invoice
+    const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
+    const requiresDeposit = total >= 200;
+    let depositInfo = '';
+
+    if (requiresDeposit) {
+      const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
+      if (invoiceResult.success) {
+        depositInfo = 'A 50% deposit invoice (' + formatCurrency(invoiceResult.amount) + ') has been sent to your email.';
+        Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
+      } else {
+        Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
+        // Still continue - admin can manually send invoice
+      }
+    }
+
+    // Send admin notification
+    if (CONFIG.ADMIN_EMAIL) {
+      const adminSubject = 'Quote Accepted - ' + jobNumber + ' - ' + fullName;
+      const adminBody = `A quote has been accepted via the web form.
+
+Job Number: ${jobNumber}
+Client: ${job['Client Name']} (${job['Client Email']})
+Accepted By: ${fullName}
+Acceptance Date: ${acceptanceDate || formatNZDate(now)}
+Terms Accepted: Yes
+${signatureFileUrl ? 'Signature: ' + signatureFileUrl : ''}
+
+Quote Amount: ${formatCurrency(total)}
+${requiresDeposit ? 'Deposit Required: Yes (50% = ' + formatCurrency(total * 0.5) + ')' : 'Deposit Required: No (under $200)'}
+
+${comments ? 'Client Comments:\n' + comments : ''}
+
+SLA:
+- Due Date: ${formatNZDate(dueDate)}
+- Days Remaining: ${turnaround}
+
+---
+Use CartCure > Jobs > Start Work when you begin.`;
+
+      try {
+        MailApp.sendEmail({
+          to: CONFIG.ADMIN_EMAIL,
+          subject: adminSubject,
+          body: adminBody
+        });
+      } catch (emailError) {
+        Logger.log('Failed to send admin notification: ' + emailError.message);
+      }
+    }
+
+    Logger.log('Quote accepted via web form for ' + jobNumber + ' by ' + fullName);
+
+    // Return success response
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Quote accepted successfully!' + (depositInfo ? ' ' + depositInfo : ''),
+        jobNumber: jobNumber
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('Error processing quote acceptance: ' + error.message);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sorry, there was an error processing your acceptance. Please try again or contact us directly.'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Get or create the Signatures folder in Google Drive
+ * @returns {Folder} The Signatures folder
+ */
+function getOrCreateSignaturesFolder() {
+  const folderName = 'CartCure Signatures';
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create folder if it doesn't exist
+  return DriveApp.createFolder(folderName);
 }
 
 /**
@@ -7609,6 +7845,14 @@ function generateQuoteEmailHtml(data) {
   // GST footer line
   const gstFooterLine = data.isGSTRegistered && data.gstNumber ? 'GST: ' + data.gstNumber + '<br>' : '';
 
+  // Build quote acceptance URL with parameters
+  const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
+    'job=' + encodeURIComponent(data.jobNumber) +
+    '&name=' + encodeURIComponent(data.clientName) +
+    '&desc=' + encodeURIComponent((data.jobDescription || '').substring(0, 100)) +
+    '&amount=' + encodeURIComponent(data.total) +
+    '&turnaround=' + encodeURIComponent(data.turnaround);
+
   // Render template with data
   const bodyContent = renderEmailTemplate('email-quote', {
     jobNumber: data.jobNumber,
@@ -7621,7 +7865,8 @@ function generateQuoteEmailHtml(data) {
     bankSectionHtml: bankSectionHtml,
     gstFooterLine: gstFooterLine,
     businessName: data.businessName,
-    adminEmail: data.adminEmail
+    adminEmail: data.adminEmail,
+    acceptQuoteUrl: acceptQuoteUrl
   });
 
   return wrapEmailHtml(bodyContent);

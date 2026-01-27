@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accept Quote | CartCure NZ</title>
+
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Accept Quote | CartCure NZ">
+    <meta name="description" content="Review and accept your CartCure quote by signing the agreement.">
+    <meta name="author" content="CartCure NZ">
+    <meta name="robots" content="noindex, follow">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://cartcure.co.nz/quote-acceptance.html">
+
+    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .acceptance-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 8rem 2rem 4rem;
+            background: var(--paper-white);
+        }
+
+        .acceptance-content {
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            color: var(--ink-black);
+        }
+
+        .acceptance-content h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--ink-black);
+        }
+
+        .acceptance-subtitle {
+            color: var(--ink-gray);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--accent-green);
+            color: #ffffff;
+            text-decoration: none;
+            border: 2px solid var(--ink-black);
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 3px 3px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .acceptance-form {
+            background: var(--paper-cream);
+            padding: 2rem;
+            border: 2px solid var(--paper-border);
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--ink-black);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-family: 'Georgia', serif;
+            border: 2px solid var(--paper-border);
+            background: var(--paper-white);
+            color: var(--ink-black);
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-green);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--accent-green);
+            color: var(--paper-white);
+            border: 3px solid var(--ink-black);
+            cursor: pointer;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .submit-button:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .form-note {
+            font-size: 0.85rem;
+            color: var(--ink-gray);
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
+        .field-hint {
+            font-size: 0.8rem;
+            color: var(--ink-gray);
+            margin-top: 0.25rem;
+        }
+
+        .success-message {
+            background: #e6f4ea;
+            border: 2px solid #2d5d3f;
+            padding: 2rem;
+            text-align: center;
+            display: none;
+        }
+
+        .success-message h2 {
+            color: #2d5d3f;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-message p {
+            color: var(--ink-gray);
+        }
+
+        .error-message {
+            background: #fce8e6;
+            border: 2px solid #c53929;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            color: #c53929;
+            display: none;
+        }
+
+        .info-box {
+            background: #e8f4fd;
+            border: 2px solid #4a90d9;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: #2c5aa0;
+            font-size: 0.95rem;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Quote Summary Box */
+        .quote-summary {
+            background: var(--paper-white);
+            border: 2px solid var(--accent-green);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .quote-summary h3 {
+            margin: 0 0 1rem 0;
+            color: var(--accent-green);
+            font-size: 1.1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .quote-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--paper-border);
+        }
+
+        .quote-detail:last-child {
+            border-bottom: none;
+        }
+
+        .quote-detail .label {
+            color: var(--ink-gray);
+        }
+
+        .quote-detail .value {
+            font-weight: 600;
+            color: var(--ink-black);
+        }
+
+        /* Terms Section */
+        .terms-section {
+            background: var(--paper-white);
+            border: 2px solid var(--paper-border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .terms-section h3 {
+            margin: 0 0 1rem 0;
+            color: var(--ink-black);
+            font-size: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .terms-links {
+            margin-bottom: 1.5rem;
+        }
+
+        .terms-links a {
+            display: inline-block;
+            margin-right: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent-green);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .terms-links a:hover {
+            text-decoration: underline;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: var(--accent-green);
+        }
+
+        .checkbox-group label {
+            font-size: 0.95rem;
+            color: var(--ink-black);
+            cursor: pointer;
+            font-weight: normal;
+            line-height: 1.5;
+        }
+
+        /* Signature Section */
+        .signature-section {
+            background: var(--paper-white);
+            border: 2px solid var(--paper-border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .signature-section h3 {
+            margin: 0 0 1rem 0;
+            color: var(--ink-black);
+            font-size: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .signature-canvas-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        #signatureCanvas {
+            width: 100%;
+            height: 150px;
+            border: 2px solid var(--paper-border);
+            background: #fff;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .signature-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .clear-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--paper-white);
+            color: var(--ink-gray);
+            border: 2px solid var(--paper-border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-button:hover {
+            border-color: var(--ink-gray);
+            color: var(--ink-black);
+        }
+
+        .signature-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--ink-light);
+            pointer-events: none;
+            font-style: italic;
+        }
+
+        .signature-placeholder.hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <nav>
+            <a href="index.html" class="logo">
+                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+            </a>
+        </nav>
+    </header>
+
+    <div class="acceptance-container">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="acceptance-content">
+            <h1>Accept Quote</h1>
+            <p class="acceptance-subtitle">Review and sign to proceed with your Shopify work</p>
+
+            <div class="info-box" id="loadingInfo">
+                Loading quote details...
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="success-message" id="successMessage">
+                <h2>Quote Accepted!</h2>
+                <p>Thank you for accepting the quote. We'll be in touch shortly to begin work on your project.</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem;">You'll receive a confirmation email with next steps.</p>
+                <a href="index.html" class="back-link" style="margin-top: 1.5rem;">&larr; Back to Home</a>
+            </div>
+
+            <form class="acceptance-form" id="acceptanceForm" style="display: none;">
+                <!-- Quote Summary -->
+                <div class="quote-summary" id="quoteSummary">
+                    <h3>Quote Summary</h3>
+                    <div class="quote-detail">
+                        <span class="label">Job Number:</span>
+                        <span class="value" id="summaryJobNumber">-</span>
+                    </div>
+                    <div class="quote-detail">
+                        <span class="label">Description:</span>
+                        <span class="value" id="summaryDescription">-</span>
+                    </div>
+                    <div class="quote-detail">
+                        <span class="label">Quote Amount:</span>
+                        <span class="value" id="summaryAmount">-</span>
+                    </div>
+                    <div class="quote-detail">
+                        <span class="label">Estimated Turnaround:</span>
+                        <span class="value" id="summaryTurnaround">-</span>
+                    </div>
+                </div>
+
+                <!-- Terms and Conditions Section -->
+                <div class="terms-section">
+                    <h3>Terms and Conditions</h3>
+                    <p style="margin-bottom: 1rem; color: var(--ink-gray); font-size: 0.95rem;">
+                        Please review our terms before accepting this quote:
+                    </p>
+                    <div class="terms-links">
+                        <a href="terms-of-service.html" target="_blank">Terms of Service &rarr;</a>
+                        <a href="privacy-policy.html" target="_blank">Privacy Policy &rarr;</a>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="termsAccepted" name="termsAccepted" required>
+                        <label for="termsAccepted">
+                            I have read and agree to the <a href="terms-of-service.html" target="_blank">Terms of Service</a>
+                            and <a href="privacy-policy.html" target="_blank">Privacy Policy</a>.
+                            I understand that for jobs $200+, a 50% deposit is required before work begins.
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Signature Section -->
+                <div class="signature-section">
+                    <h3>Your Signature *</h3>
+                    <p class="field-hint" style="margin-bottom: 1rem;">Please sign in the box below using your mouse or finger</p>
+                    <div class="signature-canvas-container">
+                        <canvas id="signatureCanvas"></canvas>
+                        <span class="signature-placeholder" id="signaturePlaceholder">Sign here</span>
+                    </div>
+                    <div class="signature-buttons">
+                        <button type="button" class="clear-button" id="clearSignature">Clear Signature</button>
+                    </div>
+                </div>
+
+                <!-- Form Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fullName">Full Name *</label>
+                        <input type="text" id="fullName" name="fullName" required maxlength="100" placeholder="Your full legal name">
+                    </div>
+                    <div class="form-group">
+                        <label for="acceptanceDate">Date *</label>
+                        <input type="date" id="acceptanceDate" name="acceptanceDate" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="comments">Additional Comments (Optional)</label>
+                    <textarea id="comments" name="comments" maxlength="1000" placeholder="Any additional notes or special requests for this job..."></textarea>
+                    <p class="field-hint">Share any clarifications, special instructions, or questions about the work</p>
+                </div>
+
+                <input type="hidden" id="jobNumber" name="jobNumber" value="">
+                <input type="hidden" id="signatureData" name="signatureData" value="">
+
+                <button type="submit" class="submit-button" id="submitButton">Accept Quote & Proceed</button>
+
+                <p class="form-note">* Required fields. By submitting, you authorize CartCure to begin work on your project according to the quoted terms.</p>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="index.html#services">Services</a>
+                <a href="index.html#how-it-works">How It Works</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
+
+            // Elements
+            const form = document.getElementById('acceptanceForm');
+            const submitButton = document.getElementById('submitButton');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const loadingInfo = document.getElementById('loadingInfo');
+            const canvas = document.getElementById('signatureCanvas');
+            const ctx = canvas.getContext('2d');
+            const clearButton = document.getElementById('clearSignature');
+            const signaturePlaceholder = document.getElementById('signaturePlaceholder');
+            const signatureDataInput = document.getElementById('signatureData');
+            const jobNumberInput = document.getElementById('jobNumber');
+
+            // Signature state
+            let isDrawing = false;
+            let hasSignature = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const jobNumber = urlParams.get('job');
+            const clientName = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
+            const description = urlParams.get('desc') ? decodeURIComponent(urlParams.get('desc')) : '';
+            const amount = urlParams.get('amount') ? decodeURIComponent(urlParams.get('amount')) : '';
+            const turnaround = urlParams.get('turnaround') ? decodeURIComponent(urlParams.get('turnaround')) : '';
+
+            // Initialize page
+            function initPage() {
+                if (!jobNumber) {
+                    loadingInfo.innerHTML = '<strong>Error:</strong> No job number provided. Please use the link from your quote email.';
+                    loadingInfo.style.background = '#fce8e6';
+                    loadingInfo.style.borderColor = '#c53929';
+                    loadingInfo.style.color = '#c53929';
+                    return;
+                }
+
+                // Populate quote summary
+                document.getElementById('summaryJobNumber').textContent = jobNumber;
+                document.getElementById('summaryDescription').textContent = description || 'See quote email for details';
+                document.getElementById('summaryAmount').textContent = amount || 'See quote email';
+                document.getElementById('summaryTurnaround').textContent = turnaround ? turnaround + ' days' : 'See quote email';
+
+                // Set hidden job number
+                jobNumberInput.value = jobNumber;
+
+                // Pre-fill name if provided
+                if (clientName) {
+                    document.getElementById('fullName').value = clientName;
+                }
+
+                // Set today's date
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('acceptanceDate').value = today;
+
+                // Hide loading, show form
+                loadingInfo.style.display = 'none';
+                form.style.display = 'block';
+
+                // Initialize signature canvas
+                initSignatureCanvas();
+            }
+
+            // Signature Canvas Setup
+            function initSignatureCanvas() {
+                // Set canvas size
+                function resizeCanvas() {
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                    ctx.strokeStyle = '#2b2b2b';
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                }
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                // Mouse events
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+
+                // Touch events
+                canvas.addEventListener('touchstart', handleTouchStart);
+                canvas.addEventListener('touchmove', handleTouchMove);
+                canvas.addEventListener('touchend', stopDrawing);
+
+                // Clear button
+                clearButton.addEventListener('click', clearSignature);
+            }
+
+            function getPosition(e) {
+                const rect = canvas.getBoundingClientRect();
+                if (e.touches) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                }
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            function startDrawing(e) {
+                isDrawing = true;
+                const pos = getPosition(e);
+                lastX = pos.x;
+                lastY = pos.y;
+                signaturePlaceholder.classList.add('hidden');
+            }
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                startDrawing(e);
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                e.preventDefault();
+
+                const pos = getPosition(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                lastX = pos.x;
+                lastY = pos.y;
+                hasSignature = true;
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                draw(e);
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+                if (hasSignature) {
+                    signatureDataInput.value = canvas.toDataURL('image/png');
+                }
+            }
+
+            function clearSignature() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                hasSignature = false;
+                signatureDataInput.value = '';
+                signaturePlaceholder.classList.remove('hidden');
+            }
+
+            // Form submission
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                // Validate signature
+                if (!hasSignature) {
+                    errorMessage.textContent = 'Please sign in the signature box to accept the quote.';
+                    errorMessage.style.display = 'block';
+                    document.querySelector('.signature-section').scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
+                // Validate terms checkbox
+                if (!document.getElementById('termsAccepted').checked) {
+                    errorMessage.textContent = 'Please accept the Terms of Service and Privacy Policy to proceed.';
+                    errorMessage.style.display = 'block';
+                    document.querySelector('.terms-section').scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
+                // Disable button
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+                errorMessage.style.display = 'none';
+
+                // Prepare form data
+                const formData = {
+                    action: 'acceptQuote',
+                    jobNumber: jobNumberInput.value,
+                    fullName: document.getElementById('fullName').value.trim(),
+                    acceptanceDate: document.getElementById('acceptanceDate').value,
+                    comments: document.getElementById('comments').value.trim(),
+                    signatureData: signatureDataInput.value,
+                    termsAccepted: true
+                };
+
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        form.style.display = 'none';
+                        successMessage.style.display = 'block';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                        errorMessage.textContent = result.message || 'Sorry, there was an error. Please try again or contact us directly.';
+                        errorMessage.style.display = 'block';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Accept Quote & Proceed';
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    // Assume success if we can't read response (CORS)
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+
+            // Initialize on load
+            initPage();
+        })();
+    </script>
+</body>
+
+</html>

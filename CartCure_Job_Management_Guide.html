@@ -618,7 +618,7 @@
         <li>Scope of work</li>
         <li>Pricing (with GST breakdown if registered)</li>
         <li>Turnaround time</li>
-        <li>"Accept Quote" button</li>
+        <li>"Accept Quote" button (links to acceptance page)</li>
         <li>Your bank details</li>
     </ul>
     A copy is automatically CC'd to <strong>info@cartcure.co.nz</strong>
@@ -636,6 +636,41 @@
 
 <h2>When Client Accepts a Quote</h2>
 
+<h3>Option 1: Client Self-Service Acceptance (Recommended)</h3>
+
+<p>When a client clicks the <strong>"Accept Quote"</strong> button in their quote email, they're taken to a dedicated acceptance page where they:</p>
+
+<ol>
+    <li>Review the quote summary (job number, description, amount, turnaround)</li>
+    <li>Read and accept the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong></li>
+    <li>Sign their name using a signature canvas</li>
+    <li>Enter their full name and date</li>
+    <li>Optionally add comments or special instructions</li>
+    <li>Click <strong>"Accept Quote &amp; Proceed"</strong></li>
+</ol>
+
+<div class="success">
+    <strong>What happens automatically:</strong>
+    <ul>
+        <li>Job status changes to "Accepted"</li>
+        <li>SLA clock starts immediately</li>
+        <li>Signature is saved to Google Drive (<em>CartCure Signatures</em> folder)</li>
+        <li>Acceptance details (name, date, comments) are added to job notes</li>
+        <li>For jobs $200+, a 50% deposit invoice is automatically generated and sent</li>
+        <li>You receive an email notification with all acceptance details</li>
+    </ul>
+</div>
+
+<div class="info">
+    <strong>Signature Storage:</strong><br>
+    Client signatures are saved as PNG images in the <strong>"CartCure Signatures"</strong> folder in Google Drive.
+    The signature file URL is included in the job notes and admin notification email for your records.
+</div>
+
+<h3>Option 2: Manual Acceptance (Admin)</h3>
+
+<p>If a client replies via email or calls to accept, you can manually mark the quote as accepted:</p>
+
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Mark Quote Accepted</strong></li>
     <li>Select a job from the dropdown list</li>
@@ -643,7 +678,7 @@
 </ol>
 
 <div class="alert">
-    <strong>Important:</strong> This starts the 7-day SLA clock!<br><br>
+    <strong>Important:</strong> Both methods start the SLA clock!<br><br>
     The system now tracks:
     <ul>
         <li>Days Since Accepted</li>
