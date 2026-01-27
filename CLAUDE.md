@@ -49,6 +49,48 @@ When adding a new email type:
 | email-invoice-reminder.html | sendInvoiceReminder() | Pre-due date reminder |
 | email-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
 
+## Column Configuration System
+**IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object at the top of Code.gs. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.
+
+### How to Reorder Columns
+1. Find `COLUMN_CONFIG` in Code.gs (around line 2300)
+2. Move the column object to its new position in the array
+3. Run Setup from the CartCure menu - migration happens automatically
+
+### How to Add a New Column
+Add a new object to the appropriate sheet's array in `COLUMN_CONFIG`:
+```javascript
+{
+  name: 'Column Name',           // Header text (required)
+  width: 100,                    // Width in pixels (required)
+  validation: {                  // Optional: dropdown or checkbox
+    type: 'list',                // 'list' or 'checkbox'
+    values: ['Option1', 'Option2'],
+    allowInvalid: false
+  },
+  format: {                      // Optional: formatting
+    numberFormat: '$#,##0.00',   // Number format
+    wrapText: true,              // Enable text wrap
+    conditionalRules: [...]      // Conditional formatting
+  },
+  formula: '=...',               // Optional: cell formula with {{row}} placeholder
+  defaultValue: 'Default'        // Optional: default value for new rows
+}
+```
+
+### Helper Functions
+- `getColIndex('JOBS', 'Column Name')` - Returns 1-based column number
+- `getColLetter('JOBS', 'Column Name')` - Returns column letter (A, B, ... AA)
+- `buildRowFromConfig('JOBS', { 'Column': value })` - Builds row array in correct order
+- `migrateSheetColumns(sheet, 'JOBS')` - Migrates existing data to new column order
+
+### Available Sheet Keys
+- `JOBS` - Jobs sheet (31 columns)
+- `INVOICES` - Invoice Log sheet (19 columns)
+- `SUBMISSIONS` - Submissions sheet (10 columns)
+- `TESTIMONIALS` - Testimonials sheet (9 columns)
+- `ACTIVITY_LOG` - Activity Log sheet (7 columns)
+
 ## Apps Script Debugging
 **IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
 
