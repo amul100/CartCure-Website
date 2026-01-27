@@ -6831,9 +6831,8 @@ function generateAndSendDepositInvoice(jobNumber, job) {
     // Generate invoice number
     const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices ? existingInvoices.length : 0);
     const now = new Date();
-    const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
+    // Deposits are due immediately (today)
     const dueDate = new Date(now);
-    dueDate.setDate(dueDate.getDate() + paymentTerms);
 
     // Calculate 50% deposit amounts
     const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
@@ -8565,7 +8564,10 @@ function generateInvoiceForJob(jobNumber) {
   const now = new Date();
   const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
   const dueDate = new Date(now);
-  dueDate.setDate(dueDate.getDate() + paymentTerms);
+  // Deposits are due immediately, other invoices get standard payment terms
+  if (invoiceType !== 'Deposit') {
+    dueDate.setDate(dueDate.getDate() + paymentTerms);
+  }
 
   // Create invoice row
   const invoiceRow = [
