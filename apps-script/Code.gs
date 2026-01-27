@@ -1614,6 +1614,24 @@ function getOrCreateDebugFolder() {
 }
 
 /**
+ * Save debug log to a file in the debug folder
+ * @param {Array} debugLog - Array of log messages
+ * @param {string} prefix - Filename prefix
+ */
+function saveDebugLog(debugLog, prefix) {
+  try {
+    const folder = getOrCreateDebugFolder();
+    const fileName = prefix + '.txt';
+    folder.createFile(fileName, debugLog.join('\n'));
+  } catch (e) {
+    // If even this fails, try writing to Drive root
+    try {
+      DriveApp.createFile('DEBUG_FALLBACK_' + new Date().getTime() + '.txt', debugLog.join('\n') + '\nError: ' + e.toString());
+    } catch (e2) { /* ignore */ }
+  }
+}
+
+/**
  * Log performance metrics to debug file for tracking optimization impact
  *
  * This function creates timestamped log entries to track how well the
@@ -6251,54 +6269,91 @@ function showCreateJobDialog() {
  * Create a new job from a submission
  */
 function createJobFromSubmission(submissionNumber) {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const ui = SpreadsheetApp.getUi();
+  const debugLog = [];
+  const debugTs = new Date().toISOString().replace(/[:.]/g, '-');
 
-  // Find the submission
-  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  try {
+    debugLog.push('=== createJobFromSubmission Debug ===');
+    debugLog.push('Timestamp: ' + debugTs);
+    debugLog.push('Input submissionNumber: ' + submissionNumber);
+    debugLog.push('Input type: ' + typeof submissionNumber);
+
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ui = SpreadsheetApp.getUi();
+
+    // Find the submission
+    const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
 
   if (!submissionsSheet) {
+    debugLog.push('ERROR: Submissions sheet not found');
+    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
     ui.alert('Error', 'Submissions sheet not found. Please run Setup first.', ui.ButtonSet.OK);
     return;
   }
+
+  debugLog.push('Submissions sheet found');
 
   const submissionsData = submissionsSheet.getDataRange().getValues();
   const headers = submissionsData[0];
   const submissionNumCol = headers.indexOf('Submission #');
 
+  debugLog.push('Headers: ' + JSON.stringify(headers));
+  debugLog.push('Submission # column index: ' + submissionNumCol);
+  debugLog.push('Total rows: ' + submissionsData.length);
+
   let submissionRow = null;
   let submissionRowIndex = -1;
 
+  // Log first few submission numbers for debugging
+  for (let i = 1; i < Math.min(submissionsData.length, 5); i++) {
+    const cellValue = submissionsData[i][submissionNumCol];
+    debugLog.push('Row ' + i + ' submission#: "' + cellValue + '" (type: ' + typeof cellValue + ')');
+  }
+
   for (let i = 1; i < submissionsData.length; i++) {
-    if (submissionsData[i][submissionNumCol] === submissionNumber) {
+    const cellValue = submissionsData[i][submissionNumCol];
+    // Use loose equality to handle type mismatches
+    if (String(cellValue) === String(submissionNumber)) {
       submissionRow = submissionsData[i];
       submissionRowIndex = i + 1; // 1-indexed for sheet operations
+      debugLog.push('MATCH found at row ' + i + ' (sheet row ' + submissionRowIndex + ')');
       break;
     }
   }
 
   if (!submissionRow) {
+    debugLog.push('ERROR: Submission ' + submissionNumber + ' not found in ' + (submissionsData.length - 1) + ' submissions');
+    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
     ui.alert('Not Found', 'Submission ' + submissionNumber + ' not found.', ui.ButtonSet.OK);
     return;
   }
 
   // Check if jobs already exist for this submission
   const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+  debugLog.push('Jobs sheet found: ' + (jobsSheet ? 'YES' : 'NO'));
+
   let existingJobCount = 0;
   let existingJobNumbers = [];
 
   if (jobsSheet) {
     const jobsData = jobsSheet.getDataRange().getValues();
+    debugLog.push('Jobs sheet has ' + jobsData.length + ' rows');
     for (let i = 1; i < jobsData.length; i++) {
-      if (jobsData[i][1] === submissionNumber) {
+      // Use String comparison to handle type mismatches
+      if (String(jobsData[i][1]) === String(submissionNumber)) {
         existingJobCount++;
         existingJobNumbers.push(jobsData[i][0]);
       }
+    }
+    debugLog.push('Existing jobs for this submission: ' + existingJobCount);
+    if (existingJobNumbers.length > 0) {
+      debugLog.push('Existing job numbers: ' + existingJobNumbers.join(', '));
     }
   }
 
   // Warn user if jobs already exist for this submission, but allow them to proceed
   if (existingJobCount > 0) {
+    debugLog.push('WARNING: Jobs already exist, prompting user');
     const jobWord = existingJobCount === 1 ? 'job' : 'jobs';
     const response = ui.alert(
       'Warning: Existing Jobs',
@@ -6309,8 +6364,11 @@ function createJobFromSubmission(submissionNumber) {
     );
 
     if (response !== ui.Button.YES) {
+      debugLog.push('User cancelled - declined to create additional job');
+      saveDebugLog(debugLog, 'CREATE_JOB_CANCELLED_' + debugTs);
       return;
     }
+    debugLog.push('User confirmed - proceeding to create additional job');
   }
 
   // Generate job number - add suffix if jobs already exist for this submission
@@ -6368,18 +6426,28 @@ function createJobFromSubmission(submissionNumber) {
 
   // Add to Jobs sheet
   if (!jobsSheet) {
+    debugLog.push('ERROR: Jobs sheet not found');
+    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
     ui.alert('Error', 'Jobs sheet not found. Please run Setup first.', ui.ButtonSet.OK);
     return;
   }
 
+  debugLog.push('Creating job: ' + jobNumber);
+  debugLog.push('Job row data: ' + JSON.stringify(jobRow));
+
   jobsSheet.appendRow(jobRow);
+  debugLog.push('Job row appended successfully');
 
   // Update the submission status to "Job Created"
   const statusColumnIndex = headers.indexOf('Status');
   if (statusColumnIndex !== -1) {
     submissionsSheet.getRange(submissionRowIndex, statusColumnIndex + 1).setValue('Job Created');
+    debugLog.push('Updated submission status to "Job Created"');
     Logger.log('Updated submission ' + submissionNumber + ' status to "Job Created"');
   }
+
+  debugLog.push('SUCCESS: Job ' + jobNumber + ' created');
+  saveDebugLog(debugLog, 'CREATE_JOB_SUCCESS_' + debugTs);
 
   ui.alert('Job Created',
     'Job ' + jobNumber + ' created successfully!\n\n' +
@@ -6394,6 +6462,13 @@ function createJobFromSubmission(submissionNumber) {
 
   // Refresh dashboard to show updated data
   refreshDashboard();
+
+  } catch (e) {
+    debugLog.push('EXCEPTION: ' + e.toString());
+    debugLog.push('Stack: ' + (e.stack || 'N/A'));
+    saveDebugLog(debugLog, 'CREATE_JOB_ERROR_' + debugTs);
+    throw e; // Re-throw to trigger the failure handler in the HTML dialog
+  }
 }
 
 /**
