@@ -5373,6 +5373,16 @@ function formatNZDate(date) {
 }
 
 /**
+ * Format due date for invoices - shows date with "Midday" time
+ * e.g., "3 Feb 2026 at Midday"
+ */
+function formatDueDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return Utilities.formatDate(d, 'Pacific/Auckland', 'd MMM yyyy') + ' at Midday';
+}
+
+/**
  * Calculate days between two dates
  */
 function daysBetween(date1, date2) {
@@ -7044,7 +7054,7 @@ function sendInvoiceEmailSilent(invoiceNumber) {
         jobNumber: jobNumber,
         clientName: clientName,
         invoiceDate: formatNZDate(new Date()),
-        dueDate: dueDate,
+        dueDate: formatDueDate(dueDate),
         totalJobAmount: totalJobAmount.toFixed(2),
         depositAmount: depositInfo.amount.toFixed(2),
         depositPaidText: depositPaidText,
@@ -7067,7 +7077,7 @@ function sendInvoiceEmailSilent(invoiceNumber) {
         clientName: clientName,
         greetingText: greetingText,
         invoiceDate: formatNZDate(new Date()),
-        dueDate: dueDate,
+        dueDate: formatDueDate(dueDate),
         pricingRowsHtml: pricingRowsHtml,
         depositNoticeHtml: depositNoticeHtml,
         bankDetailsHtml: bankDetailsHtml,
@@ -7094,7 +7104,7 @@ Deposit Paid${depositPaidText}: -$${depositInfo.amount.toFixed(2)}
 Remaining Balance: $${displayTotal}
 
 Job Reference: ${jobNumber}
-Due Date: ${dueDate}
+Due Date: ${formatDueDate(dueDate)}
 
 ${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total Due: $' + displayTotal}
 
@@ -7118,7 +7128,7 @@ Thank you for accepting our quote! Please find your deposit invoice below.
 This is a 50% deposit invoice. Per our Terms of Service, jobs $200+ require a 50% deposit before work begins. A balance invoice for the remaining 50% will be sent upon completion.
 
 Job Reference: ${jobNumber}
-Due Date: ${dueDate}
+Due Date: ${formatDueDate(dueDate)}
 
 ${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total: $' + displayTotal}
 
@@ -7140,7 +7150,7 @@ Hi ${clientName},
 Please find your invoice for ${jobNumber}.
 
 Job Reference: ${jobNumber}
-Due Date: ${dueDate}
+Due Date: ${formatDueDate(dueDate)}
 
 ${isGSTRegistered ? 'Amount (excl GST): $' + amount + '\nGST (15%): $' + gst + '\nTotal (incl GST): $' + total : 'Total: $' + displayTotal}
 
@@ -8992,7 +9002,7 @@ function sendInvoiceEmail(invoiceNumber) {
       jobNumber: jobNumber,
       clientName: clientName,
       invoiceDate: formatNZDate(new Date()),
-      dueDate: dueDate,
+      dueDate: formatDueDate(dueDate),
       totalJobAmount: totalJobAmount.toFixed(2),
       depositAmount: depositInfo.amount.toFixed(2),
       depositPaidText: depositPaidText,
@@ -9011,7 +9021,7 @@ function sendInvoiceEmail(invoiceNumber) {
       clientName: clientName,
       greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
       invoiceDate: formatNZDate(new Date()),
-      dueDate: dueDate,
+      dueDate: formatDueDate(dueDate),
       pricingRowsHtml: pricingRowsHtml,
       depositNoticeHtml: '', // No deposit notice for standard invoices
       bankDetailsHtml: bankDetailsHtml,
@@ -9177,7 +9187,7 @@ function renderInvoiceEmailPreview(invoiceNumber) {
       jobNumber: jobNumber,
       clientName: clientName,
       invoiceDate: formatNZDate(new Date()),
-      dueDate: dueDate,
+      dueDate: formatDueDate(dueDate),
       totalJobAmount: totalJobAmount.toFixed(2),
       depositAmount: depositInfo.amount.toFixed(2),
       depositPaidText: depositPaidText,
@@ -9195,7 +9205,7 @@ function renderInvoiceEmailPreview(invoiceNumber) {
       clientName: clientName,
       greetingText: 'Thank you for choosing CartCure! Please find your invoice below for the completed work.',
       invoiceDate: formatNZDate(new Date()),
-      dueDate: dueDate,
+      dueDate: formatDueDate(dueDate),
       pricingRowsHtml: pricingRowsHtml,
       depositNoticeHtml: '',
       bankDetailsHtml: bankDetailsHtml,
@@ -9428,7 +9438,7 @@ function sendInvoiceReminder(invoiceNumber) {
   } else if (daysUntilDue <= 0) {
     dueDateText = '<strong>today</strong>';
   } else {
-    dueDateText = 'on <strong>' + dueDate + '</strong>';
+    dueDateText = 'on <strong>' + formatDueDate(dueDate) + '</strong>';
   }
 
   // Build payment details HTML
@@ -9455,7 +9465,7 @@ function sendInvoiceReminder(invoiceNumber) {
     invoiceNumber: invoiceNumber,
     clientName: clientName,
     dueDateText: dueDateText,
-    dueDate: dueDate,
+    dueDate: formatDueDate(dueDate),
     jobNumber: jobNumber,
     displayTotal: formatCurrency(displayTotal),
     paymentDetailsHtml: paymentDetailsHtml,
@@ -9489,7 +9499,7 @@ function sendInvoiceReminder(invoiceNumber) {
       'Friendly payment reminder sent to ' + clientEmail + '\n\n' +
       'Invoice: ' + invoiceNumber + '\n' +
       'Amount: ' + formatCurrency(total) + '\n' +
-      'Due: ' + dueDate + (daysUntilDue === 1 ? ' (tomorrow)' : daysUntilDue <= 0 ? ' (today)' : ' (' + daysUntilDue + ' days)'),
+      'Due: ' + formatDueDate(dueDate) + (daysUntilDue === 1 ? ' (tomorrow)' : daysUntilDue <= 0 ? ' (today)' : ' (' + daysUntilDue + ' days)'),
       ui.ButtonSet.OK
     );
 
@@ -9611,7 +9621,7 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
     daysOverdue: feeCalc.daysOverdue,
     jobNumber: jobNumber,
     invoiceDate: invoiceDate,
-    dueDate: dueDate,
+    dueDate: formatDueDate(dueDate),
     pricingRowsHtml: pricingRowsHtml,
     lateFee: formatCurrency(feeCalc.lateFee),
     totalWithFees: formatCurrency(feeCalc.totalWithFees),
@@ -9836,17 +9846,17 @@ function sendInvoiceReminderAuto(invoiceNumber) {
       <div style="padding: 20px;">
         <p>Hi ${clientName},</p>
 
-        <p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + dueDate + '</strong>'}.</p>
+        <p>This is a friendly reminder that payment for invoice <strong>${invoiceNumber}</strong> is due ${daysUntilDue === 1 ? '<strong>tomorrow</strong>' : daysUntilDue <= 0 ? '<strong>today</strong>' : 'on <strong>' + formatDueDate(dueDate) + '</strong>'}.</p>
 
         <div style="background-color: #fff8e6; padding: 15px; margin: 20px 0; border-left: 4px solid #f5d76e;">
-          <p style="margin: 0; color: #856404;"><strong>Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${dueDate} to avoid any additional charges.</p>
+          <p style="margin: 0; color: #856404;"><strong>Avoid Late Fees:</strong> Per our Terms of Service, late fees of 2% per day apply to overdue invoices. Pay by ${formatDueDate(dueDate)} to avoid any additional charges.</p>
         </div>
 
         <div style="background-color: #faf8f4; padding: 15px; margin: 20px 0; border-left: 4px solid #2d5d3f;">
           <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
           <p><strong>Job Reference:</strong> ${jobNumber}</p>
           <p><strong>Amount Due:</strong> <span style="font-size: 18px; font-weight: bold;">${formatCurrency(displayTotal)}</span></p>
-          <p><strong>Due Date:</strong> ${dueDate}</p>
+          <p><strong>Due Date:</strong> ${formatDueDate(dueDate)}</p>
         </div>
 
         ${bankAccount ? `
