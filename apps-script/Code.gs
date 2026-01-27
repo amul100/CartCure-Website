@@ -6437,10 +6437,13 @@ function getInvoicesByStatusFallback(statusFilter = []) {
  * @returns {boolean} True if matches job number format
  */
 function isJobNumberFormat(value) {
-  if (!value || typeof value !== 'string') return false;
+  if (!value) return false;
   const trimmed = value.toString().trim();
-  // Match new format (J-WORD-XXX) or legacy format (J-YYYYMMDD-XXXXX)
-  const newFormatRegex = /^J-[A-Z]{3,6}-\d{3}$/;
+  // Match formats:
+  // - New format: J-WORD-XXX (e.g., J-MAPLE-001)
+  // - Additional job format: J-WORD-XXX-N (e.g., J-MAPLE-001-2)
+  // - Legacy format: J-YYYYMMDD-XXXXX (e.g., J-20240101-00001)
+  const newFormatRegex = /^J-[A-Z]{3,6}-\d{1,4}(-\d+)?$/i;
   const legacyFormatRegex = /^J-\d{8}-\d{5}$/;
   return newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed);
 }
@@ -6501,10 +6504,12 @@ function getSelectedJobNumber() {
  * @returns {boolean} True if matches submission number format
  */
 function isSubmissionNumberFormat(value) {
-  if (!value || typeof value !== 'string') return false;
+  if (!value) return false;
   const trimmed = value.toString().trim();
-  // Match new format (CC-WORD-XXX) or legacy format (CC-YYYYMMDD-XXXXX)
-  const newFormatRegex = /^CC-[A-Z]{3,6}-\d{3}$/;
+  // Match formats:
+  // - New format: CC-WORD-XXX (e.g., CC-MAPLE-001)
+  // - Legacy format: CC-YYYYMMDD-XXXXX (e.g., CC-20240101-00001)
+  const newFormatRegex = /^CC-[A-Z]{3,6}-\d{1,4}$/i;
   const legacyFormatRegex = /^CC-\d{8}-\d{5}$/;
   return newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed);
 }
@@ -6556,13 +6561,14 @@ function getSelectedSubmissionNumber() {
  * @returns {boolean} True if matches invoice number format
  */
 function isInvoiceNumberFormat(value) {
-  if (!value || typeof value !== 'string') return false;
+  if (!value) return false;
   const trimmed = value.toString().trim();
-  // Match new format (INV-WORD-XXX or INV-WORD-XXX-2, etc.)
-  const newFormatRegex = /^INV-[A-Z]{3,6}-\d{3}(-\d+)?$/;
-  // Match legacy year-based format (INV-2024-001, INV-2025-123, etc.)
-  const legacyYearFormatRegex = /^INV-\d{4}-\d{3,}$/;
-  // Match old sequential format (INV-0001, INV-1234, etc.)
+  // Match formats:
+  // - New format: INV-WORD-XXX or INV-WORD-XXX-N (e.g., INV-MAPLE-001, INV-MAPLE-001-2)
+  // - Legacy year-based: INV-YYYY-XXX (e.g., INV-2024-001)
+  // - Old sequential: INV-XXXX (e.g., INV-0001)
+  const newFormatRegex = /^INV-[A-Z]{3,6}-\d{1,4}(-\d+)?$/i;
+  const legacyYearFormatRegex = /^INV-\d{4}-\d{1,}$/;
   const oldFormatRegex = /^INV-\d{4,}$/;
   return newFormatRegex.test(trimmed) || legacyYearFormatRegex.test(trimmed) || oldFormatRegex.test(trimmed);
 }
