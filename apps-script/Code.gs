@@ -2323,8 +2323,8 @@ const COLUMN_CONFIG = {
       },
       defaultValue: JOB_STATUS.PENDING_QUOTE
     },
-    { name: 'Total (incl GST)', width: 100, format: { numberFormat: '$#,##0.00' } },
     { name: 'Job #', width: 60 },
+    { name: 'Total (incl GST)', width: 100, format: { numberFormat: '$#,##0.00' } },
     { name: 'Created Date', width: 100 },
     { name: 'Client Name', width: 120 },
     { name: 'Client Email', width: 180 },
