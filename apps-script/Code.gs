@@ -6631,8 +6631,10 @@ function showContextAwareDialog(title, items, itemType, callback, selectedValue)
   // If we have a context-selected value, confirm and use it directly
   if (selectedValue) {
     // Verify the selected value is in our valid items list (if items provided)
+    // Use string comparison to handle type mismatches (sheet values may be numbers)
+    const selectedStr = String(selectedValue).trim();
     const isValidSelection = items && items.length > 0 &&
-      items.some(item => item.number === selectedValue);
+      items.some(item => String(item.number).trim() === selectedStr);
 
     if (isValidSelection) {
       const response = ui.alert(
