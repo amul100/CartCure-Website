@@ -9319,7 +9319,8 @@ function showViewInvoiceDialog() {
 
 /**
  * Get all invoices for the view dialog
- * @returns {Array} Array of invoice objects
+ * Returns array of objects with number and display properties for dropdown
+ * @returns {Array} Array of invoice objects formatted for showDropdownDialog
  */
 function getAllInvoices() {
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
@@ -9332,14 +9333,30 @@ function getAllInvoices() {
   const headers = data[0];
   const invoices = [];
 
+  // Find column indices
+  const invoiceNumCol = 0; // Column A (Invoice #)
+  const jobNumColIndex = 1; // Column B (Job #)
+  const clientNameColIndex = 2; // Column C (Client Name)
+  const totalColIndex = headers.indexOf('Total');
+  const statusColIndex = headers.indexOf('Status');
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (row[0]) {  // Has invoice number
-      const invoice = {};
-      headers.forEach((header, index) => {
-        invoice[header] = row[index];
+    const invoiceNum = row[invoiceNumCol];
+
+    if (invoiceNum) {  // Has invoice number
+      const clientName = row[clientNameColIndex] || 'Unknown';
+      const total = totalColIndex >= 0 ? row[totalColIndex] : 0;
+      const status = statusColIndex >= 0 ? row[statusColIndex] : '';
+
+      invoices.push({
+        number: invoiceNum,
+        jobNumber: row[jobNumColIndex],
+        clientName: clientName,
+        status: status,
+        total: total || 0,
+        display: invoiceNum + ' - ' + clientName + ' - ' + formatCurrency(total || 0) + ' (' + status + ')'
       });
-      invoices.push(invoice);
     }
   }
 
