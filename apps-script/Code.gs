@@ -6432,81 +6432,177 @@ function getInvoicesByStatusFallback(statusFilter = []) {
 // ============================================================================
 
 /**
- * Get job number from currently selected cell (if valid)
- * Looks for J-WORD-XXX or J-YYYYMMDD-XXXXX format in current selection
- * @returns {string|null} Job number if found in selection, null otherwise
+ * Check if a value matches job number format
+ * @param {string} value - Value to check
+ * @returns {boolean} True if matches job number format
  */
-function getSelectedJobNumber() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const selection = sheet.getActiveCell();
-  const value = selection.getValue();
-
-  if (!value || typeof value !== 'string') return null;
-
+function isJobNumberFormat(value) {
+  if (!value || typeof value !== 'string') return false;
   const trimmed = value.toString().trim();
-
   // Match new format (J-WORD-XXX) or legacy format (J-YYYYMMDD-XXXXX)
   const newFormatRegex = /^J-[A-Z]{3,6}-\d{3}$/;
   const legacyFormatRegex = /^J-\d{8}-\d{5}$/;
+  return newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed);
+}
 
-  if (newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed)) {
-    return trimmed;
+/**
+ * Get job number from currently selected row
+ * First checks if selected cell contains a job number, then looks at the Job # column
+ * @returns {string|null} Job number if found, null otherwise
+ */
+function getSelectedJobNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const selection = sheet.getActiveCell();
+  const row = selection.getRow();
+
+  // Skip header row
+  if (row <= 1) return null;
+
+  // First, check if selected cell itself contains a job number
+  const cellValue = selection.getValue();
+  if (cellValue && isJobNumberFormat(cellValue.toString().trim())) {
+    return cellValue.toString().trim();
+  }
+
+  // If on Jobs sheet, look up the Job # column for this row
+  if (sheetName === SHEETS.JOBS) {
+    const jobColIndex = getColIndex('JOBS', 'Job #');
+    const jobNumber = sheet.getRange(row, jobColIndex).getValue();
+    if (jobNumber && isJobNumberFormat(jobNumber.toString().trim())) {
+      return jobNumber.toString().trim();
+    }
+  }
+
+  // If on Invoice Log sheet, look up the Job # column for this row
+  if (sheetName === SHEETS.INVOICES) {
+    const jobColIndex = getColIndex('INVOICES', 'Job #');
+    const jobNumber = sheet.getRange(row, jobColIndex).getValue();
+    if (jobNumber && isJobNumberFormat(jobNumber.toString().trim())) {
+      return jobNumber.toString().trim();
+    }
+  }
+
+  // If on Activity Log sheet, look up the Job # column for this row
+  if (sheetName === SHEETS.ACTIVITY_LOG) {
+    const jobColIndex = getColIndex('ACTIVITY_LOG', 'Job #');
+    const jobNumber = sheet.getRange(row, jobColIndex).getValue();
+    if (jobNumber && isJobNumberFormat(jobNumber.toString().trim())) {
+      return jobNumber.toString().trim();
+    }
   }
 
   return null;
 }
 
 /**
- * Get submission number from currently selected cell (if valid)
- * Looks for CC-WORD-XXX or CC-YYYYMMDD-XXXXX format in current selection
- * @returns {string|null} Submission number if found in selection, null otherwise
+ * Check if a value matches submission number format
+ * @param {string} value - Value to check
+ * @returns {boolean} True if matches submission number format
  */
-function getSelectedSubmissionNumber() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const selection = sheet.getActiveCell();
-  const value = selection.getValue();
-
-  if (!value || typeof value !== 'string') return null;
-
+function isSubmissionNumberFormat(value) {
+  if (!value || typeof value !== 'string') return false;
   const trimmed = value.toString().trim();
-
   // Match new format (CC-WORD-XXX) or legacy format (CC-YYYYMMDD-XXXXX)
   const newFormatRegex = /^CC-[A-Z]{3,6}-\d{3}$/;
   const legacyFormatRegex = /^CC-\d{8}-\d{5}$/;
+  return newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed);
+}
 
-  if (newFormatRegex.test(trimmed) || legacyFormatRegex.test(trimmed)) {
-    return trimmed;
+/**
+ * Get submission number from currently selected row
+ * First checks if selected cell contains a submission number, then looks at the Submission # column
+ * @returns {string|null} Submission number if found, null otherwise
+ */
+function getSelectedSubmissionNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const selection = sheet.getActiveCell();
+  const row = selection.getRow();
+
+  // Skip header row
+  if (row <= 1) return null;
+
+  // First, check if selected cell itself contains a submission number
+  const cellValue = selection.getValue();
+  if (cellValue && isSubmissionNumberFormat(cellValue.toString().trim())) {
+    return cellValue.toString().trim();
+  }
+
+  // If on Submissions sheet, look up the Submission # column for this row
+  if (sheetName === SHEETS.SUBMISSIONS) {
+    const subColIndex = getColIndex('SUBMISSIONS', 'Submission #');
+    const subNumber = sheet.getRange(row, subColIndex).getValue();
+    if (subNumber && isSubmissionNumberFormat(subNumber.toString().trim())) {
+      return subNumber.toString().trim();
+    }
+  }
+
+  // If on Jobs sheet, look up the Submission # column for this row
+  if (sheetName === SHEETS.JOBS) {
+    const subColIndex = getColIndex('JOBS', 'Submission #');
+    const subNumber = sheet.getRange(row, subColIndex).getValue();
+    if (subNumber && isSubmissionNumberFormat(subNumber.toString().trim())) {
+      return subNumber.toString().trim();
+    }
   }
 
   return null;
 }
 
 /**
- * Get invoice number from currently selected cell (if valid)
- * Matches multiple formats:
- * - New format: INV-WORD-XXX or INV-WORD-XXX-N (for multiple invoices)
- * - Legacy format: INV-YYYY-XXX
- * - Old format: INV-XXXX
- * @returns {string|null} Invoice number if found in selection, null otherwise
+ * Check if a value matches invoice number format
+ * @param {string} value - Value to check
+ * @returns {boolean} True if matches invoice number format
  */
-function getSelectedInvoiceNumber() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const selection = sheet.getActiveCell();
-  const value = selection.getValue();
-
-  if (!value || typeof value !== 'string') return null;
-
+function isInvoiceNumberFormat(value) {
+  if (!value || typeof value !== 'string') return false;
   const trimmed = value.toString().trim();
-
   // Match new format (INV-WORD-XXX or INV-WORD-XXX-2, etc.)
   const newFormatRegex = /^INV-[A-Z]{3,6}-\d{3}(-\d+)?$/;
   // Match legacy year-based format (INV-2024-001, INV-2025-123, etc.)
   const legacyYearFormatRegex = /^INV-\d{4}-\d{3,}$/;
   // Match old sequential format (INV-0001, INV-1234, etc.)
   const oldFormatRegex = /^INV-\d{4,}$/;
+  return newFormatRegex.test(trimmed) || legacyYearFormatRegex.test(trimmed) || oldFormatRegex.test(trimmed);
+}
 
-  if (newFormatRegex.test(trimmed) || legacyYearFormatRegex.test(trimmed) || oldFormatRegex.test(trimmed)) {
-    return trimmed;
+/**
+ * Get invoice number from currently selected row
+ * First checks if selected cell contains an invoice number, then looks at the Invoice # column
+ * @returns {string|null} Invoice number if found, null otherwise
+ */
+function getSelectedInvoiceNumber() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const selection = sheet.getActiveCell();
+  const row = selection.getRow();
+
+  // Skip header row
+  if (row <= 1) return null;
+
+  // First, check if selected cell itself contains an invoice number
+  const cellValue = selection.getValue();
+  if (cellValue && isInvoiceNumberFormat(cellValue.toString().trim())) {
+    return cellValue.toString().trim();
+  }
+
+  // If on Invoice Log sheet, look up the Invoice # column for this row
+  if (sheetName === SHEETS.INVOICES) {
+    const invColIndex = getColIndex('INVOICES', 'Invoice #');
+    const invNumber = sheet.getRange(row, invColIndex).getValue();
+    if (invNumber && isInvoiceNumberFormat(invNumber.toString().trim())) {
+      return invNumber.toString().trim();
+    }
+  }
+
+  // If on Jobs sheet, look up the Invoice # column for this row
+  if (sheetName === SHEETS.JOBS) {
+    const invColIndex = getColIndex('JOBS', 'Invoice #');
+    const invNumber = sheet.getRange(row, invColIndex).getValue();
+    if (invNumber && isInvoiceNumberFormat(invNumber.toString().trim())) {
+      return invNumber.toString().trim();
+    }
   }
 
   return null;
