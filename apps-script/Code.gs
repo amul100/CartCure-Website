@@ -2485,16 +2485,6 @@ const COLUMN_CONFIG = {
   // INVOICE LOG SHEET (19 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
-    { name: 'Invoice #', width: 80 },
-    { name: 'Job #', width: 60 },
-    { name: 'Client Name', width: 120 },
-    { name: 'Client Email', width: 180 },
-    { name: 'Client Phone', width: 120 },
-    { name: 'Invoice Date', width: 100 },
-    { name: 'Due Date', width: 90 },
-    { name: 'Amount (excl GST)', width: 120, format: { numberFormat: '$#,##0.00' } },
-    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Total', width: 80, format: { numberFormat: '$#,##0.00' } },
     {
       name: 'Status',
       width: 80,
@@ -2508,6 +2498,16 @@ const COLUMN_CONFIG = {
         ]
       }
     },
+    { name: 'Invoice #', width: 80 },
+    { name: 'Job #', width: 60 },
+    { name: 'Client Name', width: 120 },
+    { name: 'Client Email', width: 180 },
+    { name: 'Client Phone', width: 120 },
+    { name: 'Invoice Date', width: 100 },
+    { name: 'Due Date', width: 90 },
+    { name: 'Amount (excl GST)', width: 120, format: { numberFormat: '$#,##0.00' } },
+    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total', width: 80, format: { numberFormat: '$#,##0.00' } },
     { name: 'Sent Date', width: 90 },
     { name: 'Paid Date', width: 90 },
     { name: 'Payment Reference', width: 130 },
