@@ -6211,13 +6211,13 @@ function getJobsByStatus(statusFilter = []) {
   const headers = allData[0];
 
   // Find the column indices we need
-  const jobNumCol = 0; // Column A (Job #) - always column 0 in array
+  const jobNumColIndex = headers.indexOf('Job #');
   const statusColIndex = headers.indexOf('Status');
   const clientNameColIndex = headers.indexOf('Client Name');
   const storeUrlColIndex = headers.indexOf('Store URL');
 
   // Fallback: if critical columns not found, use original implementation
-  if (statusColIndex === -1 || clientNameColIndex === -1) {
+  if (jobNumColIndex === -1 || statusColIndex === -1 || clientNameColIndex === -1) {
     Logger.log('[PERF] getJobsByStatus() - Required columns not found, using fallback');
     return getJobsByStatusFallback(statusFilter);
   }
@@ -6227,7 +6227,7 @@ function getJobsByStatus(statusFilter = []) {
   // Build job objects from data (start from row 1, skip header)
   for (let i = 1; i < allData.length; i++) {
     const row = allData[i];
-    const jobNum = row[jobNumCol];
+    const jobNum = row[jobNumColIndex];
     const status = row[statusColIndex];
 
     // Filter by status if provided
