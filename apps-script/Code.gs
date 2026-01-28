@@ -849,8 +849,8 @@ function handleQuoteAcceptance(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Check if job is in Quoted status
-    if (job['Status'] !== JOB_STATUS.QUOTED) {
+    // Check if job is in Quoted or Quote Reminded status
+    if (job['Status'] !== JOB_STATUS.QUOTED && job['Status'] !== JOB_STATUS.QUOTE_REMINDED) {
       // Job might already be accepted
       if (job['Status'] === JOB_STATUS.ACCEPTED || job['Status'] === JOB_STATUS.IN_PROGRESS || job['Status'] === JOB_STATUS.COMPLETED) {
         return ContentService
@@ -2249,6 +2249,7 @@ const SHEETS = {
 const JOB_STATUS = {
   PENDING_QUOTE: 'Pending Quote',
   QUOTED: 'Quoted',
+  QUOTE_REMINDED: 'Quote Reminded',
   ACCEPTED: 'Accepted',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
@@ -2338,6 +2339,8 @@ const SHEET_COLORS = {
   statusPendingQuoteText: '#e65100',// Dark orange text
   statusQuoted: '#f3e5f5',          // Light purple - waiting for client
   statusQuotedText: '#7b1fa2',      // Purple text
+  statusQuoteReminded: '#fff8e1',   // Light amber - reminded, awaiting response
+  statusQuoteRemindedText: '#f57c00', // Orange text
   statusAccepted: '#e8f5e9',        // Light green - ready to start
   statusAcceptedText: '#2e7d32',    // Green text
   statusActive: '#e3f2fd',          // Light blue for active jobs
@@ -2359,6 +2362,7 @@ const SHEET_COLORS = {
   // Status chart colors (Bg suffix for chart backgrounds)
   statusPendingBg: '#fff8e1',   // Light amber - Pending Quote
   statusQuotedBg: '#e3f2fd',    // Light blue - Quoted
+  statusQuoteRemindedBg: '#ffe0b2', // Light orange - Quote Reminded
   statusAcceptedBg: '#c8e6c9',  // Light green - Accepted
   statusActiveBg: '#bbdefb',    // Medium blue - In Progress
   statusCompletedBg: '#a5d6a7', // Medium green - Completed
@@ -2400,6 +2404,7 @@ const COLUMN_CONFIG = {
         conditionalRules: [
           { when: 'equals', value: JOB_STATUS.PENDING_QUOTE, background: SHEET_COLORS.statusPendingQuote, fontColor: SHEET_COLORS.statusPendingQuoteText },
           { when: 'equals', value: JOB_STATUS.QUOTED, background: SHEET_COLORS.statusQuoted, fontColor: SHEET_COLORS.statusQuotedText },
+          { when: 'equals', value: JOB_STATUS.QUOTE_REMINDED, background: SHEET_COLORS.statusQuoteReminded, fontColor: SHEET_COLORS.statusQuoteRemindedText },
           { when: 'equals', value: JOB_STATUS.ACCEPTED, background: SHEET_COLORS.statusAccepted, fontColor: SHEET_COLORS.statusAcceptedText },
           { when: 'equals', value: JOB_STATUS.IN_PROGRESS, background: SHEET_COLORS.statusActive, fontColor: SHEET_COLORS.statusActiveText, bold: true },
           { when: 'equals', value: JOB_STATUS.COMPLETED, background: SHEET_COLORS.statusCompleted, fontColor: SHEET_COLORS.statusCompletedText },
@@ -7426,7 +7431,7 @@ function updateJobField(jobNumber, fieldName, value) {
  */
 function showAcceptQuoteDialog() {
   const selectedJob = getSelectedJobNumber();
-  const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED]);
   showContextAwareDialog(
     'Mark Quote Accepted',
     jobs,
@@ -7455,8 +7460,8 @@ function markQuoteAccepted(jobNumber) {
     return;
   }
 
-  if (job['Status'] !== JOB_STATUS.QUOTED) {
-    ui.alert('Invalid Status', 'This job is not in Quoted status. Current status: ' + job['Status'], ui.ButtonSet.OK);
+  if (job['Status'] !== JOB_STATUS.QUOTED && job['Status'] !== JOB_STATUS.QUOTE_REMINDED) {
+    ui.alert('Invalid Status', 'This job is not in Quoted or Quote Reminded status. Current status: ' + job['Status'], ui.ButtonSet.OK);
     return;
   }
 
@@ -9025,7 +9030,7 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
  */
 function showQuoteReminderDialog() {
   const selectedJob = getSelectedJobNumber();
-  const jobs = getJobsByStatus([JOB_STATUS.QUOTED]);
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED]);
   showContextAwareDialog(
     'Send Quote Reminder',
     jobs,
@@ -9047,7 +9052,7 @@ function sendQuoteReminder(jobNumber) {
     return;
   }
 
-  if (job['Status'] !== JOB_STATUS.QUOTED) {
+  if (job['Status'] !== JOB_STATUS.QUOTED && job['Status'] !== JOB_STATUS.QUOTE_REMINDED) {
     ui.alert('Invalid Status', 'This job is not awaiting quote response. Status: ' + job['Status'], ui.ButtonSet.OK);
     return;
   }
@@ -9136,6 +9141,11 @@ https://cartcure.co.nz`;
       'Auto'
     );
 
+    // Update job status to Quote Reminded
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.QUOTE_REMINDED
+    });
+
     ui.alert('Reminder Sent', 'Quote reminder sent to ' + clientEmail, ui.ButtonSet.OK);
     Logger.log('Quote reminder sent for ' + jobNumber);
   } catch (error) {
@@ -9149,7 +9159,7 @@ https://cartcure.co.nz`;
  */
 function showDeclineQuoteDialog() {
   const selectedJob = getSelectedJobNumber();
-  const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.PENDING_QUOTE]);
+  const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED, JOB_STATUS.PENDING_QUOTE]);
   showContextAwareDialog(
     'Mark Quote Declined',
     jobs,
