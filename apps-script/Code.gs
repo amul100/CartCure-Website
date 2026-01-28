@@ -5846,49 +5846,27 @@ function removeEmailScanTrigger() {
 }
 
 /**
- * View activity log for a specific job (called from menu or sidebar)
- * Auto-detects job number from selected row if available
+ * Show dialog to view activity log for a job
+ * Auto-detects job number from selected row, or shows dropdown with all jobs
  */
 function viewJobActivityLog() {
+  const selectedJob = getSelectedJobNumber();
+  const jobs = getJobsByStatus([]); // Get all jobs
+  showContextAwareDialog(
+    'View Activity Log',
+    jobs,
+    'Job',
+    'displayActivityLogForJob',
+    selectedJob
+  );
+}
+
+/**
+ * Display the activity log for a specific job
+ * Called by showContextAwareDialog callback
+ */
+function displayActivityLogForJob(jobNumber) {
   const ui = SpreadsheetApp.getUi();
-
-  // Try to get job number from selected row first
-  let jobNumber = getSelectedJobNumber();
-
-  if (jobNumber) {
-    // Found a job number - confirm with user
-    const confirmResponse = ui.alert(
-      'View Activity Log',
-      'View activity log for ' + jobNumber + '?',
-      ui.ButtonSet.YES_NO
-    );
-
-    if (confirmResponse !== ui.Button.YES) {
-      // User said no - prompt for different job number
-      jobNumber = null;
-    }
-  }
-
-  // If no job number yet, prompt for it
-  if (!jobNumber) {
-    const response = ui.prompt(
-      'View Activity Log',
-      'Enter the job number (e.g., J-MAPLE-001):',
-      ui.ButtonSet.OK_CANCEL
-    );
-
-    if (response.getSelectedButton() !== ui.Button.OK) {
-      return;
-    }
-
-    jobNumber = response.getResponseText().trim().toUpperCase();
-
-    // Normalize job number format
-    if (!jobNumber.startsWith('J-')) {
-      jobNumber = 'J-' + jobNumber;
-    }
-  }
-
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
   const activitySheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
 
@@ -5955,32 +5933,27 @@ function viewJobActivityLog() {
 }
 
 /**
- * Manually add an activity note for a job
- * Auto-detects job number from selected row if available
+ * Show dialog to add an activity note for a job
+ * Auto-detects job number from selected row, or shows dropdown with all jobs
  */
 function addManualActivityNote() {
+  const selectedJob = getSelectedJobNumber();
+  const jobs = getJobsByStatus([]); // Get all jobs
+  showContextAwareDialog(
+    'Add Activity Note',
+    jobs,
+    'Job',
+    'promptForActivityNote',
+    selectedJob
+  );
+}
+
+/**
+ * Prompt for activity note text after job is selected
+ * Called by showContextAwareDialog callback
+ */
+function promptForActivityNote(jobNumber) {
   const ui = SpreadsheetApp.getUi();
-
-  // Try to get job number from selected row first
-  let jobNumber = getSelectedJobNumber();
-
-  if (!jobNumber) {
-    // No job number detected - prompt for it
-    const jobResponse = ui.prompt(
-      'Add Activity Note',
-      'Enter the job number (e.g., J-MAPLE-001):',
-      ui.ButtonSet.OK_CANCEL
-    );
-
-    if (jobResponse.getSelectedButton() !== ui.Button.OK) {
-      return;
-    }
-
-    jobNumber = jobResponse.getResponseText().trim().toUpperCase();
-    if (!jobNumber.startsWith('J-')) {
-      jobNumber = 'J-' + jobNumber;
-    }
-  }
 
   // Get the note
   const noteResponse = ui.prompt(
