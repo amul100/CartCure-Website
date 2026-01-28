@@ -9054,29 +9054,73 @@ function sendQuoteReminder(jobNumber) {
 
   const businessName = getSetting('Business Name') || 'CartCure';
   const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
   const clientName = job['Client Name'];
   const clientEmail = job['Client Email'];
   const total = job['Total (incl GST)'];
   const validUntil = job['Quote Valid Until'];
+  const jobDescription = job['Job Description'] || '';
+  const turnaround = job['Estimated Turnaround'] || '';
 
-  const subject = 'Reminder: Your CartCure Quote [' + jobNumber + ']';
+  const subject = 'Reminder: Your CartCure Quote (' + jobNumber + ')';
 
-  const htmlBody = `
-    <p>Hi ${clientName},</p>
-    <p>Just a friendly reminder that we sent you a quote for your Shopify store work.</p>
-    <p><strong>Quote Reference:</strong> ${jobNumber}<br>
-    <strong>Amount:</strong> $${total}<br>
-    <strong>Valid Until:</strong> ${validUntil}</p>
-    <p>If you'd like to proceed, simply reply to this email with "Approved" and we'll get started!</p>
-    <p>If you have any questions or need changes to the scope, just let us know.</p>
-    <p>Cheers,<br>The CartCure Team</p>
-  `;
+  // Build quote acceptance URL
+  const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
+    'job=' + encodeURIComponent(jobNumber) +
+    '&name=' + encodeURIComponent(clientName) +
+    '&desc=' + encodeURIComponent((jobDescription || '').substring(0, 100)) +
+    '&amount=' + encodeURIComponent(total) +
+    '&turnaround=' + encodeURIComponent(turnaround);
+
+  // GST footer line
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+  // Render the email template
+  const bodyContent = renderEmailTemplate('email-quote-reminder', {
+    jobNumber: jobNumber,
+    clientName: clientName,
+    quoteAmount: formatCurrency(parseFloat(total) || 0),
+    validUntil: validUntil,
+    acceptQuoteUrl: acceptQuoteUrl,
+    businessName: businessName,
+    gstFooterLine: gstFooterLine
+  });
+
+  const htmlBody = wrapEmailHtml(bodyContent);
+
+  // Plain text version
+  const plainBody = `Hi ${clientName},
+
+Just a friendly reminder that we sent you a quote for your Shopify store work. We'd love to help you get started!
+
+QUOTE SUMMARY
+-------------
+Quote Reference: ${jobNumber}
+Quoted Amount: ${formatCurrency(parseFloat(total) || 0)}
+Valid Until: ${validUntil}
+
+Ready to proceed? Visit this link to accept:
+${acceptQuoteUrl}
+
+Or simply reply to this email with "Approved" and we'll get started!
+
+If you have any questions or need changes to the scope, just let us know.
+
+Cheers,
+The ${businessName} Team
+
+--
+${businessName}
+Quick Shopify Fixes for NZ Businesses
+https://cartcure.co.nz`;
 
   try {
     MailApp.sendEmail({
       to: clientEmail,
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
+      body: plainBody,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail

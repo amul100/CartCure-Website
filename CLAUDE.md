@@ -49,6 +49,7 @@ When adding a new email type:
 | email-invoice-reminder.html | sendInvoiceReminder() | Pre-due date reminder |
 | email-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
 | email-quote-accepted.html | handleQuoteAcceptance() | Client confirmation after accepting quote |
+| email-quote-reminder.html | sendQuoteReminder() | Quote reminder with Accept Quote button |
 
 ## Column Configuration System
 **IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object at the top of Code.gs. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.
