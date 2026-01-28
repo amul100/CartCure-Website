@@ -3019,8 +3019,8 @@ function migrateSheetColumns(sheet, sheetKey) {
  */
 function onOpen() {
   buildMenu();
-  // Enable auto-refresh by default if not already enabled
-  ensureAutoRefreshEnabled();
+  // NOTE: Auto-triggers (refresh, email reminders, etc.) are enabled during Setup
+  // They cannot be enabled here because onOpen() is a simple trigger with limited authorization
 }
 
 /**
@@ -11243,6 +11243,7 @@ function ensureAutoTriggersExist() {
   const triggers = ScriptApp.getProjectTriggers();
 
   // Check which triggers already exist
+  let hasAutoRefresh = false;
   let hasInvoiceReminders = false;
   let hasOverdueInvoices = false;
   let hasQuoteReminders = false;
@@ -11250,6 +11251,7 @@ function ensureAutoTriggersExist() {
 
   triggers.forEach(trigger => {
     const handler = trigger.getHandlerFunction();
+    if (handler === 'autoRefreshDashboard') hasAutoRefresh = true;
     if (handler === 'autoSendInvoiceReminders') hasInvoiceReminders = true;
     if (handler === 'autoSendOverdueInvoices') hasOverdueInvoices = true;
     if (handler === 'autoSendQuoteReminders') hasQuoteReminders = true;
@@ -11257,6 +11259,16 @@ function ensureAutoTriggersExist() {
   });
 
   let created = 0;
+
+  // Create auto-refresh trigger (every 1 minute)
+  if (!hasAutoRefresh) {
+    ScriptApp.newTrigger('autoRefreshDashboard')
+      .timeBased()
+      .everyMinutes(1)
+      .create();
+    created++;
+    Logger.log('Created autoRefreshDashboard trigger');
+  }
 
   // Create missing email triggers (run at 9 AM NZ time)
   if (!hasInvoiceReminders) {
