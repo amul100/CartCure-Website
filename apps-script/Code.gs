@@ -3134,10 +3134,19 @@ function buildMenu() {
     Logger.log('buildMenu: Could not check trigger states (authorization required): ' + e.message);
   }
 
+  // Check confirm selection setting
+  let confirmSelectionEnabled = false;
+  try {
+    confirmSelectionEnabled = getSetting('Confirm Selection Dialog') === 'Yes';
+  } catch (e) {
+    // Settings may not be available yet
+  }
+
   // Dynamic labels based on current state
   const autoRefreshLabel = autoRefreshEnabled ? '⏹️ Disable Auto-Refresh' : '▶️ Enable Auto-Refresh';
   const emailLoggingLabel = emailLoggingEnabled ? '📧 Disable Email Logging' : '📧 Enable Email Logging';
   const autoEmailsLabel = autoEmailsEnabled ? '⏰ Disable Auto Emails' : '⏰ Enable Auto Emails';
+  const confirmSelectionLabel = confirmSelectionEnabled ? '✓ Disable Selection Confirmation' : '☐ Enable Selection Confirmation';
 
   ui.createMenu('🛒 CartCure')
     .addSubMenu(ui.createMenu('📊 Dashboard')
@@ -3180,6 +3189,7 @@ function buildMenu() {
       .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs')
       .addSeparator()
       .addItem(autoEmailsLabel, 'toggleAutoEmails')
+      .addItem(confirmSelectionLabel, 'toggleConfirmSelection')
       .addSeparator()
       .addSubMenu(ui.createMenu('🧪 Tests')
         .addItem('📝 Create 10 Test Submissions', 'createTestSubmissions')
@@ -3420,6 +3430,32 @@ function toggleAutoEmails() {
       '• Quote reminders (7 days after quote sent)\n' +
       '• Invoice reminders (1-2 days before due)\n' +
       '• Overdue invoice notices (weekly)',
+      ui.ButtonSet.OK);
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
+}
+
+/**
+ * Toggle selection confirmation dialog on/off
+ * When off (default): Auto-detected jobs/invoices proceed immediately
+ * When on: Shows "Use selected job: J-XXX?" confirmation first
+ */
+function toggleConfirmSelection() {
+  const ui = SpreadsheetApp.getUi();
+  const currentValue = getSetting('Confirm Selection Dialog');
+  const isEnabled = currentValue === 'Yes';
+
+  if (isEnabled) {
+    updateSetting('Confirm Selection Dialog', 'No');
+    ui.alert('Selection Confirmation Disabled',
+      'When you select a job or invoice and use a menu action, it will proceed immediately without asking for confirmation.',
+      ui.ButtonSet.OK);
+  } else {
+    updateSetting('Confirm Selection Dialog', 'Yes');
+    ui.alert('Selection Confirmation Enabled',
+      'When you select a job or invoice and use a menu action, you will be asked to confirm before proceeding.',
       ui.ButtonSet.OK);
   }
 
@@ -4435,7 +4471,8 @@ function setupSettingsSheet(ss, clearData) {
     ['Default Payment Terms', '7', 'Days to pay after invoice'],
     ['Default SLA Days', '7', 'Your turnaround promise in days'],
     ['Admin Email', CONFIG.ADMIN_EMAIL || '', 'Email for notifications'],
-    ['Next Invoice Number', '1', 'Auto-incremented invoice number counter']
+    ['Next Invoice Number', '1', 'Auto-incremented invoice number counter'],
+    ['Confirm Selection Dialog', 'No', 'Show confirmation when job/invoice auto-detected (Yes/No)']
   ];
 
   if (!sheet) {
@@ -7179,7 +7216,7 @@ function getSelectedInvoiceNumber() {
 function showContextAwareDialog(title, items, itemType, callback, selectedValue) {
   const ui = SpreadsheetApp.getUi();
 
-  // If we have a context-selected value, confirm and use it directly
+  // If we have a context-selected value, use it directly (or confirm if setting enabled)
   if (selectedValue) {
     // Verify the selected value is in our valid items list (if items provided)
     // Use string comparison to handle type mismatches (sheet values may be numbers)
@@ -7188,18 +7225,26 @@ function showContextAwareDialog(title, items, itemType, callback, selectedValue)
       items.some(item => String(item.number).trim() === selectedStr);
 
     if (isValidSelection) {
-      const response = ui.alert(
-        'Confirm Selection',
-        'Use selected ' + itemType.toLowerCase() + ': ' + selectedValue + '?',
-        ui.ButtonSet.YES_NO
-      );
+      // Check if confirmation dialog is enabled in settings
+      const confirmEnabled = getSetting('Confirm Selection Dialog') === 'Yes';
 
-      if (response === ui.Button.YES) {
-        // Call the callback function directly with the selected value
-        // Use eval to call the function by name (this[callback] doesn't work in Apps Script)
-        eval(callback + '("' + selectedValue.replace(/"/g, '\\"') + '")');
-        return;
+      if (confirmEnabled) {
+        const response = ui.alert(
+          'Confirm Selection',
+          'Use selected ' + itemType.toLowerCase() + ': ' + selectedValue + '?',
+          ui.ButtonSet.YES_NO
+        );
+
+        if (response !== ui.Button.YES) {
+          // User declined - fall through to dropdown
+          showDropdownDialog(title, items, itemType, callback);
+          return;
+        }
       }
+
+      // Proceed directly with the selected value
+      eval(callback + '("' + selectedValue.replace(/"/g, '\\"') + '")');
+      return;
     } else if (items && items.length > 0) {
       // Selected item exists but isn't valid for this action - explain why
       // Get the status of the selected job/item to provide helpful feedback
