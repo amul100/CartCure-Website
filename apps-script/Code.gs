@@ -893,25 +893,11 @@ function handleQuoteAcceptance(data) {
       // Continue without signature URL - still process acceptance
     }
 
-    // Prepare acceptance notes
-    const now = new Date();
-    const acceptanceNotes = [
-      '--- Quote Accepted via Web Form ---',
-      'Accepted by: ' + escapeHtml(fullName),
-      'Date: ' + (acceptanceDate || formatNZDate(now)),
-      'Terms Accepted: Yes',
-      signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
-      comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
-    ].filter(Boolean).join('\n');
-
     // Calculate due date
+    const now = new Date();
     const turnaround = parseInt(job['Estimated Turnaround']) || JOB_CONFIG.DEFAULT_SLA_DAYS;
     const dueDate = new Date(now);
     dueDate.setDate(dueDate.getDate() + turnaround);
-
-    // Get existing notes and append acceptance notes
-    const existingNotes = job['Notes'] || '';
-    const updatedNotes = existingNotes ? existingNotes + '\n\n' + acceptanceNotes : acceptanceNotes;
 
     // Update job fields
     updateJobFields(jobNumber, {
@@ -920,9 +906,17 @@ function handleQuoteAcceptance(data) {
       'Days Since Accepted': 0,
       'Days Remaining': turnaround,
       'SLA Status': 'On Track',
-      'Due Date': formatNZDate(dueDate),
-      'Notes': updatedNotes
+      'Due Date': formatNZDate(dueDate)
     });
+
+    // Log acceptance to Activity Log
+    const acceptanceDetails = [
+      'Accepted by: ' + escapeHtml(fullName),
+      acceptanceDate ? 'Date: ' + acceptanceDate : '',
+      signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
+      comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
+    ].filter(Boolean).join(', ');
+    logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via web form', acceptanceDetails, '', 'Auto');
 
     // Check if deposit is required and generate invoice
     const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
@@ -2568,7 +2562,6 @@ const COLUMN_CONFIG = {
       formula: '=IF({{Total (incl GST)}}{{row}}="","",{{Total (incl GST)}}{{row}}-SUMIFS(\'Invoice Log\'!{{INVOICES.Total}}:{{INVOICES.Total}},\'Invoice Log\'!{{INVOICES.Job #}}:{{INVOICES.Job #}},{{Job #}}{{row}},\'Invoice Log\'!{{INVOICES.Status}}:{{INVOICES.Status}},"Paid"))',
       format: { numberFormat: '$#,##0.00' }
     },
-    { name: 'Notes', width: 150 },
     { name: 'Submission #', width: 90 },
     { name: 'Last Updated', width: 110 }
   ],
@@ -8726,16 +8719,15 @@ function putJobOnHold(jobNumber, explanation) {
   }
 
   const now = new Date();
-  const existingNotes = job['Notes'] || '';
-  const onHoldNote = '[ON HOLD ' + formatNZDate(now) + '] ' + explanation;
-  const newNotes = existingNotes ? existingNotes + '\n' + onHoldNote : onHoldNote;
 
-  // Update status and notes
+  // Update status
   updateJobFields(jobNumber, {
     'Status': JOB_STATUS.ON_HOLD,
-    'Notes': newNotes,
     'Last Updated': formatNZDate(now)
   });
+
+  // Log to Activity Log
+  logJobActivity(jobNumber, 'On Hold', 'Job put on hold', explanation, '', 'Auto');
 
   // Send email notification
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.ON_HOLD, { explanation: explanation });
@@ -8825,13 +8817,9 @@ function showCancelJobConfirmation(jobNumber) {
 
   // Update job
   const now = new Date();
-  const existingNotes = job['Notes'] || '';
-  const cancellationNote = '[CANCELLED ' + formatNZDate(now) + ']' + (reason ? ' Reason: ' + reason : ' No reason provided');
-  const newNotes = existingNotes ? existingNotes + '\n' + cancellationNote : cancellationNote;
 
   const updates = {
     'Status': JOB_STATUS.CANCELLED,
-    'Notes': newNotes,
     'Last Updated': formatNZDate(now)
   };
 
@@ -8840,6 +8828,9 @@ function showCancelJobConfirmation(jobNumber) {
   }
 
   updateJobFields(jobNumber, updates);
+
+  // Log to Activity Log
+  logJobActivity(jobNumber, 'Cancelled', 'Job cancelled', reason || 'No reason provided', '', 'Auto');
 
   // Send email notification (without reason - kept internal)
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.CANCELLED);
@@ -12991,7 +12982,6 @@ function createTestJobForTestimonials() {
       'Actual Completion Date': timestamp,
       'Payment Status': 'Paid',
       'Payment Date': timestamp,
-      'Notes': 'AUTO-CREATED: Test job for testimonial form testing',
       'Last Updated': timestamp
     });
 
