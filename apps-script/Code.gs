@@ -7206,11 +7206,17 @@ function updateJobFields(jobNumber, updates) {
   // OPTIMIZATION: Single sheet load instead of N loads
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
+  const jobNumColIndex = headers.indexOf('Job #');
+
+  if (jobNumColIndex < 0) {
+    Logger.log('[PERF] updateJobFields() - Job # column not found');
+    return false;
+  }
 
   // Find the job row (linear search - only way to locate by job number)
   let rowIndex = -1;
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === jobNumber) {
+    if (String(data[i][jobNumColIndex]).trim() === String(jobNumber).trim()) {
       rowIndex = i;
       break;
     }
@@ -7286,12 +7292,13 @@ function updateJobField(jobNumber, fieldName, value) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
+  const jobNumColIndex = headers.indexOf('Job #');
   const colIndex = headers.indexOf(fieldName);
 
-  if (colIndex < 0) return false;
+  if (jobNumColIndex < 0 || colIndex < 0) return false;
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === jobNumber) {
+    if (String(data[i][jobNumColIndex]).trim() === String(jobNumber).trim()) {
       sheet.getRange(i + 1, colIndex + 1).setValue(value);
       // Update Last Updated
       const lastUpdatedCol = headers.indexOf('Last Updated');
@@ -11461,12 +11468,13 @@ function showOverdueJobs() {
 
   const data = jobsSheet.getDataRange().getValues();
   const headers = data[0];
+  const jobNumCol = headers.indexOf('Job #');
   const slaCol = headers.indexOf('SLA Status');
 
   const overdueJobs = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][slaCol] === 'OVERDUE') {
-      overdueJobs.push(data[i][0] + ' - ' + data[i][headers.indexOf('Client Name')]);
+      overdueJobs.push(data[i][jobNumCol] + ' - ' + data[i][headers.indexOf('Client Name')]);
     }
   }
 
@@ -11495,6 +11503,7 @@ function showOutstandingPayments() {
 
   const data = jobsSheet.getDataRange().getValues();
   const headers = data[0];
+  const jobNumCol = headers.indexOf('Job #');
   const paymentStatusCol = headers.indexOf('Payment Status');
   const totalCol = headers.indexOf('Total (incl GST)');
 
@@ -11507,7 +11516,7 @@ function showOutstandingPayments() {
       const amount = parseFloat(data[i][totalCol]) || 0;
       if (amount > 0) {
         totalOutstanding += amount;
-        unpaidJobs.push(data[i][0] + ' - ' + data[i][headers.indexOf('Client Name')] + ' - ' + formatCurrency(amount));
+        unpaidJobs.push(data[i][jobNumCol] + ' - ' + data[i][headers.indexOf('Client Name')] + ' - ' + formatCurrency(amount));
       }
     }
   }
