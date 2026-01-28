@@ -5862,7 +5862,7 @@ function viewJobActivityLog() {
 }
 
 /**
- * Display the activity log for a specific job
+ * Display the activity log for a specific job in a formatted HTML dialog
  * Called by showContextAwareDialog callback
  */
 function displayActivityLogForJob(jobNumber) {
@@ -5880,20 +5880,22 @@ function displayActivityLogForJob(jobNumber) {
   const headers = data[0];
   const jobNumColIndex = headers.indexOf('Job #');
   const timestampColIndex = headers.indexOf('Timestamp');
-  const typeColIndex = headers.indexOf('Type');
-  const summaryColIndex = headers.indexOf('Summary');
+  const typeColIndex = headers.indexOf('Activity Type');
+  const summaryColIndex = headers.indexOf('Subject/Summary');
   const detailsColIndex = headers.indexOf('Details');
   const fromToColIndex = headers.indexOf('From/To');
+  const loggedByColIndex = headers.indexOf('Logged By');
   const activities = [];
 
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][jobNumColIndex]).trim().toUpperCase() === jobNumber) {
+    if (String(data[i][jobNumColIndex]).trim().toUpperCase() === jobNumber.toUpperCase()) {
       activities.push({
         timestamp: timestampColIndex >= 0 ? data[i][timestampColIndex] : '',
         type: typeColIndex >= 0 ? data[i][typeColIndex] : '',
         summary: summaryColIndex >= 0 ? data[i][summaryColIndex] : '',
         details: detailsColIndex >= 0 ? data[i][detailsColIndex] : '',
-        fromTo: fromToColIndex >= 0 ? data[i][fromToColIndex] : ''
+        fromTo: fromToColIndex >= 0 ? data[i][fromToColIndex] : '',
+        loggedBy: loggedByColIndex >= 0 ? data[i][loggedByColIndex] : ''
       });
     }
   }
@@ -5903,33 +5905,228 @@ function displayActivityLogForJob(jobNumber) {
     return;
   }
 
-  // Build activity summary
-  let summary = 'Activity Log for ' + jobNumber + '\n';
-  summary += '═'.repeat(40) + '\n\n';
+  // Sort by timestamp descending (newest first)
+  activities.sort((a, b) => {
+    const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+    const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+    return dateB - dateA;
+  });
 
-  activities.forEach(function(activity, index) {
-    summary += (index + 1) + '. [' + activity.type + '] ' + activity.timestamp + '\n';
-    summary += '   ' + activity.summary + '\n';
-    if (activity.fromTo) {
-      summary += '   ' + activity.fromTo + '\n';
+  // Build HTML for each activity
+  let activitiesHtml = '';
+  activities.forEach((activity, index) => {
+    const timestamp = activity.timestamp instanceof Date
+      ? formatNZDateTime(activity.timestamp)
+      : activity.timestamp;
+
+    // Determine icon and color based on activity type
+    let icon = '📝';
+    let color = '#666';
+    const type = (activity.type || '').toLowerCase();
+    if (type.includes('email')) {
+      icon = '📧';
+      color = '#1a73e8';
+    } else if (type.includes('status')) {
+      icon = '🔄';
+      color = '#ea8600';
+    } else if (type.includes('payment') || type.includes('invoice')) {
+      icon = '💰';
+      color = '#34a853';
+    } else if (type.includes('note')) {
+      icon = '📝';
+      color = '#9334e6';
+    } else if (type.includes('quote')) {
+      icon = '📋';
+      color = '#ff6d01';
     }
-    summary += '\n';
+
+    const details = activity.details ? '<div class="details">' + escapeHtml(activity.details) + '</div>' : '';
+    const fromTo = activity.fromTo ? '<div class="from-to">' + escapeHtml(activity.fromTo) + '</div>' : '';
+    const loggedBy = activity.loggedBy ? '<span class="logged-by">by ' + escapeHtml(activity.loggedBy) + '</span>' : '';
+
+    activitiesHtml += `
+      <div class="activity-item">
+        <div class="activity-header">
+          <span class="activity-icon">${icon}</span>
+          <span class="activity-type" style="color: ${color};">${escapeHtml(activity.type || 'Activity')}</span>
+          <span class="activity-time">${escapeHtml(timestamp)} ${loggedBy}</span>
+        </div>
+        <div class="activity-summary">${escapeHtml(activity.summary || '')}</div>
+        ${fromTo}
+        ${details}
+      </div>
+    `;
   });
 
-  // Show in alert (limited to first 10 for readability)
-  const displayActivities = activities.slice(0, 10);
-  let displaySummary = 'Activity Log for ' + jobNumber + ' (' + activities.length + ' total entries)\n\n';
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+          }
+          .container {
+            max-width: 100%;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+            color: white;
+            padding: 20px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 0;
+          }
+          .header h2 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            font-weight: 500;
+          }
+          .header .count {
+            opacity: 0.9;
+            font-size: 14px;
+          }
+          .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .activity-item {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #1a73e8;
+          }
+          .activity-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+          }
+          .activity-icon {
+            font-size: 16px;
+          }
+          .activity-type {
+            font-weight: 600;
+            font-size: 14px;
+          }
+          .activity-time {
+            color: #5f6368;
+            font-size: 12px;
+            margin-left: auto;
+          }
+          .logged-by {
+            color: #80868b;
+            font-style: italic;
+          }
+          .activity-summary {
+            color: #202124;
+            font-size: 14px;
+            line-height: 1.5;
+          }
+          .from-to {
+            color: #5f6368;
+            font-size: 13px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e8eaed;
+          }
+          .details {
+            color: #5f6368;
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+          .btn-close {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+          }
+          .btn-close:hover {
+            background: #1557b0;
+          }
+          .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #5f6368;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>📜 Activity Log</h2>
+            <div class="count">${jobNumber} • ${activities.length} ${activities.length === 1 ? 'entry' : 'entries'}</div>
+          </div>
+          <div class="activity-list">
+            ${activitiesHtml}
+          </div>
+          <button class="btn-close" onclick="google.script.host.close()">Close</button>
+        </div>
+      </body>
+    </html>
+  `;
 
-  displayActivities.forEach(function(activity, index) {
-    displaySummary += '• ' + activity.timestamp + '\n';
-    displaySummary += '  ' + activity.type + ': ' + activity.summary.substring(0, 50) + (activity.summary.length > 50 ? '...' : '') + '\n\n';
-  });
+  const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(500)
+    .setHeight(500);
 
-  if (activities.length > 10) {
-    displaySummary += '... and ' + (activities.length - 10) + ' more entries.\nView the Activity Log sheet for full details.';
+  ui.showModalDialog(htmlOutput, 'Activity Log - ' + jobNumber);
+}
+
+/**
+ * Format date/time for NZ timezone display
+ */
+function formatNZDateTime(date) {
+  if (!date) return '';
+  if (!(date instanceof Date)) {
+    date = new Date(date);
   }
+  if (isNaN(date.getTime())) return '';
 
-  ui.alert('Activity Log', displaySummary, ui.ButtonSet.OK);
+  const options = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Pacific/Auckland'
+  };
+
+  return date.toLocaleString('en-NZ', options);
+}
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
