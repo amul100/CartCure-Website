@@ -3031,11 +3031,23 @@ function buildMenu() {
   const ui = SpreadsheetApp.getUi();
 
   // Check current trigger states for dynamic menu labels
-  const autoRefreshEnabled = hasTrigger('autoRefreshDashboard');
-  const emailLoggingEnabled = hasTrigger('scanSentEmailsForJobs');
-  const autoEmailsEnabled = hasTrigger('autoSendQuoteReminders') ||
-                            hasTrigger('autoSendInvoiceReminders') ||
-                            hasTrigger('autoSendOverdueInvoices');
+  // NOTE: hasTrigger() requires authorization that may not be available in onOpen() simple trigger
+  // So we wrap in try-catch and default to "Enable" labels if authorization fails
+  let autoRefreshEnabled = false;
+  let emailLoggingEnabled = false;
+  let autoEmailsEnabled = false;
+
+  try {
+    autoRefreshEnabled = hasTrigger('autoRefreshDashboard');
+    emailLoggingEnabled = hasTrigger('scanSentEmailsForJobs');
+    autoEmailsEnabled = hasTrigger('autoSendQuoteReminders') ||
+                        hasTrigger('autoSendInvoiceReminders') ||
+                        hasTrigger('autoSendOverdueInvoices');
+  } catch (e) {
+    // Authorization not available (e.g., in onOpen simple trigger)
+    // Default to showing "Enable" options - user can still toggle
+    Logger.log('buildMenu: Could not check trigger states (authorization required): ' + e.message);
+  }
 
   // Dynamic labels based on current state
   const autoRefreshLabel = autoRefreshEnabled ? '⏹️ Disable Auto-Refresh' : '▶️ Enable Auto-Refresh';
