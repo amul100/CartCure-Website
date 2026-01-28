@@ -57,7 +57,9 @@
       "Bash(node generate-previews.js:*)",
       "Bash(cmd.exe /c \"node generate-previews.js\")",
       "Bash(wc:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(clasp deployments:*)",
+      "Bash(npx @google/clasp deploy:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",

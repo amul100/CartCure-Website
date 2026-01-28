@@ -384,84 +384,49 @@
             </div>
 
             <form class="acceptance-form" id="acceptanceForm" style="display: none;">
-                <!-- Quote Summary -->
-                <div class="quote-summary" id="quoteSummary">
-                    <h3>Quote Summary</h3>
-                    <div class="quote-detail">
-                        <span class="label">Job Number:</span>
-                        <span class="value" id="summaryJobNumber">-</span>
-                    </div>
-                    <div class="quote-detail">
-                        <span class="label">Description:</span>
-                        <span class="value" id="summaryDescription">-</span>
-                    </div>
-                    <div class="quote-detail">
-                        <span class="label">Quote Amount:</span>
-                        <span class="value" id="summaryAmount">-</span>
-                    </div>
-                    <div class="quote-detail">
-                        <span class="label">Estimated Turnaround:</span>
-                        <span class="value" id="summaryTurnaround">-</span>
-                    </div>
-                </div>
+                <!-- Job Reference -->
+                <p style="margin: 0 0 1.5rem 0; color: var(--ink-gray); font-size: 0.95rem;">
+                    Job: <strong id="summaryJobNumber" style="color: var(--ink-black);"></strong>
+                </p>
 
-                <!-- Terms and Conditions Section -->
-                <div class="terms-section">
-                    <h3>Terms and Conditions</h3>
-                    <p style="margin-bottom: 1rem; color: var(--ink-gray); font-size: 0.95rem;">
-                        Please review our terms before accepting this quote:
-                    </p>
-                    <div class="terms-links">
-                        <a href="terms-of-service.html" target="_blank">Terms of Service &rarr;</a>
-                        <a href="privacy-policy.html" target="_blank">Privacy Policy &rarr;</a>
-                    </div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="termsAccepted" name="termsAccepted" required>
-                        <label for="termsAccepted">
-                            I have read and agree to the <a href="terms-of-service.html" target="_blank">Terms of Service</a>
-                            and <a href="privacy-policy.html" target="_blank">Privacy Policy</a>.
-                            I understand that for jobs $200+, a 50% deposit is required before work begins.
-                        </label>
-                    </div>
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" name="fullName" required maxlength="100" placeholder="Your full legal name">
                 </div>
 
                 <!-- Signature Section -->
-                <div class="signature-section">
-                    <h3>Your Signature *</h3>
-                    <p class="field-hint" style="margin-bottom: 1rem;">Please sign in the box below using your mouse or finger</p>
+                <div class="signature-section" style="background: transparent; border: none; padding: 0; margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--ink-black); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">Signature *</label>
+                    <p class="field-hint" style="margin-bottom: 0.5rem;">Sign in the box below using your mouse or finger</p>
                     <div class="signature-canvas-container">
                         <canvas id="signatureCanvas"></canvas>
                         <span class="signature-placeholder" id="signaturePlaceholder">Sign here</span>
                     </div>
                     <div class="signature-buttons">
-                        <button type="button" class="clear-button" id="clearSignature">Clear Signature</button>
+                        <button type="button" class="clear-button" id="clearSignature">Clear</button>
                     </div>
                 </div>
 
-                <!-- Form Fields -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="fullName">Full Name *</label>
-                        <input type="text" id="fullName" name="fullName" required maxlength="100" placeholder="Your full legal name">
-                    </div>
-                    <div class="form-group">
-                        <label for="acceptanceDate">Date *</label>
-                        <input type="date" id="acceptanceDate" name="acceptanceDate" required>
-                    </div>
-                </div>
-
+                <!-- Date -->
                 <div class="form-group">
-                    <label for="comments">Additional Comments (Optional)</label>
-                    <textarea id="comments" name="comments" maxlength="1000" placeholder="Any additional notes or special requests for this job..."></textarea>
-                    <p class="field-hint">Share any clarifications, special instructions, or questions about the work</p>
+                    <label for="acceptanceDate">Date *</label>
+                    <input type="date" id="acceptanceDate" name="acceptanceDate" required>
+                </div>
+
+                <!-- Terms Checkbox -->
+                <div class="checkbox-group" style="margin-bottom: 1.5rem;">
+                    <input type="checkbox" id="termsAccepted" name="termsAccepted" required>
+                    <label for="termsAccepted">
+                        I agree to the <a href="terms-of-service.html" target="_blank">Terms of Service</a>
+                        and <a href="privacy-policy.html" target="_blank">Privacy Policy</a>
+                    </label>
                 </div>
 
                 <input type="hidden" id="jobNumber" name="jobNumber" value="">
                 <input type="hidden" id="signatureData" name="signatureData" value="">
 
-                <button type="submit" class="submit-button" id="submitButton">Accept Quote & Proceed</button>
-
-                <p class="form-note">* Required fields. By submitting, you authorize CartCure to begin work on your project according to the quoted terms.</p>
+                <button type="submit" class="submit-button" id="submitButton">Accept Quote</button>
             </form>
         </div>
     </div>
@@ -523,11 +488,8 @@
                     return;
                 }
 
-                // Populate quote summary
+                // Show job number
                 document.getElementById('summaryJobNumber').textContent = jobNumber;
-                document.getElementById('summaryDescription').textContent = description || 'See quote email for details';
-                document.getElementById('summaryAmount').textContent = amount || 'See quote email';
-                document.getElementById('summaryTurnaround').textContent = turnaround ? turnaround + ' days' : 'See quote email';
 
                 // Set hidden job number
                 jobNumberInput.value = jobNumber;
@@ -671,7 +633,6 @@
                     jobNumber: jobNumberInput.value,
                     fullName: document.getElementById('fullName').value.trim(),
                     acceptanceDate: document.getElementById('acceptanceDate').value,
-                    comments: document.getElementById('comments').value.trim(),
                     signatureData: signatureDataInput.value,
                     termsAccepted: true
                 };

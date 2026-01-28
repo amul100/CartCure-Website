@@ -868,6 +868,10 @@ function handleQuoteAcceptance(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Convert signature to blob (used for both Drive storage and email attachment)
+    const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
+    const signatureBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature.png');
+
     // Save signature to Google Drive
     let signatureFileUrl = '';
     try {
@@ -875,12 +879,12 @@ function handleQuoteAcceptance(data) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = 'Signature_' + jobNumber + '_' + timestamp + '.png';
 
-      // Convert base64 to blob
-      const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
-      const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', fileName);
+      // Create a copy of the blob with the proper filename for Drive
+      const driveBlob = signatureBlob.copyBlob();
+      driveBlob.setName(fileName);
 
       // Save to Drive
-      const file = signatureFolder.createFile(blob);
+      const file = signatureFolder.createFile(driveBlob);
       signatureFileUrl = file.getUrl();
 
       Logger.log('Signature saved: ' + signatureFileUrl);
@@ -964,10 +968,83 @@ Use CartCure > Jobs > Start Work when you begin.`;
         MailApp.sendEmail({
           to: CONFIG.ADMIN_EMAIL,
           subject: adminSubject,
-          body: adminBody
+          body: adminBody,
+          inlineImages: { signature: signatureBlob }
         });
       } catch (emailError) {
         Logger.log('Failed to send admin notification: ' + emailError.message);
+      }
+    }
+
+    // Send confirmation email to client
+    const clientEmail = job['Client Email'];
+    if (clientEmail) {
+      try {
+        const businessName = getSetting('Business Name') || 'CartCure';
+        const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+        const gstNumber = getSetting('GST Number') || '';
+        const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+        // Determine deposit message
+        const depositMessage = requiresDeposit
+          ? 'You\'ll receive a deposit invoice shortly. Payment of 50% (' + formatCurrency(total * 0.5) + ') is required to begin work.'
+          : 'No deposit is required. We\'ll begin work and invoice you upon completion.';
+
+        // Render the confirmation email template
+        const bodyContent = renderEmailTemplate('email-quote-accepted', {
+          jobNumber: jobNumber,
+          clientName: job['Client Name'] || fullName,
+          acceptedBy: fullName,
+          acceptanceDate: acceptanceDate || formatNZDate(now),
+          quoteAmount: formatCurrency(total),
+          depositInfo: depositMessage,
+          dueDate: formatNZDate(dueDate),
+          businessName: businessName,
+          gstFooterLine: gstFooterLine
+        });
+
+        const htmlBody = wrapEmailHtml(bodyContent);
+
+        // Plain text version
+        const plainBody = `Hi ${job['Client Name'] || fullName},
+
+Thank you for accepting the quote for job ${jobNumber}!
+
+ACCEPTANCE DETAILS
+------------------
+Accepted By: ${fullName}
+Date: ${acceptanceDate || formatNZDate(now)}
+Quote Amount: ${formatCurrency(total)}
+
+WHAT HAPPENS NEXT
+-----------------
+${depositMessage}
+
+We'll begin work on your project and keep you updated on progress.
+Estimated completion: ${formatNZDate(dueDate)}
+
+By accepting this quote, you agreed to our Terms of Service and Privacy Policy.
+
+Thanks for choosing CartCure!
+
+--
+${businessName}
+Quick Shopify Fixes for NZ Businesses
+https://cartcure.co.nz`;
+
+        MailApp.sendEmail({
+          to: clientEmail,
+          subject: 'Quote Accepted - ' + jobNumber,
+          body: plainBody,
+          htmlBody: htmlBody,
+          name: businessName,
+          inlineImages: { signature: signatureBlob }
+        });
+
+        Logger.log('Client confirmation email sent to: ' + clientEmail);
+      } catch (clientEmailError) {
+        Logger.log('Failed to send client confirmation email: ' + clientEmailError.message);
+        // Continue - not critical
       }
     }
 
