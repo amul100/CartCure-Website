@@ -733,11 +733,16 @@
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; Start Work on Job</strong></li>
     <li>Select a job from the dropdown list</li>
+    <li><strong>Deposit Check:</strong> For jobs $200+, the system verifies the deposit invoice has been marked as paid before allowing work to start</li>
     <li><strong>Backup Reminder:</strong> You'll see a prompt asking if you've confirmed the client has a recent backup of their store (per Terms of Service)</li>
     <li>Click <strong>Yes</strong> to proceed, or <strong>No</strong> to send a backup reminder first</li>
     <li>Status changes to "In Progress"</li>
     <li>Client automatically receives an email notification</li>
 </ol>
+
+<div class="warning">
+    <strong>💰 Deposit Required (Jobs $200+):</strong> Work cannot start on jobs that have an unpaid deposit invoice. The system will display an error showing the invoice number and amount. Mark the deposit invoice as paid (via <strong>💰 Invoices &gt; Mark Invoice Paid</strong>) once payment is received, then try starting work again.
+</div>
 
 <div class="warning">
     <strong>⚠️ Backup Reminder (TOS Requirement):</strong> Per the Terms of Service, clients are responsible for maintaining their own backups. The system prompts you to confirm backup status before starting work to protect both parties.
@@ -936,33 +941,44 @@
     </li>
 </ol>
 
-<h4>Automatic Invoice Reminders and Overdue Notices</h4>
-<p>The system can automatically send invoice reminders and overdue notices without manual intervention:</p>
+<h4>Automatic Email Reminders</h4>
+<p>The system can automatically send quote reminders, invoice reminders, and overdue notices without manual intervention:</p>
 
 <h5>What Gets Sent Automatically:</h5>
 <ul>
+    <li><strong>Quote Reminders:</strong> Sent 7 days after a quote is sent, if the client hasn't accepted or declined it. The job status changes to "Quote Reminded"</li>
     <li><strong>Invoice Reminders:</strong> Sent 1-2 days before the due date to help clients avoid late fees</li>
     <li><strong>Overdue Invoices:</strong> Sent weekly (every 7 days) for invoices that are past due</li>
 </ul>
 
-<h5>Important: Paid Invoices Are Skipped</h5>
-<p>Both automatic functions check the invoice status before sending. If an invoice is marked as "Paid", it will be automatically skipped - no reminder or overdue notice will be sent.</p>
+<h5>Important: Already Handled Items Are Skipped</h5>
+<p>All automatic functions check status before sending:</p>
+<ul>
+    <li><strong>Quote Reminders:</strong> Only jobs in "Quoted" status receive reminders. Jobs that are already "Quote Reminded", "Quote Accepted", or "Quote Declined" are skipped</li>
+    <li><strong>Invoice Reminders/Overdue:</strong> Invoices marked as "Paid" are automatically skipped</li>
+</ul>
 
-<h5>Enabling Automatic Emails:</h5>
-<ol>
-    <li>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; Enable Auto Invoice Reminders</strong></li>
-    <li>The system creates daily triggers that run at 9:00 AM (NZ time)</li>
-    <li>You'll see a confirmation dialog with details</li>
-</ol>
+<h5>Enabled by Default</h5>
+<p>All automatic email features are <strong>enabled by default</strong> when you run Setup. No additional configuration is needed.</p>
 
-<h5>Disabling Automatic Emails:</h5>
-<ol>
-    <li>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; Disable Auto Invoice Reminders</strong></li>
-    <li>All automatic email triggers will be removed</li>
-</ol>
+<p>Triggers run daily at 9:00 AM (NZ time) and include:</p>
+<ul>
+    <li>Quote reminders</li>
+    <li>Invoice reminders</li>
+    <li>Overdue invoice notices</li>
+    <li>Email scanning (every 5 minutes)</li>
+</ul>
+
+<h5>Toggling Automatic Emails:</h5>
+<p>The menu shows a single toggle button that changes based on current state:</p>
+<ul>
+    <li>If enabled: Menu shows <strong>"⏰ Disable Auto Emails"</strong></li>
+    <li>If disabled: Menu shows <strong>"⏰ Enable Auto Emails"</strong></li>
+</ul>
+<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
 
 <div class="success">
-    <strong>Set It and Forget It:</strong> Once enabled, the system automatically manages invoice reminders and overdue notices. You don't need to remember to check for due invoices - the system handles it for you, and automatically skips any invoices that have been paid.
+    <strong>Set It and Forget It:</strong> The system automatically manages quote reminders, invoice reminders, and overdue notices. You don't need to remember to follow up on quotes or check for due invoices - the system handles it for you, and automatically skips any items that have been handled.
 </div>
 
 <div class="info">
@@ -1448,9 +1464,12 @@
 
 <div class="workflow-diagram">
 Pending Quote → Quoted → Accepted → In Progress → Completed
-                  ↓                      ↓
-              Declined              On Hold
+                  ↓          ↓              ↓
+            Quote Reminded  Declined     On Hold
+                  ↓
+               Accepted
 </div>
+<p><em>Note: Jobs in "Quoted" status automatically receive a reminder email after 7 days, changing to "Quote Reminded" status.</em></p>
 
 <h2>Payment Status Flow</h2>
 
@@ -2448,30 +2467,23 @@ Unpaid → Invoiced → Paid
     </tr>
 </table>
 
-<h2>Enabling Email Activity Logging</h2>
+<h2>Email Activity Logging</h2>
 
-<p>To enable automatic email logging:</p>
+<p>Email logging is <strong>enabled by default</strong> when you run Setup. Emails are scanned every 5 minutes.</p>
 
-<ol>
-    <li>Open your Google Sheets job management spreadsheet</li>
-    <li>Click <strong>CartCure > Setup > Enable Email Activity Logging</strong></li>
-    <li>Grant Gmail access when prompted (first time only)</li>
-    <li>The system will immediately scan recent emails and set up automatic scanning every 15 minutes</li>
-</ol>
+<h3>Toggling Email Logging</h3>
+<p>The menu shows a single toggle button that changes based on current state:</p>
+<ul>
+    <li>If enabled: Menu shows <strong>"📧 Disable Email Logging"</strong></li>
+    <li>If disabled: Menu shows <strong>"📧 Enable Email Logging"</strong></li>
+</ul>
+<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
 
 <div class="warning">
     <strong>Important:</strong> For emails to be logged automatically, they must contain a job tag in the format <code>(J-WORD-XXX)</code> in the subject line. For example: "Re: Quote for your project (J-MAPLE-001)"
 </div>
 
-<h2>Disabling Email Logging</h2>
-
-<p>To stop automatic email scanning:</p>
-
-<ol>
-    <li>Click <strong>CartCure > Setup > Disable Email Activity Logging</strong></li>
-</ol>
-
-<p>This removes the automatic trigger. Existing activity log entries are preserved.</p>
+<p>Disabling email logging removes the automatic trigger. Existing activity log entries are preserved.</p>
 
 <h2>Viewing a Job's Activity Log</h2>
 
