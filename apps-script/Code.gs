@@ -3018,14 +3018,36 @@ function migrateSheetColumns(sheet, sheetKey) {
  * Create custom menu when spreadsheet opens
  */
 function onOpen() {
+  buildMenu();
+  // Enable auto-refresh by default if not already enabled
+  ensureAutoRefreshEnabled();
+}
+
+/**
+ * Build the CartCure menu with dynamic labels based on current trigger states
+ * This function can be called to refresh the menu after toggling features
+ */
+function buildMenu() {
   const ui = SpreadsheetApp.getUi();
+
+  // Check current trigger states for dynamic menu labels
+  const autoRefreshEnabled = hasTrigger('autoRefreshDashboard');
+  const emailLoggingEnabled = hasTrigger('scanSentEmailsForJobs');
+  const autoEmailsEnabled = hasTrigger('autoSendQuoteReminders') ||
+                            hasTrigger('autoSendInvoiceReminders') ||
+                            hasTrigger('autoSendOverdueInvoices');
+
+  // Dynamic labels based on current state
+  const autoRefreshLabel = autoRefreshEnabled ? '⏹️ Disable Auto-Refresh' : '▶️ Enable Auto-Refresh';
+  const emailLoggingLabel = emailLoggingEnabled ? '📧 Disable Email Logging' : '📧 Enable Email Logging';
+  const autoEmailsLabel = autoEmailsEnabled ? '⏰ Disable Auto Emails' : '⏰ Enable Auto Emails';
+
   ui.createMenu('🛒 CartCure')
     .addSubMenu(ui.createMenu('📊 Dashboard')
       .addItem('🔄 Refresh Dashboard', 'refreshDashboard')
       .addItem('📈 Refresh Analytics', 'refreshAnalytics')
       .addSeparator()
-      .addItem('▶️ Enable Auto-Refresh (1 min)', 'enableAutoRefresh')
-      .addItem('⏹️ Disable Auto-Refresh', 'disableAutoRefresh'))
+      .addItem(autoRefreshLabel, 'toggleAutoRefresh'))
     .addSeparator()
     .addSubMenu(ui.createMenu('📋 Jobs')
       .addItem('➕ Create Job from Submission', 'showCreateJobDialog')
@@ -3057,12 +3079,10 @@ function onOpen() {
       .addItem('📐 Reset Column Widths', 'resetColumnWidths')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
       .addSeparator()
-      .addItem('📧 Enable Email Activity Logging (Hourly)', 'setupEmailScanTrigger')
-      .addItem('📧 Disable Email Activity Logging', 'removeEmailScanTrigger')
+      .addItem(emailLoggingLabel, 'toggleEmailLogging')
       .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs')
       .addSeparator()
-      .addItem('⏰ Enable Auto Invoice Reminders', 'setupAutoEmailTriggers')
-      .addItem('⏰ Disable Auto Invoice Reminders', 'removeAutoEmailTriggers')
+      .addItem(autoEmailsLabel, 'toggleAutoEmails')
       .addSeparator()
       .addSubMenu(ui.createMenu('🧪 Tests')
         .addItem('📝 Create 10 Test Submissions', 'createTestSubmissions')
@@ -3072,9 +3092,6 @@ function onOpen() {
         .addSeparator()
         .addItem('🧹 Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')))
     .addToUi();
-
-  // Enable auto-refresh by default if not already enabled
-  ensureAutoRefreshEnabled();
 }
 
 /**
@@ -3179,6 +3196,138 @@ function ensureAutoRefreshEnabled() {
       .create();
     Logger.log('Auto-refresh enabled on spreadsheet open');
   }
+}
+
+// ============================================================================
+// TRIGGER STATE HELPERS & TOGGLE FUNCTIONS
+// ============================================================================
+
+/**
+ * Check if a specific trigger exists
+ * @param {string} handlerName - The function name the trigger calls
+ * @returns {boolean} - True if trigger exists
+ */
+function hasTrigger(handlerName) {
+  const triggers = ScriptApp.getProjectTriggers();
+  return triggers.some(trigger => trigger.getHandlerFunction() === handlerName);
+}
+
+/**
+ * Toggle auto-refresh on/off
+ */
+function toggleAutoRefresh() {
+  const ui = SpreadsheetApp.getUi();
+  const isEnabled = hasTrigger('autoRefreshDashboard');
+
+  if (isEnabled) {
+    disableAutoRefreshSilent();
+    ui.alert('Auto-Refresh Disabled', 'Automatic dashboard refresh has been turned off.', ui.ButtonSet.OK);
+  } else {
+    ScriptApp.newTrigger('autoRefreshDashboard')
+      .timeBased()
+      .everyMinutes(1)
+      .create();
+    ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 1 minute.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
+}
+
+/**
+ * Toggle email activity logging on/off
+ */
+function toggleEmailLogging() {
+  const ui = SpreadsheetApp.getUi();
+  const isEnabled = hasTrigger('scanSentEmailsForJobs');
+
+  if (isEnabled) {
+    // Disable
+    const triggers = ScriptApp.getProjectTriggers();
+    triggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'scanSentEmailsForJobs') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    ui.alert('Email Logging Disabled', 'Automatic email activity logging has been turned off.', ui.ButtonSet.OK);
+  } else {
+    // Enable
+    ScriptApp.newTrigger('scanSentEmailsForJobs')
+      .timeBased()
+      .everyMinutes(5)
+      .create();
+    ui.alert('Email Logging Enabled', 'Emails will be automatically scanned every 5 minutes and logged to job activity.', ui.ButtonSet.OK);
+    // Also run immediately
+    scanSentEmailsForJobs();
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
+}
+
+/**
+ * Toggle auto email reminders (quotes, invoices, overdue) on/off
+ */
+function toggleAutoEmails() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Check if any of the auto email triggers exist
+  const hasQuoteReminders = hasTrigger('autoSendQuoteReminders');
+  const hasInvoiceReminders = hasTrigger('autoSendInvoiceReminders');
+  const hasOverdueInvoices = hasTrigger('autoSendOverdueInvoices');
+  const isEnabled = hasQuoteReminders || hasInvoiceReminders || hasOverdueInvoices;
+
+  if (isEnabled) {
+    // Disable all
+    const triggers = ScriptApp.getProjectTriggers();
+    triggers.forEach(trigger => {
+      const handler = trigger.getHandlerFunction();
+      if (handler === 'autoSendQuoteReminders' ||
+          handler === 'autoSendInvoiceReminders' ||
+          handler === 'autoSendOverdueInvoices') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    ui.alert('Auto Emails Disabled',
+      'Automatic emails have been turned off:\n\n' +
+      '• Quote reminders\n' +
+      '• Invoice reminders\n' +
+      '• Overdue invoice notices\n\n' +
+      'You can still send these manually from the menu.',
+      ui.ButtonSet.OK);
+  } else {
+    // Enable all
+    ScriptApp.newTrigger('autoSendQuoteReminders')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+
+    ScriptApp.newTrigger('autoSendInvoiceReminders')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+
+    ScriptApp.newTrigger('autoSendOverdueInvoices')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+
+    ui.alert('Auto Emails Enabled',
+      'Daily automatic emails have been configured (9:00 AM NZ time):\n\n' +
+      '• Quote reminders (7 days after quote sent)\n' +
+      '• Invoice reminders (1-2 days before due)\n' +
+      '• Overdue invoice notices (weekly)',
+      ui.ButtonSet.OK);
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
 }
 
 // ============================================================================
@@ -3604,6 +3753,11 @@ function setupSheets(clearData) {
     resetColumnWidthsInternal(ss);
     logDebug('Step 9 COMPLETE');
 
+    // Step 10: Ensure all automatic triggers are enabled by default
+    logDebug('Step 10: Enabling automatic triggers...');
+    const triggersCreated = ensureAutoTriggersExist();
+    logDebug('Step 10 COMPLETE: ' + triggersCreated + ' trigger(s) created');
+
     logAllSheets('FINAL STATE');
     logDebug('========== SETUP SHEETS SUCCESS ==========');
 
@@ -3611,8 +3765,8 @@ function setupSheets(clearData) {
     saveSetupDebugLog(debugLog.join('\n'), 'SUCCESS');
 
     const message = clearData
-      ? 'Hard reset complete! All data has been deleted and sheets have been reset.'
-      : 'Setup complete! All sheets have been created/repaired with data preserved.\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
+      ? 'Hard reset complete! All data has been deleted and sheets have been reset.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning'
+      : 'Setup complete! All sheets have been created/repaired with data preserved.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
 
     ui.alert(clearData ? '✅ Hard Reset Complete' : '✅ Setup Complete', message, ui.ButtonSet.OK);
 
@@ -7991,6 +8145,24 @@ function startWorkOnJob(jobNumber) {
     return;
   }
 
+  // CHECK FOR UNPAID DEPOSIT INVOICE
+  // Work cannot start until deposit is paid (for jobs that require deposit)
+  const invoices = getInvoicesByJobNumber(jobNumber);
+  const depositInvoice = invoices.find(inv => inv['Invoice Type'] === 'Deposit');
+
+  if (depositInvoice && depositInvoice['Status'] !== 'Paid') {
+    const depositAmount = formatCurrency(parseFloat(depositInvoice['Total']) || parseFloat(depositInvoice['Amount (excl GST)']) || 0);
+    ui.alert('⚠️ Deposit Required',
+      'Work cannot start on this job until the deposit invoice is paid.\n\n' +
+      'Invoice: ' + depositInvoice['Invoice #'] + '\n' +
+      'Amount: ' + depositAmount + '\n' +
+      'Status: Unpaid\n\n' +
+      'Please mark the deposit invoice as paid once payment is received, then try again.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
   // BACKUP REMINDER (per TOS requirement)
   // Only show for fresh starts, not resuming from On Hold
   if (job['Status'] === JOB_STATUS.ACCEPTED) {
@@ -9152,6 +9324,206 @@ https://cartcure.co.nz`;
     Logger.log('Error sending reminder: ' + error.message);
     ui.alert('Error', 'Failed to send reminder: ' + error.message, ui.ButtonSet.OK);
   }
+}
+
+/**
+ * Send quote reminder automatically (no UI alerts)
+ * Used by the daily automatic trigger
+ * @param {string} jobNumber - The job number
+ * @returns {boolean} - True if sent successfully
+ */
+function sendQuoteReminderAuto(jobNumber) {
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    Logger.log('Job ' + jobNumber + ' not found for auto quote reminder');
+    return false;
+  }
+
+  // Only send for jobs in Quoted status (not Quote Reminded - they already got a reminder)
+  if (job['Status'] !== JOB_STATUS.QUOTED) {
+    Logger.log('Job ' + jobNumber + ' not in Quoted status, skipping');
+    return false;
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+  const clientName = job['Client Name'];
+  const clientEmail = job['Client Email'];
+  const total = job['Total (incl GST)'];
+  const validUntil = job['Quote Valid Until'];
+  const jobDescription = job['Job Description'] || '';
+  const turnaround = job['Estimated Turnaround'] || '';
+
+  if (!clientEmail) {
+    Logger.log('Job ' + jobNumber + ' has no client email, skipping');
+    return false;
+  }
+
+  const subject = 'Reminder: Your CartCure Quote (' + jobNumber + ')';
+
+  // Build quote acceptance URL
+  const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
+    'job=' + encodeURIComponent(jobNumber) +
+    '&name=' + encodeURIComponent(clientName) +
+    '&desc=' + encodeURIComponent((jobDescription || '').substring(0, 100)) +
+    '&amount=' + encodeURIComponent(total) +
+    '&turnaround=' + encodeURIComponent(turnaround);
+
+  // GST footer line
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+  // Render the email template
+  const bodyContent = renderEmailTemplate('email-quote-reminder', {
+    jobNumber: jobNumber,
+    clientName: clientName,
+    quoteAmount: formatCurrency(parseFloat(total) || 0),
+    validUntil: validUntil,
+    acceptQuoteUrl: acceptQuoteUrl,
+    businessName: businessName,
+    gstFooterLine: gstFooterLine
+  });
+
+  const htmlBody = wrapEmailHtml(bodyContent);
+
+  // Plain text version
+  const plainBody = `Hi ${clientName},
+
+Just a friendly reminder that we sent you a quote for your Shopify store work. We'd love to help you get started!
+
+QUOTE SUMMARY
+-------------
+Quote Reference: ${jobNumber}
+Quoted Amount: ${formatCurrency(parseFloat(total) || 0)}
+Valid Until: ${validUntil}
+
+Ready to proceed? Visit this link to accept:
+${acceptQuoteUrl}
+
+Or simply reply to this email with "Approved" and we'll get started!
+
+If you have any questions or need changes to the scope, just let us know.
+
+Cheers,
+The ${businessName} Team
+
+--
+${businessName}
+Quick Shopify Fixes for NZ Businesses
+https://cartcure.co.nz`;
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      body: plainBody,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      subject,
+      'Auto quote reminder sent (7+ days)',
+      'To: ' + clientEmail,
+      'Auto'
+    );
+
+    // Update job status to Quote Reminded
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.QUOTE_REMINDED
+    });
+
+    Logger.log('Auto quote reminder sent for ' + jobNumber);
+    return true;
+  } catch (error) {
+    Logger.log('Error sending auto quote reminder for ' + jobNumber + ': ' + error.message);
+    return false;
+  }
+}
+
+/**
+ * Automatically send quote reminders for jobs awaiting response for 7+ days
+ * This function is called by a daily trigger
+ */
+function autoSendQuoteReminders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+
+  if (!jobsSheet) {
+    Logger.log('Jobs sheet not found');
+    return;
+  }
+
+  const data = jobsSheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const statusCol = headers.indexOf('Status');
+  const jobNumCol = headers.indexOf('Job #');
+  const quoteSentDateCol = headers.indexOf('Quote Sent Date');
+
+  if (statusCol === -1 || jobNumCol === -1 || quoteSentDateCol === -1) {
+    Logger.log('Required columns not found in Jobs sheet');
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let remindersSent = 0;
+  let skipped = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = row[statusCol];
+    const jobNumber = row[jobNumCol];
+    const quoteSentDateStr = row[quoteSentDateCol];
+
+    // Only process jobs in 'Quoted' status (not already reminded)
+    if (status !== JOB_STATUS.QUOTED) {
+      continue;
+    }
+
+    if (!jobNumber || !quoteSentDateStr) {
+      continue;
+    }
+
+    // Parse quote sent date (DD/MM/YYYY format or Date object)
+    let quoteSentDate;
+    if (quoteSentDateStr instanceof Date) {
+      quoteSentDate = quoteSentDateStr;
+    } else {
+      const parts = quoteSentDateStr.split('/');
+      if (parts.length === 3) {
+        quoteSentDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      } else {
+        Logger.log('Invalid quote sent date format for job ' + jobNumber + ': ' + quoteSentDateStr);
+        continue;
+      }
+    }
+    quoteSentDate.setHours(0, 0, 0, 0);
+
+    // Calculate days since quote was sent
+    const daysSinceQuote = Math.floor((today - quoteSentDate) / (1000 * 60 * 60 * 24));
+
+    // Send reminder if quote was sent 7+ days ago
+    if (daysSinceQuote >= 7) {
+      const success = sendQuoteReminderAuto(jobNumber);
+      if (success) {
+        remindersSent++;
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  Logger.log('Auto quote reminders complete: ' + remindersSent + ' sent, ' + skipped + ' skipped');
 }
 
 /**
@@ -10773,7 +11145,7 @@ function autoSendOverdueInvoices() {
 
 /**
  * Set up automatic email triggers
- * Creates daily triggers for invoice reminders and overdue notices
+ * Creates daily triggers for invoice reminders, overdue notices, and quote reminders
  */
 function setupAutoEmailTriggers() {
   const ui = SpreadsheetApp.getUi();
@@ -10782,7 +11154,8 @@ function setupAutoEmailTriggers() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => {
     if (trigger.getHandlerFunction() === 'autoSendInvoiceReminders' ||
-        trigger.getHandlerFunction() === 'autoSendOverdueInvoices') {
+        trigger.getHandlerFunction() === 'autoSendOverdueInvoices' ||
+        trigger.getHandlerFunction() === 'autoSendQuoteReminders') {
       ScriptApp.deleteTrigger(trigger);
     }
   });
@@ -10802,12 +11175,20 @@ function setupAutoEmailTriggers() {
     .inTimezone('Pacific/Auckland')
     .create();
 
+  ScriptApp.newTrigger('autoSendQuoteReminders')
+    .timeBased()
+    .atHour(9)
+    .everyDays(1)
+    .inTimezone('Pacific/Auckland')
+    .create();
+
   ui.alert('Auto Email Triggers Set Up',
     'Daily automatic emails have been configured:\n\n' +
+    '• Quote Reminders: Sent 7 days after quote sent (if not accepted/declined)\n' +
     '• Invoice Reminders: Sent 1-2 days before due date\n' +
     '• Overdue Invoices: Sent weekly for overdue invoices\n\n' +
     'Triggers run daily at 9:00 AM (NZ time).\n' +
-    'Paid invoices are automatically skipped.',
+    'Paid invoices and accepted/declined quotes are automatically skipped.',
     ui.ButtonSet.OK
   );
 
@@ -10825,7 +11206,8 @@ function removeAutoEmailTriggers() {
 
   triggers.forEach(trigger => {
     if (trigger.getHandlerFunction() === 'autoSendInvoiceReminders' ||
-        trigger.getHandlerFunction() === 'autoSendOverdueInvoices') {
+        trigger.getHandlerFunction() === 'autoSendOverdueInvoices' ||
+        trigger.getHandlerFunction() === 'autoSendQuoteReminders') {
       ScriptApp.deleteTrigger(trigger);
       removed++;
     }
@@ -10833,11 +11215,88 @@ function removeAutoEmailTriggers() {
 
   ui.alert('Auto Email Triggers Removed',
     removed + ' automatic email trigger(s) have been removed.\n\n' +
-    'Invoice reminders and overdue notices will no longer be sent automatically.',
+    'Quote reminders, invoice reminders, and overdue notices will no longer be sent automatically.',
     ui.ButtonSet.OK
   );
 
   Logger.log('Removed ' + removed + ' auto email triggers');
+}
+
+/**
+ * Ensure all automatic triggers exist (silent - no UI alerts)
+ * Called automatically during setup to enable auto features by default
+ * Creates triggers only if they don't already exist
+ */
+function ensureAutoTriggersExist() {
+  const triggers = ScriptApp.getProjectTriggers();
+
+  // Check which triggers already exist
+  let hasInvoiceReminders = false;
+  let hasOverdueInvoices = false;
+  let hasQuoteReminders = false;
+  let hasEmailScan = false;
+
+  triggers.forEach(trigger => {
+    const handler = trigger.getHandlerFunction();
+    if (handler === 'autoSendInvoiceReminders') hasInvoiceReminders = true;
+    if (handler === 'autoSendOverdueInvoices') hasOverdueInvoices = true;
+    if (handler === 'autoSendQuoteReminders') hasQuoteReminders = true;
+    if (handler === 'scanSentEmailsForJobs') hasEmailScan = true;
+  });
+
+  let created = 0;
+
+  // Create missing email triggers (run at 9 AM NZ time)
+  if (!hasInvoiceReminders) {
+    ScriptApp.newTrigger('autoSendInvoiceReminders')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+    created++;
+    Logger.log('Created autoSendInvoiceReminders trigger');
+  }
+
+  if (!hasOverdueInvoices) {
+    ScriptApp.newTrigger('autoSendOverdueInvoices')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+    created++;
+    Logger.log('Created autoSendOverdueInvoices trigger');
+  }
+
+  if (!hasQuoteReminders) {
+    ScriptApp.newTrigger('autoSendQuoteReminders')
+      .timeBased()
+      .atHour(9)
+      .everyDays(1)
+      .inTimezone('Pacific/Auckland')
+      .create();
+    created++;
+    Logger.log('Created autoSendQuoteReminders trigger');
+  }
+
+  // Create email scan trigger (every 5 minutes)
+  if (!hasEmailScan) {
+    ScriptApp.newTrigger('scanSentEmailsForJobs')
+      .timeBased()
+      .everyMinutes(5)
+      .create();
+    created++;
+    Logger.log('Created scanSentEmailsForJobs trigger');
+  }
+
+  if (created > 0) {
+    Logger.log('ensureAutoTriggersExist: Created ' + created + ' missing trigger(s)');
+  } else {
+    Logger.log('ensureAutoTriggersExist: All triggers already exist');
+  }
+
+  return created;
 }
 
 /**
