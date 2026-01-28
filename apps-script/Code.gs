@@ -404,20 +404,30 @@ function getApprovedTestimonials(fiveStarOnly, limit) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Get all data (excluding header)
-    const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    // Get all data including header for dynamic column lookup
+    const allData = sheet.getDataRange().getValues();
+    const headers = allData[0];
+    const data = allData.slice(1); // Exclude header row
 
-    // Filter to only approved testimonials (column 1 = TRUE) and format for website
+    // Find column indices dynamically
+    const approvedColIndex = headers.indexOf('Approved');
+    const nameColIndex = headers.indexOf('Name');
+    const businessColIndex = headers.indexOf('Business');
+    const locationColIndex = headers.indexOf('Location');
+    const ratingColIndex = headers.indexOf('Rating');
+    const testimonialColIndex = headers.indexOf('Testimonial');
+
+    // Filter to only approved testimonials and format for website
     let approvedTestimonials = data
-      .filter(row => row[0] === true)
+      .filter(row => approvedColIndex >= 0 && row[approvedColIndex] === true)
       .map(row => {
-        const ratingValue = Number(row[5]);
+        const ratingValue = ratingColIndex >= 0 ? Number(row[ratingColIndex]) : 5;
         return {
-          name: row[2] || 'Anonymous',           // Name
-          business: row[3] || '',                 // Business
-          location: row[4] || '',                 // Location
+          name: (nameColIndex >= 0 ? row[nameColIndex] : '') || 'Anonymous',
+          business: (businessColIndex >= 0 ? row[businessColIndex] : '') || '',
+          location: (locationColIndex >= 0 ? row[locationColIndex] : '') || '',
           rating: (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) ? ratingValue : 5,
-          testimonial: row[6] || ''               // Testimonial text
+          testimonial: (testimonialColIndex >= 0 ? row[testimonialColIndex] : '') || ''
         };
       })
       .filter(t => t.testimonial.trim() !== ''); // Only include non-empty testimonials
@@ -4654,13 +4664,14 @@ function refreshAnalytics() {
   // Get jobs data
   const jobsData = jobsSheet ? jobsSheet.getDataRange().getValues() : [[]];
   const jobHeaders = jobsData[0] || [];
-  const jobs = jobsData.slice(1).filter(row => row[0]); // Filter out empty rows
+  const jobNumCol = jobHeaders.indexOf('Job #');
+  const jobs = jobsData.slice(1).filter(row => row[jobNumCol !== -1 ? jobNumCol : 0]); // Filter out empty rows
 
   // Get submissions data
   const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
   const subHeaders = subData[0] || [];
   const subNumCol = subHeaders.indexOf('Submission #');
-  const submissions = subData.slice(1).filter(row => row[subNumCol !== -1 ? subNumCol : 1]);
+  const submissions = subData.slice(1).filter(row => row[subNumCol !== -1 ? subNumCol : 0]);
 
   // === CALCULATE KEY METRICS ===
   const totalJobs = jobs.length;
@@ -4854,7 +4865,7 @@ function refreshAnalytics() {
     return (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) &&
            (sla === 'OVERDUE' || sla === 'AT RISK');
   }).map(row => ({
-    jobNum: row[0],
+    jobNum: row[jobNumCol],
     client: row[jobHeaders.indexOf('Client Name')],
     sla: row[jobHeaders.indexOf('SLA Status')],
     daysRemaining: row[jobHeaders.indexOf('Days Remaining')]
@@ -5620,16 +5631,23 @@ function viewJobActivityLog() {
 
   // Find all activities for this job
   const data = activitySheet.getDataRange().getValues();
+  const headers = data[0];
+  const jobNumColIndex = headers.indexOf('Job #');
+  const timestampColIndex = headers.indexOf('Timestamp');
+  const typeColIndex = headers.indexOf('Type');
+  const summaryColIndex = headers.indexOf('Summary');
+  const detailsColIndex = headers.indexOf('Details');
+  const fromToColIndex = headers.indexOf('From/To');
   const activities = [];
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][1] === jobNumber) {
+    if (String(data[i][jobNumColIndex]).trim().toUpperCase() === jobNumber) {
       activities.push({
-        timestamp: data[i][0],
-        type: data[i][2],
-        summary: data[i][3],
-        details: data[i][4],
-        fromTo: data[i][5]
+        timestamp: timestampColIndex >= 0 ? data[i][timestampColIndex] : '',
+        type: typeColIndex >= 0 ? data[i][typeColIndex] : '',
+        summary: summaryColIndex >= 0 ? data[i][summaryColIndex] : '',
+        details: detailsColIndex >= 0 ? data[i][detailsColIndex] : '',
+        fromTo: fromToColIndex >= 0 ? data[i][fromToColIndex] : ''
       });
     }
   }
@@ -6146,18 +6164,22 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
   const headers = submissionsData[0];
   const submissions = [];
 
+  // Get column indices once outside the loop
+  const submissionNumCol = headers.indexOf('Submission #');
+  const statusCol = headers.indexOf('Status');
+  const nameCol = headers.indexOf('Name');
+  const emailCol = headers.indexOf('Email');
+  const timestampCol = headers.indexOf('Timestamp');
+
   for (let i = 1; i < submissionsData.length; i++) {
     const row = submissionsData[i];
-    const submissionNumCol = headers.indexOf('Submission #');
-    const submissionNum = row[submissionNumCol !== -1 ? submissionNumCol : 1];
-    const status = row[headers.indexOf('Status')] || row[0];
+    const submissionNum = submissionNumCol !== -1 ? row[submissionNumCol] : null;
+    const status = statusCol !== -1 ? row[statusCol] : 'New';
 
     if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
-      // Fallback indices match new column order: Status(0), Submission#(1), Timestamp(2), Name(3), Email(4), Phone(5), StoreURL(6), Message(7)
-      const name = row[headers.indexOf('Name')] || row[3];
-      const email = row[headers.indexOf('Email')] || row[4];
-      const timestampCol = headers.indexOf('Timestamp');
-      const timestamp = row[timestampCol !== -1 ? timestampCol : 2];
+      const name = nameCol !== -1 ? row[nameCol] : 'Unknown';
+      const email = emailCol !== -1 ? row[emailCol] : '';
+      const timestamp = timestampCol !== -1 ? row[timestampCol] : new Date();
 
       submissions.push({
         number: submissionNum,
@@ -6268,17 +6290,22 @@ function getJobsByStatusFallback(statusFilter = []) {
   const jobs = [];
 
   // Find column indices - require them to exist
+  const jobNumColIdx = headers.indexOf('Job #');
   const statusColIdx = headers.indexOf('Status');
   const clientNameColIdx = headers.indexOf('Client Name');
   const storeUrlColIdx = headers.indexOf('Store URL');
 
+  if (jobNumColIdx === -1) {
+    Logger.log('Warning: Job # column not found in Jobs sheet');
+    return [];
+  }
   if (statusColIdx === -1) {
     Logger.log('Warning: Status column not found in Jobs sheet');
   }
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const jobNum = row[0];
+    const jobNum = row[jobNumColIdx];
     const status = statusColIdx >= 0 ? row[statusColIdx] : '';
 
     if (jobNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
@@ -6334,14 +6361,14 @@ function getInvoicesByStatus(statusFilter = []) {
   const headers = allData[0];
 
   // Find the column indices we need
-  const invoiceNumCol = 0; // Column A (Invoice #) - always column 0 in array
-  const jobNumColIndex = 1; // Column B (Job #)
-  const clientNameColIndex = 2; // Column C (Client Name)
+  const invoiceNumColIndex = headers.indexOf('Invoice #');
+  const jobNumColIndex = headers.indexOf('Job #');
+  const clientNameColIndex = headers.indexOf('Client Name');
   const totalColIndex = headers.indexOf('Total');
   const statusColIndex = headers.indexOf('Status');
 
   // Fallback: if critical columns not found, use original implementation
-  if (statusColIndex === -1 || totalColIndex === -1) {
+  if (invoiceNumColIndex === -1 || statusColIndex === -1 || totalColIndex === -1) {
     Logger.log('[PERF] getInvoicesByStatus() - Required columns not found, using fallback');
     return getInvoicesByStatusFallback(statusFilter);
   }
@@ -6351,7 +6378,7 @@ function getInvoicesByStatus(statusFilter = []) {
   // Build invoice objects from data (start from row 1, skip header)
   for (let i = 1; i < allData.length; i++) {
     const row = allData[i];
-    const invoiceNum = row[invoiceNumCol];
+    const invoiceNum = row[invoiceNumColIndex];
     const status = row[statusColIndex];
 
     // Filter by status if provided
@@ -6394,23 +6421,28 @@ function getInvoicesByStatusFallback(statusFilter = []) {
   const invoices = [];
 
   // Find column indices - require them to exist
+  const invoiceNumColIdx = headers.indexOf('Invoice #');
   const statusColIdx = headers.indexOf('Status');
-  const jobNumColIdx = headers.indexOf('Job Number');
+  const jobNumColIdx = headers.indexOf('Job #');
   const clientNameColIdx = headers.indexOf('Client Name');
   const totalColIdx = headers.indexOf('Total');
 
+  if (invoiceNumColIdx === -1) {
+    Logger.log('Warning: Invoice # column not found in Invoices sheet');
+    return [];
+  }
   if (statusColIdx === -1) {
     Logger.log('Warning: Status column not found in Invoices sheet');
   }
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const invoiceNum = row[0];
+    const invoiceNum = row[invoiceNumColIdx];
     const status = statusColIdx >= 0 ? row[statusColIdx] : '';
 
     if (invoiceNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
-      const jobNum = jobNumColIdx >= 0 ? row[jobNumColIdx] : row[1];
-      const clientName = clientNameColIdx >= 0 ? row[clientNameColIdx] : row[2];
+      const jobNum = jobNumColIdx >= 0 ? row[jobNumColIdx] : '';
+      const clientName = clientNameColIdx >= 0 ? row[clientNameColIdx] : 'Unknown';
       const total = totalColIdx >= 0 ? row[totalColIdx] : 0;
 
       invoices.push({
@@ -7048,12 +7080,13 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Creating job: ' + jobNumber);
   debugLog.push('Job row data: ' + JSON.stringify(jobRow));
 
-  // Find actual last row with data by checking column A (Status)
+  // Find actual last row with data by checking the Job # column
   // This avoids issues with empty formatted rows that appendRow() would skip to
-  const jobsColumnA = jobsSheet.getRange('A:A').getValues();
+  const jobNumColLetter = getColLetter('JOBS', 'Job #');
+  const jobsColumnData = jobsSheet.getRange(jobNumColLetter + ':' + jobNumColLetter).getValues();
   let actualLastRow = 1; // Start at 1 (header row)
-  for (let i = jobsColumnA.length - 1; i >= 0; i--) {
-    if (jobsColumnA[i][0] !== '') {
+  for (let i = jobsColumnData.length - 1; i >= 0; i--) {
+    if (jobsColumnData[i][0] !== '') {
       actualLastRow = i + 1; // Convert to 1-indexed
       break;
     }
@@ -7832,7 +7865,7 @@ function updateSubmissionStatus(submissionNumber, status) {
   if (statusCol < 0 || submissionNumCol < 0) return;
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][submissionNumCol] === submissionNumber) {
+    if (String(data[i][submissionNumCol]).trim() === String(submissionNumber).trim()) {
       sheet.getRange(i + 1, statusCol + 1).setValue(status);
       return;
     }
@@ -9323,7 +9356,7 @@ function getInvoicesByJobNumber(jobNumber) {
     const row = allData[i];
     const rowJobNum = row[jobNumColIndex];
 
-    if (rowJobNum === jobNumber) {
+    if (String(rowJobNum).trim() === String(jobNumber).trim()) {
       const invoice = {};
       headers.forEach((header, index) => {
         invoice[header] = row[index];
@@ -9389,11 +9422,17 @@ function updateInvoiceFields(invoiceNumber, updates) {
   // OPTIMIZATION: Single sheet load instead of N loads
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
+  const invoiceNumColIndex = headers.indexOf('Invoice #');
+
+  if (invoiceNumColIndex < 0) {
+    Logger.log('[PERF] updateInvoiceFields() - Invoice # column not found');
+    return false;
+  }
 
   // Find the invoice row
   let rowIndex = -1;
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === invoiceNumber) {
+    if (String(data[i][invoiceNumColIndex]).trim() === String(invoiceNumber).trim()) {
       rowIndex = i;
       break;
     }
@@ -9460,12 +9499,13 @@ function updateInvoiceField(invoiceNumber, fieldName, value) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
+  const invoiceNumColIndex = headers.indexOf('Invoice #');
   const colIndex = headers.indexOf(fieldName);
 
-  if (colIndex < 0) return false;
+  if (invoiceNumColIndex < 0 || colIndex < 0) return false;
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === invoiceNumber) {
+    if (String(data[i][invoiceNumColIndex]).trim() === String(invoiceNumber).trim()) {
       sheet.getRange(i + 1, colIndex + 1).setValue(value);
       return true;
     }
@@ -11260,6 +11300,7 @@ function refreshDashboard() {
   // Get all jobs data
   const jobsData = jobsSheet.getDataRange().getValues();
   const headers = jobsData[0];
+  const jobNumColIndex = headers.indexOf('Job #');
 
   // Update SLA calculations for active jobs
   updateAllSLAStatus(jobsSheet, jobsData, headers);
@@ -11271,7 +11312,7 @@ function refreshDashboard() {
   for (let i = 1; i < jobsData.length; i++) {
     const row = jobsData[i];
     const status = row[headers.indexOf('Status')];
-    const jobNum = row[0];
+    const jobNum = jobNumColIndex >= 0 ? row[jobNumColIndex] : null;
 
     if (!jobNum) continue;
 
