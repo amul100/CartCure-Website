@@ -7635,6 +7635,9 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('SUCCESS: Job ' + jobNumber + ' created');
   saveDebugLog(debugLog, 'CREATE_JOB_SUCCESS_' + debugTs);
 
+  // Log activity
+  logJobActivity(jobNumber, 'Job Created', 'Job created from submission ' + submissionNumber, '', '', 'Auto');
+
   ui.alert('Job Created',
     'Job ' + jobNumber + ' created successfully!\n\n' +
     'Next steps:\n' +
