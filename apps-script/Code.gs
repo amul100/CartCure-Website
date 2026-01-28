@@ -5847,26 +5847,46 @@ function removeEmailScanTrigger() {
 
 /**
  * View activity log for a specific job (called from menu or sidebar)
+ * Auto-detects job number from selected row if available
  */
 function viewJobActivityLog() {
   const ui = SpreadsheetApp.getUi();
 
-  // Prompt for job number
-  const response = ui.prompt(
-    'View Activity Log',
-    'Enter the job number (e.g., J-MAPLE-001):',
-    ui.ButtonSet.OK_CANCEL
-  );
+  // Try to get job number from selected row first
+  let jobNumber = getSelectedJobNumber();
 
-  if (response.getSelectedButton() !== ui.Button.OK) {
-    return;
+  if (jobNumber) {
+    // Found a job number - confirm with user
+    const confirmResponse = ui.alert(
+      'View Activity Log',
+      'View activity log for ' + jobNumber + '?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (confirmResponse !== ui.Button.YES) {
+      // User said no - prompt for different job number
+      jobNumber = null;
+    }
   }
 
-  let jobNumber = response.getResponseText().trim().toUpperCase();
+  // If no job number yet, prompt for it
+  if (!jobNumber) {
+    const response = ui.prompt(
+      'View Activity Log',
+      'Enter the job number (e.g., J-MAPLE-001):',
+      ui.ButtonSet.OK_CANCEL
+    );
 
-  // Normalize job number format
-  if (!jobNumber.startsWith('J-')) {
-    jobNumber = 'J-' + jobNumber;
+    if (response.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+
+    jobNumber = response.getResponseText().trim().toUpperCase();
+
+    // Normalize job number format
+    if (!jobNumber.startsWith('J-')) {
+      jobNumber = 'J-' + jobNumber;
+    }
   }
 
   const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
@@ -5936,24 +5956,30 @@ function viewJobActivityLog() {
 
 /**
  * Manually add an activity note for a job
+ * Auto-detects job number from selected row if available
  */
 function addManualActivityNote() {
   const ui = SpreadsheetApp.getUi();
 
-  // Get job number
-  const jobResponse = ui.prompt(
-    'Add Activity Note',
-    'Enter the job number (e.g., J-MAPLE-001):',
-    ui.ButtonSet.OK_CANCEL
-  );
+  // Try to get job number from selected row first
+  let jobNumber = getSelectedJobNumber();
 
-  if (jobResponse.getSelectedButton() !== ui.Button.OK) {
-    return;
-  }
+  if (!jobNumber) {
+    // No job number detected - prompt for it
+    const jobResponse = ui.prompt(
+      'Add Activity Note',
+      'Enter the job number (e.g., J-MAPLE-001):',
+      ui.ButtonSet.OK_CANCEL
+    );
 
-  let jobNumber = jobResponse.getResponseText().trim().toUpperCase();
-  if (!jobNumber.startsWith('J-')) {
-    jobNumber = 'J-' + jobNumber;
+    if (jobResponse.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+
+    jobNumber = jobResponse.getResponseText().trim().toUpperCase();
+    if (!jobNumber.startsWith('J-')) {
+      jobNumber = 'J-' + jobNumber;
+    }
   }
 
   // Get the note
