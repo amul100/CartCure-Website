@@ -6603,6 +6603,7 @@ function showOverdueInvoicesWithFees() {
  * @returns {Array<Object>} Array of submission objects for dropdown display (sorted by timestamp)
  */
 function getAvailableSubmissions() {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet references
   const submissionsSheet = getSheet(SHEETS.SUBMISSIONS);
   const jobsSheet = getSheet(SHEETS.JOBS);
@@ -6741,6 +6742,7 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
  * @returns {Array<Object>} Array of job objects for dropdown display
  */
 function getJobsByStatus(statusFilter = []) {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet reference
   const jobsSheet = getSheet(SHEETS.JOBS);
 
@@ -6868,6 +6870,7 @@ function getJobsByStatusFallback(statusFilter = []) {
  * @returns {Array<Object>} Array of invoice objects for dropdown display
  */
 function getInvoicesByStatus(statusFilter = []) {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet reference
   const invoiceSheet = getSheet(SHEETS.INVOICES);
 
@@ -7672,6 +7675,7 @@ function createJobFromSubmission(submissionNumber) {
  * @returns {Object|null} Job object with all fields, or null if not found
  */
 function getJobByNumber(jobNumber) {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet reference
   const sheet = getSheet(SHEETS.JOBS);
 
@@ -10039,6 +10043,7 @@ function showSendInvoiceDialog() {
  * @returns {Object|null} Invoice object with all fields, or null if not found
  */
 function getInvoiceByNumber(invoiceNumber) {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet reference
   const sheet = getSheet(SHEETS.INVOICES);
 
@@ -10094,6 +10099,7 @@ function getInvoiceByNumber(invoiceNumber) {
  * @returns {Array} Array of invoice objects for this job
  */
 function getInvoicesByJobNumber(jobNumber) {
+  const startTime = new Date().getTime();
   // PERFORMANCE: Use cached sheet reference
   const sheet = getSheet(SHEETS.INVOICES);
 
