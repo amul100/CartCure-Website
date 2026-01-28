@@ -10488,25 +10488,25 @@ function getAllInvoices() {
   const headers = data[0];
   const invoices = [];
 
-  // Find column indices
-  const invoiceNumCol = 0; // Column A (Invoice #)
-  const jobNumColIndex = 1; // Column B (Job #)
-  const clientNameColIndex = 2; // Column C (Client Name)
+  // Find column indices dynamically from headers
+  const invoiceNumCol = headers.indexOf('Invoice #');
+  const jobNumColIndex = headers.indexOf('Job #');
+  const clientNameColIndex = headers.indexOf('Client Name');
   const totalColIndex = headers.indexOf('Total');
   const statusColIndex = headers.indexOf('Status');
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const invoiceNum = row[invoiceNumCol];
+    const invoiceNum = invoiceNumCol >= 0 ? row[invoiceNumCol] : '';
 
     if (invoiceNum) {  // Has invoice number
-      const clientName = row[clientNameColIndex] || 'Unknown';
+      const clientName = clientNameColIndex >= 0 ? row[clientNameColIndex] : 'Unknown';
       const total = totalColIndex >= 0 ? row[totalColIndex] : 0;
       const status = statusColIndex >= 0 ? row[statusColIndex] : '';
 
       invoices.push({
         number: invoiceNum,
-        jobNumber: row[jobNumColIndex],
+        jobNumber: jobNumColIndex >= 0 ? row[jobNumColIndex] : '',
         clientName: clientName,
         status: status,
         total: total || 0,
