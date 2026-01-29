@@ -1,5 +1,27 @@
 # CartCure Performance Optimization Guide
 
+## PROMPT FOR NEW CONTEXT - COPY THIS:
+
+```
+Continue implementing performance optimizations in apps-script/Code.gs.
+
+Read apps-script/PERFORMANCE_OPTIMIZATION_GUIDE.md for full details.
+
+COMPLETED:
+- Settings caching (already worked)
+- Column index caching in refreshDashboard()
+
+TODO (in priority order):
+1. Add column index caching to refreshAnalytics() - same pattern as refreshDashboard
+2. Add column index caching to autoSendQuoteReminders(), autoSendInvoiceReminders(), autoSendOverdueInvoices()
+3. Consolidate the 5 loops in refreshAnalytics() into a single loop
+4. Add column index caching to showOverdueJobs() and similar functions
+
+Pattern to follow: See refreshDashboard() around line 13121 for example of column caching.
+```
+
+---
+
 ## Purpose
 This document describes caching optimizations to implement in `apps-script/Code.gs` to make operations run faster. Use this as a prompt for Claude to continue implementation.
 
