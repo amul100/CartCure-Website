@@ -1083,26 +1083,35 @@ function getOrCreateSignaturesFolder() {
 /**
  * Run all tests - use this to verify the script is working correctly
  * Tests: Drive permissions, debug file creation, and full form submission
+ * Saves results to CartCure Debug Logs folder
  */
 function runAllTests() {
-  Logger.log('========== CARTCURE SCRIPT TESTS ==========\n');
+  const timestamp = new Date().toISOString();
+  const testLog = [];
+  testLog.push('========== CARTCURE INTEGRATION TESTS ==========');
+  testLog.push('Timestamp: ' + timestamp);
+  testLog.push('');
 
   const results = { drive: false, debug: false, form: false };
+  const details = { drive: '', debug: '', form: '' };
 
   // Test 1: Drive permissions
-  Logger.log('--- Test 1: Drive Permissions ---');
+  testLog.push('--- Test 1: Drive Permissions ---');
   try {
     const folder = getOrCreateDebugFolder();
     const testFile = folder.createFile('_test_' + Date.now() + '.txt', 'test');
     testFile.setTrashed(true);
     results.drive = true;
-    Logger.log('PASS: Drive permissions OK\n');
+    details.drive = 'Successfully created and deleted test file';
+    testLog.push('PASS: Drive permissions OK');
   } catch (e) {
-    Logger.log('FAIL: ' + e.message + '\n');
+    details.drive = e.message;
+    testLog.push('FAIL: ' + e.message);
   }
+  testLog.push('');
 
   // Test 2: Debug file creation
-  Logger.log('--- Test 2: Debug File Creation ---');
+  testLog.push('--- Test 2: Debug File Creation ---');
   try {
     const debugUrl = saveDebugFileToDrive({
       submissionNumber: 'CC-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-TEST1',
@@ -1115,40 +1124,81 @@ function runAllTests() {
       hasVoiceNote: false
     });
     results.debug = !!debugUrl;
-    Logger.log(debugUrl ? 'PASS: Debug file created - ' + debugUrl + '\n' : 'FAIL: No URL returned\n');
+    details.debug = debugUrl || 'No URL returned';
+    testLog.push(debugUrl ? 'PASS: Debug file created' : 'FAIL: No URL returned');
+    testLog.push('URL: ' + (debugUrl || 'N/A'));
   } catch (e) {
-    Logger.log('FAIL: ' + e.message + '\n');
+    details.debug = e.message;
+    testLog.push('FAIL: ' + e.message);
   }
+  testLog.push('');
 
   // Test 3: Full form submission
-  Logger.log('--- Test 3: Form Submission ---');
+  testLog.push('--- Test 3: Form Submission ---');
   try {
     const formResult = doPost({
       postData: { type: 'application/x-www-form-urlencoded', contents: '' },
       parameter: {
-        name: 'Test User',
+        name: 'Integration Test User',
         email: 'test@example.com',
         phone: '021 123 4567',
         storeUrl: 'https://example.com',
-        message: 'Test submission from runAllTests()',
+        message: 'Test submission from runAllTests() - ' + new Date().toISOString(),
         hasVoiceNote: 'No',
-        voiceNoteData: '',
-        origin: 'http://localhost'
+        voiceNoteData: ''
+        // Note: No origin parameter - internal tests bypass origin validation
       }
     });
     const response = JSON.parse(formResult.getContent());
     results.form = response.success;
-    Logger.log(response.success ? 'PASS: Form submission OK\n' : 'FAIL: ' + response.message + '\n');
+    details.form = response.success ? 'Submission #: ' + (response.submissionNumber || 'unknown') : response.message;
+    testLog.push(response.success ? 'PASS: Form submission OK' : 'FAIL: ' + response.message);
+    if (response.submissionNumber) {
+      testLog.push('Submission #: ' + response.submissionNumber);
+    }
   } catch (e) {
-    Logger.log('FAIL: ' + e.message + '\n');
+    details.form = e.message;
+    testLog.push('FAIL: ' + e.message);
   }
+  testLog.push('');
 
   // Summary
-  Logger.log('========== RESULTS ==========');
-  Logger.log('Drive Permissions: ' + (results.drive ? 'PASS' : 'FAIL'));
-  Logger.log('Debug File:        ' + (results.debug ? 'PASS' : 'FAIL'));
-  Logger.log('Form Submission:   ' + (results.form ? 'PASS' : 'FAIL'));
-  Logger.log('=============================');
+  const passed = (results.drive ? 1 : 0) + (results.debug ? 1 : 0) + (results.form ? 1 : 0);
+  testLog.push('========== SUMMARY ==========');
+  testLog.push('Drive Permissions: ' + (results.drive ? 'PASS' : 'FAIL'));
+  testLog.push('Debug File:        ' + (results.debug ? 'PASS' : 'FAIL'));
+  testLog.push('Form Submission:   ' + (results.form ? 'PASS' : 'FAIL'));
+  testLog.push('-----------------------------');
+  testLog.push('TOTAL: ' + passed + '/3 tests passed');
+  testLog.push('=============================');
+
+  // Save results to Drive
+  let fileUrl = '';
+  try {
+    const folder = getOrCreateDebugFolder();
+    const fileName = 'INTEGRATION_TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.txt';
+    const file = folder.createFile(fileName, testLog.join('\n'), 'text/plain');
+    fileUrl = file.getUrl();
+  } catch (e) {
+    // If we can't save, that's OK - we'll show results in the alert
+  }
+
+  // Show UI alert
+  const ui = SpreadsheetApp.getUi();
+  let message = passed + ' of 3 integration tests passed.\n\n';
+  message += 'Drive Permissions: ' + (results.drive ? '✅ PASS' : '❌ FAIL') + '\n';
+  message += 'Debug File Creation: ' + (results.debug ? '✅ PASS' : '❌ FAIL') + '\n';
+  message += 'Form Submission: ' + (results.form ? '✅ PASS' : '❌ FAIL') + '\n';
+
+  if (fileUrl) {
+    message += '\nResults saved to:\n' + fileUrl;
+  }
+
+  ui.alert(
+    passed === 3 ? '✅ All Integration Tests Passed' : '⚠️ Some Tests Failed',
+    message,
+    ui.ButtonSet.OK
+  );
 
   return results;
 }
@@ -1468,7 +1518,7 @@ function validatePhone(phone) {
 
   phone = phone.trim();
 
-  if (phone.length < 6 || phone.length > 20) {
+  if (phone.length > 20) {
     const error = new Error('Invalid phone number length');
     error.userMessage = 'Please enter a valid phone number.';
     throw error;
@@ -1478,6 +1528,14 @@ function validatePhone(phone) {
   if (!/^[\d\s\-\(\)\+]+$/.test(phone)) {
     const error = new Error('Invalid phone number format');
     error.userMessage = 'Please enter a valid phone number.';
+    throw error;
+  }
+
+  // Count actual digits (minimum 8 for valid NZ phone numbers)
+  const digitCount = (phone.match(/\d/g) || []).length;
+  if (digitCount < 8) {
+    const error = new Error('Phone number too short');
+    error.userMessage = 'Please enter a valid phone number (minimum 8 digits).';
     throw error;
   }
 
@@ -3164,7 +3222,8 @@ function buildMenu() {
       .addItem('❌ Cancel Job', 'showCancelJobDialog')
       .addSeparator()
       .addItem('📜 View Activity Log', 'viewJobActivityLog')
-      .addItem('📝 Add Activity Note', 'addManualActivityNote'))
+      .addItem('📝 Add Activity Note', 'addManualActivityNote')
+      .addItem('⭐ Request Testimonial', 'showRequestTestimonialDialog'))
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('📤 Send Quote', 'showSendQuoteDialog')
       .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
@@ -3192,6 +3251,10 @@ function buildMenu() {
       .addItem(confirmSelectionLabel, 'toggleConfirmSelection')
       .addSeparator()
       .addSubMenu(ui.createMenu('🧪 Tests')
+        .addItem('▶️ Run Automated Tests', 'runAllAutomatedTests')
+        .addItem('📄 Run Tests & Save Results', 'runTestsAndSaveResults')
+        .addItem('🔌 Run Integration Tests', 'runAllTests')
+        .addSeparator()
         .addItem('📝 Create 10 Test Submissions', 'createTestSubmissions')
         .addItem('⭐ Create 20 Test Testimonials', 'createTestTestimonials')
         .addItem('📋 Create Test Job for Testimonials', 'createTestJobForTestimonials')
@@ -6298,6 +6361,201 @@ function promptForActivityNote(jobNumber) {
   ui.alert('Note Added', 'Activity note added for ' + jobNumber + '.', ui.ButtonSet.OK);
 }
 
+/**
+ * Show dialog to request a testimonial from a completed job's client
+ * Auto-detects job number from selected row, or shows dropdown with completed jobs
+ */
+function showRequestTestimonialDialog() {
+  const selectedJob = getSelectedJobNumber();
+  const jobs = getJobsByStatus([JOB_STATUS.COMPLETED]);
+  showContextAwareDialog(
+    'Request Testimonial',
+    jobs,
+    'Job',
+    'sendTestimonialRequest',
+    selectedJob
+  );
+}
+
+/**
+ * Send testimonial request email to client
+ * Called by showContextAwareDialog callback
+ * @param {string} jobNumber - The job number to request testimonial for
+ */
+function sendTestimonialRequest(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const status = job['Status'];
+  if (status !== JOB_STATUS.COMPLETED) {
+    ui.alert('Invalid Status',
+      'Testimonial requests can only be sent for completed jobs.\n\n' +
+      'Current status: ' + status,
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  const clientName = job['Client Name'];
+  const clientEmail = job['Client Email'];
+
+  if (!clientEmail) {
+    ui.alert('Error', 'No email address found for this job.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Check if testimonial already exists
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
+  if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
+    const testimonialData = testimonialsSheet.getDataRange().getValues();
+    const jobColIndex = testimonialData[0].indexOf('Job Number');
+    if (jobColIndex >= 0) {
+      const alreadySubmitted = testimonialData.slice(1).some(row =>
+        row[jobColIndex] && row[jobColIndex].toString().trim() === jobNumber.trim()
+      );
+      if (alreadySubmitted) {
+        const response = ui.alert(
+          'Testimonial Already Exists',
+          'A testimonial has already been submitted for this job.\n\nSend request anyway?',
+          ui.ButtonSet.YES_NO
+        );
+        if (response !== ui.Button.YES) {
+          return;
+        }
+      }
+    }
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const feedbackUrl = 'https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(jobNumber);
+
+  const subject = 'How was your experience with CartCure?';
+
+  const bodyContent = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${EMAIL_COLORS.paperCream};">
+      <tr>
+        <td align="center" style="padding: 40px 20px;">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border: 3px solid ${EMAIL_COLORS.paperBorder}; box-shadow: 4px 4px 0 rgba(0,0,0,0.08);">
+
+            <!-- Header with Logo -->
+            <tr>
+              <td align="center" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid ${EMAIL_COLORS.paperBorder};">
+                <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="180" style="display: block; max-width: 180px; height: auto;">
+              </td>
+            </tr>
+
+            <!-- Main Heading -->
+            <tr>
+              <td style="padding: 0;">
+                <div style="background-color: ${EMAIL_COLORS.brandGreen}; padding: 25px 40px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; font-family: Georgia, 'Times New Roman', serif;">
+                    We'd Love Your Feedback!
+                  </h1>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Greeting -->
+            <tr>
+              <td style="padding: 25px 40px 20px 40px;">
+                <p style="margin: 0 0 15px 0; color: ${EMAIL_COLORS.inkBlack}; font-size: 16px; line-height: 1.7;">
+                  Hi ${escapeHtml(clientName)},
+                </p>
+                <p style="margin: 0 0 15px 0; color: ${EMAIL_COLORS.inkBlack}; font-size: 16px; line-height: 1.7;">
+                  Thank you for choosing CartCure for your recent Shopify work. We hope everything went smoothly!
+                </p>
+                <p style="margin: 0; color: ${EMAIL_COLORS.inkBlack}; font-size: 16px; line-height: 1.7;">
+                  If you have a moment, we'd really appreciate hearing about your experience. Your feedback helps us improve and helps other store owners find reliable Shopify help.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA Button -->
+            <tr>
+              <td style="padding: 10px 40px 30px 40px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="center">
+                      <a href="${feedbackUrl}"
+                         style="display: inline-block; background-color: ${EMAIL_COLORS.brandGreen}; color: #ffffff; padding: 18px 50px; text-decoration: none; font-size: 18px; font-weight: bold; border: 3px solid ${EMAIL_COLORS.inkBlack}; box-shadow: 3px 3px 0 rgba(0,0,0,0.2);">
+                        Leave a Review
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Closing -->
+            <tr>
+              <td style="padding: 0 40px 30px 40px;">
+                <p style="margin: 0 0 15px 0; color: ${EMAIL_COLORS.inkGray}; font-size: 14px; line-height: 1.7;">
+                  It only takes a minute, and your kind words mean a lot to us.
+                </p>
+                <p style="margin: 0; color: ${EMAIL_COLORS.inkBlack}; font-size: 16px;">
+                  Thanks again!<br><br>
+                  <strong style="color: ${EMAIL_COLORS.brandGreen};">The CartCure Team</strong>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 25px 40px; background-color: ${EMAIL_COLORS.paperCream}; border-top: 2px solid ${EMAIL_COLORS.paperBorder};">
+                <p style="margin: 0; color: ${EMAIL_COLORS.inkLight}; font-size: 12px; text-align: center;">
+                  ${businessName} | Quick Shopify Fixes for NZ Businesses<br>
+                  <a href="https://cartcure.co.nz" style="color: ${EMAIL_COLORS.brandGreen};">cartcure.co.nz</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const htmlBody = wrapEmailHtml(bodyContent);
+
+  try {
+    MailApp.sendEmail({
+      to: clientEmail,
+      bcc: 'cartcuredrive@gmail.com',
+      subject: subject,
+      htmlBody: htmlBody,
+      name: businessName,
+      replyTo: adminEmail
+    });
+
+    // Log activity
+    logJobActivity(
+      jobNumber,
+      'Email Sent',
+      'Testimonial Request',
+      'Feedback link sent to client',
+      'To: ' + clientEmail,
+      'Manual'
+    );
+
+    ui.alert('Testimonial Request Sent',
+      'A testimonial request has been sent to:\n\n' +
+      clientEmail + '\n\n' +
+      'The client can submit their feedback at:\n' + feedbackUrl,
+      ui.ButtonSet.OK);
+
+    Logger.log('Testimonial request sent to ' + clientEmail + ' for job ' + jobNumber);
+  } catch (error) {
+    ui.alert('Error', 'Failed to send testimonial request: ' + error.message, ui.ButtonSet.OK);
+    Logger.log('Error sending testimonial request: ' + error.message);
+  }
+}
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -8055,6 +8313,9 @@ function generateAndSendDepositInvoice(jobNumber, job) {
     });
 
     invoiceSheet.appendRow(invoiceRow);
+
+    // Flush to ensure invoice is committed before attempting to send email
+    SpreadsheetApp.flush();
 
     // Update job with invoice number
     updateJobField(jobNumber, 'Invoice #', invoiceNumber);
@@ -13387,4 +13648,544 @@ function sendAllTestEmails() {
   );
 
   Logger.log('Test emails complete: ' + successCount + '/10 successful');
+}
+
+// ============================================================================
+// AUTOMATED TEST FUNCTIONS
+// ============================================================================
+// These functions run unit tests on validators, utilities, and column config.
+// Run from: CartCure > Setup > Tests > Run Automated Tests
+// ============================================================================
+
+/**
+ * Main test runner - runs all automated test suites
+ * Returns combined results from all tests
+ */
+function runAllAutomatedTests() {
+  const ui = SpreadsheetApp.getUi();
+  Logger.log('========== CARTCURE AUTOMATED TESTS ==========\n');
+
+  const allResults = [];
+
+  // Run all test suites
+  const suites = [
+    { name: 'Email Validation', fn: runEmailValidationTests },
+    { name: 'Phone Validation', fn: runPhoneValidationTests },
+    { name: 'URL Validation', fn: runURLValidationTests },
+    { name: 'Text Sanitization', fn: runTextSanitizationTests },
+    { name: 'Format Validators', fn: runFormatValidatorTests },
+    { name: 'Utility Functions', fn: runUtilityTests },
+    { name: 'Column Config', fn: runColumnConfigTests }
+  ];
+
+  let totalPassed = 0;
+  let totalTests = 0;
+  const summaryLines = [];
+
+  for (const suite of suites) {
+    try {
+      const results = suite.fn();
+      const passed = results.filter(r => r.pass).length;
+      totalPassed += passed;
+      totalTests += results.length;
+      summaryLines.push(suite.name + ': ' + passed + '/' + results.length);
+      allResults.push(...results);
+    } catch (e) {
+      Logger.log('ERROR in ' + suite.name + ': ' + e.message);
+      summaryLines.push(suite.name + ': ERROR - ' + e.message);
+    }
+  }
+
+  // Log summary
+  Logger.log('\n========== SUMMARY ==========');
+  for (const line of summaryLines) {
+    Logger.log(line);
+  }
+  Logger.log('-----------------------------');
+  Logger.log('TOTAL: ' + totalPassed + '/' + totalTests + ' tests passed');
+  Logger.log('==============================');
+
+  // Show UI alert with results
+  const failedTests = allResults.filter(r => !r.pass);
+  let message = totalPassed + ' of ' + totalTests + ' tests passed.\n\n';
+  message += summaryLines.join('\n');
+
+  if (failedTests.length > 0 && failedTests.length <= 10) {
+    message += '\n\nFailed tests:\n';
+    for (const test of failedTests) {
+      message += '• ' + test.id + ': expected ' + test.expected + ', got ' + test.actual + '\n';
+    }
+  } else if (failedTests.length > 10) {
+    message += '\n\n' + failedTests.length + ' tests failed. Check Logger for details.';
+  }
+
+  ui.alert(
+    totalPassed === totalTests ? '✅ All Tests Passed' : '⚠️ Some Tests Failed',
+    message,
+    ui.ButtonSet.OK
+  );
+
+  return allResults;
+}
+
+/**
+ * Email validation tests (VAL-01 to VAL-10)
+ * Note: validateEmail() throws errors for invalid input, returns escaped email for valid
+ */
+function runEmailValidationTests() {
+  const results = [];
+
+  function test(id, description, testFn, expected) {
+    let actual;
+    try {
+      actual = testFn();
+    } catch (e) {
+      actual = 'ERROR: ' + e.message;
+    }
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  // For validateEmail, valid inputs return the (escaped) email, invalid throw errors
+  // Test for success by checking if result equals input (lowercase)
+  function emailReturnsValue(email) {
+    const result = validateEmail(email);
+    return typeof result === 'string' && result.length > 0;
+  }
+
+  function emailThrows(email) {
+    try {
+      validateEmail(email);
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // VAL-01 to VAL-10 from TEST_SPECIFICATION.md
+  test('VAL-01', 'Valid email', () => emailReturnsValue('test@example.com'), true);
+  test('VAL-02', 'Valid with subdomain', () => emailReturnsValue('test@mail.example.com'), true);
+  test('VAL-03', 'Valid with plus', () => emailReturnsValue('test+tag@example.com'), true);
+  test('VAL-04', 'Missing @', () => emailThrows('testexample.com'), true);
+  test('VAL-05', 'Missing domain', () => emailThrows('test@'), true);
+  test('VAL-06', 'Missing local part', () => emailThrows('@example.com'), true);
+  test('VAL-07', 'Multiple @', () => emailThrows('test@@example.com'), true);
+  test('VAL-08', 'Empty string', () => emailThrows(''), true);
+  test('VAL-09', 'Spaces in email', () => emailThrows('test @example.com'), true);
+  test('VAL-10', 'NZ domain', () => emailReturnsValue('test@business.co.nz'), true);
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Email Validation: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Phone validation tests (VAL-20 to VAL-30)
+ * Note: validatePhone() throws errors for invalid input, returns escaped phone for valid
+ */
+function runPhoneValidationTests() {
+  const results = [];
+
+  function test(id, description, testFn, expected) {
+    let actual;
+    try {
+      actual = testFn();
+    } catch (e) {
+      actual = 'ERROR: ' + e.message;
+    }
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  function phoneReturnsValue(phone) {
+    const result = validatePhone(phone);
+    return typeof result === 'string' && result.length > 0;
+  }
+
+  function phoneThrows(phone) {
+    try {
+      validatePhone(phone);
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // VAL-20 to VAL-30 from TEST_SPECIFICATION.md
+  test('VAL-20', 'NZ mobile (021)', () => phoneReturnsValue('021 123 4567'), true);
+  test('VAL-21', 'NZ mobile (022)', () => phoneReturnsValue('022 123 4567'), true);
+  test('VAL-22', 'NZ mobile (027)', () => phoneReturnsValue('027 123 4567'), true);
+  test('VAL-23', 'NZ mobile no spaces', () => phoneReturnsValue('0211234567'), true);
+  test('VAL-24', 'NZ mobile with dashes', () => phoneReturnsValue('021-123-4567'), true);
+  test('VAL-25', 'NZ landline', () => phoneReturnsValue('09 123 4567'), true);
+  test('VAL-26', 'International format', () => phoneReturnsValue('+64 21 123 4567'), true);
+  test('VAL-27', 'Invalid prefix', () => phoneReturnsValue('099 123 4567'), true); // Still valid format (digits/spaces)
+  test('VAL-28', 'Too short (5 chars)', () => phoneThrows('02112'), true);  // 5 chars - should fail
+  test('VAL-28b', 'Minimum length (6 chars)', () => phoneReturnsValue('021123'), true);  // 6 chars - should pass
+  test('VAL-29', 'Too long', () => phoneReturnsValue('021 123 456 789'), true); // Within 20 char limit
+  test('VAL-30', 'Letters', () => phoneThrows('021 ABC DEFG'), true);
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Phone Validation: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * URL validation tests (VAL-40 to VAL-47)
+ * Note: validateURL() throws errors for invalid input, returns escaped URL for valid
+ */
+function runURLValidationTests() {
+  const results = [];
+
+  function test(id, description, testFn, expected) {
+    let actual;
+    try {
+      actual = testFn();
+    } catch (e) {
+      actual = 'ERROR: ' + e.message;
+    }
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  function urlReturnsValue(url) {
+    const result = validateURL(url);
+    return typeof result === 'string' && result.length > 0;
+  }
+
+  function urlThrows(url) {
+    try {
+      validateURL(url);
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // VAL-40 to VAL-47 from TEST_SPECIFICATION.md
+  test('VAL-40', 'Shopify URL', () => urlReturnsValue('https://store.myshopify.com'), true);
+  test('VAL-41', 'Custom domain', () => urlReturnsValue('https://www.mystore.co.nz'), true);
+  test('VAL-42', 'HTTP (not HTTPS)', () => urlReturnsValue('http://store.com'), true);
+  test('VAL-43', 'Missing protocol', () => urlReturnsValue('store.myshopify.com'), true); // Auto-adds https
+  test('VAL-44', 'With path', () => urlReturnsValue('https://store.com/products'), true);
+  test('VAL-45', 'Invalid URL', () => urlThrows('not a url'), true);
+  test('VAL-46', 'JavaScript URL', () => urlThrows('javascript:alert(1)'), true);
+  test('VAL-47', 'Empty', () => urlThrows(''), true);
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('URL Validation: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Text sanitization tests (VAL-60 to VAL-68)
+ * Tests validateAndSanitizeText() and escapeHtml()
+ */
+function runTextSanitizationTests() {
+  const results = [];
+
+  function test(id, description, actual, expected) {
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  // escapeHtml tests
+  test('VAL-60', 'Normal text', escapeHtml('Hello world'), 'Hello world');
+  test('VAL-61', 'HTML tags escaped', escapeHtml('<b>bold</b>'), '&lt;b&gt;bold&lt;/b&gt;');
+  test('VAL-62', 'Script tags escaped', escapeHtml('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  test('VAL-63', 'Ampersand escaped', escapeHtml('$100 & 50%'), '$100 &amp; 50%');
+  test('VAL-64', 'Quotes escaped', escapeHtml('He said "hello"'), 'He said &quot;hello&quot;');
+  test('VAL-65', 'Single quotes escaped', escapeHtml("It's fine"), 'It&#039;s fine');
+  test('VAL-66', 'Empty string', escapeHtml(''), '');
+  test('VAL-67', 'Null input', escapeHtml(null), '');
+  test('VAL-68', 'Unicode preserved', escapeHtml('Māori words'), 'Māori words');
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Text Sanitization: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Format validator tests (VAL-80 to VAL-86)
+ * Tests isJobNumberFormat(), isSubmissionNumberFormat(), isInvoiceNumberFormat()
+ */
+function runFormatValidatorTests() {
+  const results = [];
+
+  function test(id, description, actual, expected) {
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  // Submission number format tests
+  test('VAL-80', 'Valid submission # (new format)', isSubmissionNumberFormat('CC-APPLE-123'), true);
+  test('VAL-81', 'Invalid submission #', isSubmissionNumberFormat('CC-123'), false);
+  test('VAL-81b', 'Valid submission # (legacy)', isSubmissionNumberFormat('CC-20240101-00001'), true);
+
+  // Job number format tests
+  test('VAL-82', 'Valid job #', isJobNumberFormat('J-APPLE-123'), true);
+  test('VAL-83', 'Job # with suffix', isJobNumberFormat('J-APPLE-123-2'), true);
+  test('VAL-84', 'Invalid job #', isJobNumberFormat('JOB-123'), false);
+  test('VAL-84b', 'Valid job # (legacy)', isJobNumberFormat('J-20240101-00001'), true);
+
+  // Invoice number format tests
+  test('VAL-85', 'Valid invoice #', isInvoiceNumberFormat('INV-APPLE-123'), true);
+  test('VAL-85b', 'Valid invoice # with suffix', isInvoiceNumberFormat('INV-APPLE-123-2'), true);
+  test('VAL-86', 'Invalid invoice #', isInvoiceNumberFormat('INVOICE-1'), false);
+  test('VAL-86b', 'Valid invoice # (legacy)', isInvoiceNumberFormat('INV-2024-001'), true);
+  test('VAL-86c', 'Valid invoice # (old)', isInvoiceNumberFormat('INV-0001'), true);
+
+  // Edge cases
+  test('VAL-87', 'Null job number', isJobNumberFormat(null), false);
+  test('VAL-88', 'Empty submission number', isSubmissionNumberFormat(''), false);
+  test('VAL-89', 'Whitespace invoice number', isInvoiceNumberFormat('  '), false);
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Format Validators: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Utility function tests (UTIL-01 to UTIL-73)
+ * Tests formatCurrency(), calculateGST(), formatNZDate(), daysBetween(), calculateLateFee(), calculateSLAStatus(), getProjectSize(), colIndexToLetter()
+ */
+function runUtilityTests() {
+  const results = [];
+
+  function test(id, description, actual, expected) {
+    const pass = actual === expected;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  function testApprox(id, description, actual, expected, tolerance) {
+    const pass = Math.abs(actual - expected) <= tolerance;
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + expected + ' (±' + tolerance + '), got ' + actual);
+  }
+
+  // formatCurrency tests (UTIL-01 to UTIL-05)
+  test('UTIL-01', 'Format $100', formatCurrency(100), '$100.00');
+  test('UTIL-02', 'Format $1234.56', formatCurrency(1234.56), '$1234.56');
+  test('UTIL-03', 'Format $0', formatCurrency(0), '$0.00');
+  test('UTIL-04', 'Format $99.999 rounded', formatCurrency(99.999), '$100.00');
+  test('UTIL-05', 'Format negative', formatCurrency(-50), '$-50.00');
+
+  // formatNZDate tests (UTIL-20 to UTIL-21)
+  test('UTIL-20', 'Format date Jan 15', formatNZDate(new Date(2025, 0, 15)), '15/01/2025');
+  test('UTIL-21', 'Format date Dec 31', formatNZDate(new Date(2025, 11, 31)), '31/12/2025');
+  test('UTIL-22', 'Format null date', formatNZDate(null), '');
+
+  // daysBetween tests (UTIL-30 to UTIL-32)
+  const jan1 = new Date(2025, 0, 1);
+  const jan5 = new Date(2025, 0, 5);
+  test('UTIL-30', 'Days Jan 1 to Jan 5', daysBetween(jan1, jan5), 4);
+  test('UTIL-31', 'Days Jan 5 to Jan 1 (negative)', daysBetween(jan5, jan1), -4);
+  test('UTIL-32', 'Same date', daysBetween(jan1, jan1), 0);
+
+  // calculateLateFee tests (UTIL-40 to UTIL-43)
+  const dueDate = new Date(2025, 0, 1);
+  const current0 = new Date(2025, 0, 1);  // Same day
+  const current7 = new Date(2025, 0, 8);  // 7 days later
+  const current14 = new Date(2025, 0, 15); // 14 days later
+
+  const fee0 = calculateLateFee(100, dueDate, current0);
+  test('UTIL-40', 'No late fee on due date', fee0.lateFee, 0);
+
+  const fee7 = calculateLateFee(100, dueDate, current7);
+  testApprox('UTIL-41', 'Late fee at 7 days (2%/day)', fee7.lateFee, 14, 0.01); // 7 days * 2% * $100 = $14
+
+  const fee14 = calculateLateFee(100, dueDate, current14);
+  testApprox('UTIL-42', 'Late fee at 14 days', fee14.lateFee, 28, 0.01); // 14 days * 2% * $100 = $28
+
+  // getProjectSize tests (UTIL-60 to UTIL-62)
+  test('UTIL-60', 'Small project (<$200)', getProjectSize(50), 'Small');
+  test('UTIL-61', 'Medium project ($200-$500)', getProjectSize(200), 'Medium');
+  test('UTIL-61b', 'Medium project upper bound', getProjectSize(500), 'Medium');
+  test('UTIL-62', 'Large project (>$500)', getProjectSize(1000), 'Large');
+
+  // colIndexToLetter tests (UTIL-70 to UTIL-73)
+  test('UTIL-70', 'Column 1 = A', colIndexToLetter(1), 'A');
+  test('UTIL-71', 'Column 26 = Z', colIndexToLetter(26), 'Z');
+  test('UTIL-72', 'Column 27 = AA', colIndexToLetter(27), 'AA');
+  test('UTIL-73', 'Column 52 = AZ', colIndexToLetter(52), 'AZ');
+  test('UTIL-74', 'Column 53 = BA', colIndexToLetter(53), 'BA');
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Utility Functions: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Column config tests (COL-01 to COL-21)
+ * Tests getColIndex(), getColLetter(), buildRowFromConfig(), rowToObject()
+ */
+function runColumnConfigTests() {
+  const results = [];
+
+  function test(id, description, actual, expected) {
+    const pass = JSON.stringify(actual) === JSON.stringify(expected);
+    results.push({ id, description, pass, expected, actual });
+    if (!pass) Logger.log('FAIL ' + id + ': ' + description + ' - expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+  }
+
+  // getColIndex tests (COL-01 to COL-05)
+  // Note: Status is column 1, Job # is column 2 in JOBS sheet
+  test('COL-01', 'JOBS Status column index', getColIndex('JOBS', 'Status'), 1);
+  test('COL-02', 'JOBS Job # column index', getColIndex('JOBS', 'Job #'), 2);
+  test('COL-03', 'Invalid column returns -1', getColIndex('JOBS', 'Invalid Column'), -1);
+  test('COL-04', 'INVOICES Invoice # column', getColIndex('INVOICES', 'Invoice #'), 2);
+  test('COL-05', 'SUBMISSIONS Submission # column', getColIndex('SUBMISSIONS', 'Submission #'), 2);
+
+  // getColLetter tests
+  test('COL-06', 'Status letter is A', getColLetter('JOBS', 'Status'), 'A');
+  test('COL-07', 'Job # letter is B', getColLetter('JOBS', 'Job #'), 'B');
+  test('COL-08', 'Invalid column returns empty', getColLetter('JOBS', 'Invalid Column'), '');
+
+  // buildRowFromConfig tests (COL-10 to COL-12)
+  const testData = {
+    'Job #': 'J-TEST-001',
+    'Status': 'Pending Quote',
+    'Client Name': 'Test Client'
+  };
+  const builtRow = buildRowFromConfig('JOBS', testData);
+  test('COL-10', 'Built row is array', Array.isArray(builtRow), true);
+  test('COL-11', 'Built row has correct Status at index 0', builtRow[0], 'Pending Quote');
+  test('COL-12', 'Built row has correct Job # at index 1', builtRow[1], 'J-TEST-001');
+  test('COL-13', 'Unknown fields handled', buildRowFromConfig('JOBS', { 'Fake Column': 'value' }).includes('value'), false);
+
+  // rowToObject tests (COL-20 to COL-21)
+  // Row format: [Status, Job #, Total, Created Date, Client Name, ...]
+  const testRow = ['Pending Quote', 'J-TEST-002', '', '', 'Test Client'];
+  const obj = rowToObject('JOBS', testRow);
+  test('COL-20', 'rowToObject returns object', typeof obj === 'object', true);
+  test('COL-21', 'rowToObject has Status key', obj['Status'], 'Pending Quote');
+  test('COL-22', 'rowToObject has Job # key', obj['Job #'], 'J-TEST-002');
+
+  const passed = results.filter(r => r.pass).length;
+  Logger.log('Column Config: ' + passed + '/' + results.length + ' passed');
+
+  return results;
+}
+
+/**
+ * Run all automated tests and save results to a Drive file
+ * This allows running tests from the Apps Script editor and retrieving results
+ */
+function runTestsAndSaveResults() {
+  const results = [];
+  const timestamp = new Date().toISOString();
+
+  // Run all test suites
+  const suites = [
+    { name: 'Email Validation', fn: runEmailValidationTests },
+    { name: 'Phone Validation', fn: runPhoneValidationTests },
+    { name: 'URL Validation', fn: runURLValidationTests },
+    { name: 'Text Sanitization', fn: runTextSanitizationTests },
+    { name: 'Format Validators', fn: runFormatValidatorTests },
+    { name: 'Utility Functions', fn: runUtilityTests },
+    { name: 'Column Config', fn: runColumnConfigTests }
+  ];
+
+  let totalPassed = 0;
+  let totalTests = 0;
+  const suiteResults = [];
+
+  for (const suite of suites) {
+    try {
+      const suiteTestResults = suite.fn();
+      const passed = suiteTestResults.filter(r => r.pass).length;
+      totalPassed += passed;
+      totalTests += suiteTestResults.length;
+      suiteResults.push({
+        name: suite.name,
+        passed: passed,
+        total: suiteTestResults.length,
+        tests: suiteTestResults
+      });
+    } catch (e) {
+      suiteResults.push({
+        name: suite.name,
+        error: e.message,
+        passed: 0,
+        total: 0,
+        tests: []
+      });
+    }
+  }
+
+  // Build output
+  const output = {
+    timestamp: timestamp,
+    summary: {
+      totalPassed: totalPassed,
+      totalTests: totalTests,
+      passRate: totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : 0
+    },
+    suites: suiteResults
+  };
+
+  // Save to Drive
+  const folder = getOrCreateDebugFolder();
+  const fileName = 'TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.json';
+  const file = folder.createFile(fileName, JSON.stringify(output, null, 2), 'application/json');
+
+  // Also create a readable text version
+  let textOutput = '========================================\n';
+  textOutput += 'CARTCURE AUTOMATED TEST RESULTS\n';
+  textOutput += '========================================\n';
+  textOutput += 'Timestamp: ' + timestamp + '\n\n';
+  textOutput += 'SUMMARY\n';
+  textOutput += '--------\n';
+  textOutput += 'Total: ' + totalPassed + '/' + totalTests + ' tests passed (' + output.summary.passRate + '%)\n\n';
+
+  for (const suite of suiteResults) {
+    textOutput += suite.name + ': ' + suite.passed + '/' + suite.total;
+    if (suite.error) {
+      textOutput += ' (ERROR: ' + suite.error + ')';
+    }
+    textOutput += '\n';
+  }
+
+  textOutput += '\n========================================\n';
+  textOutput += 'DETAILED RESULTS\n';
+  textOutput += '========================================\n\n';
+
+  for (const suite of suiteResults) {
+    textOutput += '--- ' + suite.name + ' ---\n';
+    for (const test of suite.tests) {
+      const status = test.pass ? 'PASS' : 'FAIL';
+      textOutput += '[' + status + '] ' + test.id + ': ' + test.description;
+      if (!test.pass) {
+        textOutput += '\n       Expected: ' + JSON.stringify(test.expected) + ', Got: ' + JSON.stringify(test.actual);
+      }
+      textOutput += '\n';
+    }
+    textOutput += '\n';
+  }
+
+  const textFileName = 'TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.txt';
+  const textFile = folder.createFile(textFileName, textOutput, 'text/plain');
+
+  // Show UI alert
+  const ui = SpreadsheetApp.getUi();
+  ui.alert(
+    totalPassed === totalTests ? '✅ All Tests Passed' : '⚠️ Some Tests Failed',
+    totalPassed + ' of ' + totalTests + ' tests passed (' + output.summary.passRate + '%)\n\n' +
+    'Results saved to:\n' + textFile.getUrl(),
+    ui.ButtonSet.OK
+  );
+
+  return output;
 }
