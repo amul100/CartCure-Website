@@ -474,24 +474,26 @@ function getApprovedTestimonials(fiveStarOnly, limit) {
  * Requires valid job number and limits to one testimonial per job
  */
 function handleTestimonialSubmission(data) {
-  // Create debug file FIRST before anything else can fail
-  try {
-    const debugFolder = getOrCreateDebugFolder();
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    const earlyDebug = [
-      '=== Testimonial Early Debug ===',
-      'Timestamp: ' + ts,
-      'Data received: ' + JSON.stringify(data),
-      'IS_PRODUCTION: ' + IS_PRODUCTION,
-      'SHEETS defined: ' + (typeof SHEETS !== 'undefined'),
-      'SHEETS.JOBS: ' + (typeof SHEETS !== 'undefined' ? SHEETS.JOBS : 'UNDEFINED')
-    ];
-    debugFolder.createFile('TESTIMONIAL_EARLY_' + ts + '.txt', earlyDebug.join('\n'));
-  } catch (earlyDebugError) {
-    // If even this fails, try a simpler approach
+  // Create debug file FIRST before anything else can fail (only in development mode)
+  if (!IS_PRODUCTION) {
     try {
-      DriveApp.createFile('TESTIMONIAL_ERROR_' + new Date().getTime() + '.txt', 'Early debug failed: ' + earlyDebugError.toString());
-    } catch (e) { /* ignore */ }
+      const debugFolder = getOrCreateDebugFolder();
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const earlyDebug = [
+        '=== Testimonial Early Debug ===',
+        'Timestamp: ' + ts,
+        'Data received: ' + JSON.stringify(data),
+        'IS_PRODUCTION: ' + IS_PRODUCTION,
+        'SHEETS defined: ' + (typeof SHEETS !== 'undefined'),
+        'SHEETS.JOBS: ' + (typeof SHEETS !== 'undefined' ? SHEETS.JOBS : 'UNDEFINED')
+      ];
+      debugFolder.createFile('TESTIMONIAL_EARLY_' + ts + '.txt', earlyDebug.join('\n'));
+    } catch (earlyDebugError) {
+      // If even this fails, try a simpler approach
+      try {
+        DriveApp.createFile('TESTIMONIAL_ERROR_' + new Date().getTime() + '.txt', 'Early debug failed: ' + earlyDebugError.toString());
+      } catch (e) { /* ignore */ }
+    }
   }
 
   try {
@@ -737,32 +739,9 @@ function handleTestimonialSubmission(data) {
       debugFolder.createFile('TESTIMONIAL_APPENDED_' + new Date().getTime() + '.txt', 'Row appended successfully at row ' + newRow + '. Last row: ' + testimonialsSheet.getLastRow());
     }
 
-    // Send notification email to admin
+    // Queue notification email to admin (async for faster response)
     if (CONFIG.ADMIN_EMAIL) {
-      const subject = 'New Testimonial Submitted - ' + sanitizedData.name + ' [' + sanitizedData.jobNumber + ']';
-      const body = `A new testimonial has been submitted and is awaiting your approval.
-
-Job Reference: ${sanitizedData.jobNumber}
-Name: ${sanitizedData.name}
-Business: ${sanitizedData.business || 'Not provided'}
-Location: ${sanitizedData.location || 'Not provided'}
-Rating: ${'★'.repeat(sanitizedData.rating)}${'☆'.repeat(5 - sanitizedData.rating)}
-
-Testimonial:
-"${sanitizedData.testimonial}"
-
-To approve this testimonial for display on the website:
-1. Open the CartCure spreadsheet
-2. Go to the Testimonials tab
-3. Check the "Show on Website" checkbox
-
-Submitted: ${sanitizedData.submitted}`;
-
-      MailApp.sendEmail({
-        to: CONFIG.ADMIN_EMAIL,
-        subject: subject,
-        body: body
-      });
+      queueDeferredEmail('testimonial', sanitizedData);
     }
 
     Logger.log('Testimonial submitted for job ' + sanitizedData.jobNumber + ' by: ' + sanitizedData.name);
@@ -1677,8 +1656,10 @@ function logSubmission(data) {
   Logger.log('- Has Voice Note: ' + data.hasVoiceNote);
   Logger.log('- Timestamp: ' + data.timestamp);
 
-  // Save debug file to Google Drive
-  saveDebugFileToDrive(data);
+  // Save debug file to Google Drive (only in development mode)
+  if (!IS_PRODUCTION) {
+    saveDebugFileToDrive(data);
+  }
 }
 
 /**
@@ -1837,56 +1818,64 @@ function saveToSheet(data) {
 
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-    debugLog.push('=== SAVE TO SHEET DEBUG LOG ===');
-    debugLog.push('Submission Number: ' + data.submissionNumber);
-    debugLog.push('Timestamp: ' + new Date().toISOString());
-    debugLog.push('');
 
-    // DEBUG: Log all sheet names in the spreadsheet
-    const allSheets = ss.getSheets();
-    debugLog.push('=== ALL SHEETS IN SPREADSHEET ===');
-    Logger.log('=== DEBUG: All sheets in spreadsheet ===');
-    allSheets.forEach((s, index) => {
-      const msg = 'Sheet ' + index + ': "' + s.getName() + '" (Index: ' + s.getIndex() + ')';
-      Logger.log(msg);
-      debugLog.push(msg);
-    });
-    debugLog.push('');
+    // Only do expensive debug operations in development mode
+    if (!IS_PRODUCTION) {
+      debugLog.push('=== SAVE TO SHEET DEBUG LOG ===');
+      debugLog.push('Submission Number: ' + data.submissionNumber);
+      debugLog.push('Timestamp: ' + new Date().toISOString());
+      debugLog.push('');
 
-    debugLog.push('=== LOOKING FOR SUBMISSIONS SHEET ===');
-    debugLog.push('Constant SHEETS.SUBMISSIONS = "' + SHEETS.SUBMISSIONS + '"');
+      // DEBUG: Log all sheet names in the spreadsheet
+      const allSheets = ss.getSheets();
+      debugLog.push('=== ALL SHEETS IN SPREADSHEET ===');
+      Logger.log('=== DEBUG: All sheets in spreadsheet ===');
+      allSheets.forEach((s, index) => {
+        const msg = 'Sheet ' + index + ': "' + s.getName() + '" (Index: ' + s.getIndex() + ')';
+        Logger.log(msg);
+        debugLog.push(msg);
+      });
+      debugLog.push('');
+
+      debugLog.push('=== LOOKING FOR SUBMISSIONS SHEET ===');
+      debugLog.push('Constant SHEETS.SUBMISSIONS = "' + SHEETS.SUBMISSIONS + '"');
+    }
 
     let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
-    Logger.log('Looking for sheet: "' + SHEETS.SUBMISSIONS + '"');
-    Logger.log('Sheet found: ' + (sheet ? sheet.getName() : 'NULL'));
 
-    if (sheet) {
-      debugLog.push('✓ Sheet FOUND: "' + sheet.getName() + '"');
-      debugLog.push('  Sheet Index: ' + sheet.getIndex());
-      debugLog.push('  Sheet ID: ' + sheet.getSheetId());
-    } else {
-      debugLog.push('✗ Sheet NOT FOUND - will create it');
+    if (!IS_PRODUCTION) {
+      Logger.log('Looking for sheet: "' + SHEETS.SUBMISSIONS + '"');
+      Logger.log('Sheet found: ' + (sheet ? sheet.getName() : 'NULL'));
+
+      if (sheet) {
+        debugLog.push('✓ Sheet FOUND: "' + sheet.getName() + '"');
+        debugLog.push('  Sheet Index: ' + sheet.getIndex());
+        debugLog.push('  Sheet ID: ' + sheet.getSheetId());
+      } else {
+        debugLog.push('✗ Sheet NOT FOUND - will create it');
+      }
+      debugLog.push('');
     }
-    debugLog.push('');
 
     // If Submissions sheet doesn't exist, create it
     if (!sheet) {
-      debugLog.push('=== CREATING NEW SHEET ===');
-      Logger.log('Submissions sheet not found. Creating it...');
+      if (!IS_PRODUCTION) {
+        debugLog.push('=== CREATING NEW SHEET ===');
+        Logger.log('Submissions sheet not found. Creating it...');
+      }
       sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
-      const msg = 'Created sheet: "' + sheet.getName() + '" at index: ' + sheet.getIndex();
-      Logger.log(msg);
-      debugLog.push(msg);
-      debugLog.push('');
+      if (!IS_PRODUCTION) {
+        const msg = 'Created sheet: "' + sheet.getName() + '" at index: ' + sheet.getIndex();
+        Logger.log(msg);
+        debugLog.push(msg);
+        debugLog.push('');
+      }
     }
 
     // Check if headers exist, if not create them
     const lastRow = sheet.getLastRow();
-    debugLog.push('=== SHEET STATUS ===');
-    debugLog.push('Last row in sheet: ' + lastRow);
 
     if (lastRow === 0) {
-      debugLog.push('No headers found - creating headers');
       sheet.appendRow([
         'Status',
         'Submission #',
@@ -1899,33 +1888,13 @@ function saveToSheet(data) {
         'Has Voice Note',
         'Voice Note Link'
       ]);
-    } else {
-      debugLog.push('Headers already exist');
     }
-    debugLog.push('');
 
     // Save audio file to Google Drive if present
     let audioFileUrl = '';
     if (data.hasVoiceNote && data.voiceNoteData) {
       audioFileUrl = saveAudioToDrive(data.voiceNoteData, data.submissionNumber);
-      debugLog.push('Audio file saved: ' + audioFileUrl);
     }
-
-    debugLog.push('=== WRITING DATA ===');
-    debugLog.push('Inserting at top (row 2) - newest submissions first');
-    debugLog.push('Writing to sheet: "' + sheet.getName() + '"');
-    debugLog.push('Sheet index: ' + sheet.getIndex());
-    debugLog.push('');
-    debugLog.push('=== DATA VALUES BEING WRITTEN ===');
-    debugLog.push('data.submissionNumber: "' + data.submissionNumber + '"');
-    debugLog.push('data.timestamp: "' + data.timestamp + '"');
-    debugLog.push('data.name: "' + data.name + '"');
-    debugLog.push('data.email: "' + data.email + '"');
-    debugLog.push('data.phone: "' + data.phone + '" (type: ' + typeof data.phone + ')');
-    debugLog.push('data.storeUrl: "' + data.storeUrl + '"');
-    debugLog.push('data.message length: ' + (data.message ? data.message.length : 0));
-    debugLog.push('data.hasVoiceNote: ' + data.hasVoiceNote);
-    debugLog.push('');
 
     // Prepare the row data with Status first (set to 'New')
     const rowData = [
@@ -1941,40 +1910,40 @@ function saveToSheet(data) {
       audioFileUrl
     ];
 
-    debugLog.push('rowData[5] (phone column): "' + rowData[5] + '"');
-
     // Insert at top (row 2) so newest submissions appear first
-    Logger.log('Writing to sheet: "' + sheet.getName() + '" at row 2 (top)');
-    Logger.log('Sheet index: ' + sheet.getIndex());
     insertAtTopSafe(sheet, rowData, false); // false = no toast (no UI context from doPost)
 
-    debugLog.push('✓ Data written successfully!');
-    debugLog.push('');
-    debugLog.push('=== VERIFICATION ===');
-    debugLog.push('Final sheet name: "' + sheet.getName() + '"');
-    debugLog.push('Final sheet index: ' + sheet.getIndex());
-    debugLog.push('Row written: 2 (top)');
+    if (!IS_PRODUCTION) {
+      debugLog.push('=== SHEET STATUS ===');
+      debugLog.push('Last row in sheet: ' + lastRow);
+      debugLog.push('=== WRITING DATA ===');
+      debugLog.push('Data written successfully to row 2');
+      debugLog.push('rowData[5] (phone column): "' + rowData[5] + '"');
+      debugLog.push('');
+      debugLog.push('=== VERIFICATION ===');
+      debugLog.push('Final sheet name: "' + sheet.getName() + '"');
+      debugLog.push('Final sheet index: ' + sheet.getIndex());
+      debugLog.push('Row written: 2 (top)');
+      debugLog.push('');
+      debugLog.push('✓ SUCCESS');
+      saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
+    }
 
-    const msg = 'Data saved successfully to sheet "' + sheet.getName() + '" at row 2 (top)';
-    Logger.log(msg);
-    debugLog.push('');
-    debugLog.push('✓ SUCCESS: ' + msg);
-
-    // Save debug log to file
-    saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
+    Logger.log('Data saved successfully to Submissions sheet');
 
   } catch (error) {
-    const errorMsg = 'Error saving to sheet: ' + error.message;
-    Logger.log(errorMsg);
-    debugLog.push('');
-    debugLog.push('✗ ERROR: ' + errorMsg);
-    debugLog.push('Stack trace: ' + error.stack);
+    Logger.log('Error saving to sheet: ' + error.message);
 
-    // Save debug log even on error
-    try {
-      saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
-    } catch (e) {
-      Logger.log('Failed to save debug log: ' + e.message);
+    // Save debug log even on error (only in development mode)
+    if (!IS_PRODUCTION) {
+      try {
+        debugLog.push('');
+        debugLog.push('✗ ERROR: ' + error.message);
+        debugLog.push('Stack trace: ' + error.stack);
+        saveDetailedDebugLog(data.submissionNumber, debugLog.join('\n'));
+      } catch (e) {
+        Logger.log('Failed to save debug log: ' + e.message);
+      }
     }
 
     // Don't throw - submission should succeed even if sheet save fails
@@ -2079,14 +2048,144 @@ function getOrCreateVoiceNotesFolder() {
 }
 
 // ============================================================================
+// DEFERRED EMAIL PROCESSING (Performance Optimization)
+// ============================================================================
+// Emails are queued and sent asynchronously to return responses faster to users.
+// The queue uses CacheService for temporary storage and time-based triggers for processing.
+
+/**
+ * Queue an email for deferred sending (returns immediately, email sent async)
+ * @param {string} type - Email type ('admin' or 'user')
+ * @param {Object} data - Email data
+ */
+function queueDeferredEmail(type, data) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const queueKey = 'EMAIL_QUEUE';
+
+    // Get existing queue or create new one
+    const existingQueue = cache.get(queueKey);
+    const queue = existingQueue ? JSON.parse(existingQueue) : [];
+
+    // Add new email to queue
+    queue.push({
+      type: type,
+      data: data,
+      timestamp: new Date().toISOString()
+    });
+
+    // Save queue (cache expires in 6 hours max, but we process quickly)
+    cache.put(queueKey, JSON.stringify(queue), 21600);
+
+    // Create a trigger to process the queue if one doesn't exist
+    ensureEmailProcessorTrigger();
+
+    return true;
+  } catch (error) {
+    Logger.log('Error queueing email: ' + error.message);
+    // Fall back to synchronous sending if queue fails
+    return false;
+  }
+}
+
+/**
+ * Ensure a time-based trigger exists to process the email queue
+ */
+function ensureEmailProcessorTrigger() {
+  const cache = CacheService.getScriptCache();
+  const triggerFlag = cache.get('EMAIL_TRIGGER_PENDING');
+
+  // If trigger already pending, don't create another
+  if (triggerFlag) {
+    return;
+  }
+
+  // Set flag to prevent duplicate triggers (expires in 2 minutes)
+  cache.put('EMAIL_TRIGGER_PENDING', 'true', 120);
+
+  // Delete any existing email processor triggers to avoid accumulation
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processEmailQueue') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // Create a trigger to run in ~1 second (minimum is actually ~1 minute for time-based)
+  // Using "after" with 1 creates a trigger that runs ASAP
+  ScriptApp.newTrigger('processEmailQueue')
+    .timeBased()
+    .after(1000) // 1 second (actually runs as soon as possible)
+    .create();
+}
+
+/**
+ * Process the email queue (called by time-based trigger)
+ */
+function processEmailQueue() {
+  const cache = CacheService.getScriptCache();
+
+  // Clear the trigger flag
+  cache.remove('EMAIL_TRIGGER_PENDING');
+
+  // Get and clear the queue
+  const queueKey = 'EMAIL_QUEUE';
+  const queueData = cache.get(queueKey);
+
+  if (!queueData) {
+    return; // Nothing to process
+  }
+
+  // Clear queue immediately to prevent double-processing
+  cache.remove(queueKey);
+
+  const queue = JSON.parse(queueData);
+
+  // Process each email
+  queue.forEach(item => {
+    try {
+      if (item.type === 'admin') {
+        sendEmailNotificationSync(item.data);
+      } else if (item.type === 'user') {
+        sendUserConfirmationEmailSync(item.data);
+      } else if (item.type === 'testimonial') {
+        sendTestimonialNotificationEmail(item.data);
+      }
+    } catch (error) {
+      Logger.log('Error processing queued email: ' + error.message);
+    }
+  });
+
+  // Clean up the trigger that called us
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processEmailQueue') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+}
+
+// ============================================================================
 // EMAIL NOTIFICATIONS
 // ============================================================================
 
 /**
- * Send email notification to admin
- * EMAIL TEMPLATE: See apps-script/email-admin-notification.html
+ * Send email notification to admin (async wrapper - queues for background processing)
+ * @param {Object} data - Submission data
  */
 function sendEmailNotification(data) {
+  // Queue email for async processing (returns immediately)
+  if (!queueDeferredEmail('admin', data)) {
+    // Fall back to sync if queue fails
+    sendEmailNotificationSync(data);
+  }
+}
+
+/**
+ * Send email notification to admin (synchronous)
+ * EMAIL TEMPLATE: See apps-script/email-admin-notification.html
+ */
+function sendEmailNotificationSync(data) {
   if (!CONFIG.ADMIN_EMAIL) {
     Logger.log('WARNING: ADMIN_EMAIL not configured. Skipping email notification.');
     return;
@@ -2179,13 +2278,22 @@ CartCure Contact Form · https://cartcure.co.nz
 }
 
 /**
- * Send confirmation email to the user who submitted the form
- */
-/**
- * Send confirmation email to the user who submitted the form
- * EMAIL TEMPLATE: See apps-script/email-user-confirmation.html
+ * Send confirmation email to user (async wrapper - queues for background processing)
+ * @param {Object} data - Submission data
  */
 function sendUserConfirmationEmail(data) {
+  // Queue email for async processing (returns immediately)
+  if (!queueDeferredEmail('user', data)) {
+    // Fall back to sync if queue fails
+    sendUserConfirmationEmailSync(data);
+  }
+}
+
+/**
+ * Send confirmation email to the user who submitted the form (synchronous)
+ * EMAIL TEMPLATE: See apps-script/email-user-confirmation.html
+ */
+function sendUserConfirmationEmailSync(data) {
   if (!data.email) {
     Logger.log('WARNING: No user email provided. Skipping user confirmation.');
     return;
@@ -2265,6 +2373,44 @@ https://cartcure.co.nz
   } catch (error) {
     Logger.log('Error sending user confirmation email: ' + error.message);
     // Don't throw - submission should succeed even if confirmation email fails
+  }
+}
+
+/**
+ * Send testimonial notification email to admin
+ * @param {Object} data - Testimonial data (sanitized)
+ */
+function sendTestimonialNotificationEmail(data) {
+  if (!CONFIG.ADMIN_EMAIL) return;
+
+  try {
+    const subject = 'New Testimonial Submitted - ' + data.name + ' [' + data.jobNumber + ']';
+    const body = `A new testimonial has been submitted and is awaiting your approval.
+
+Job Reference: ${data.jobNumber}
+Name: ${data.name}
+Business: ${data.business || 'Not provided'}
+Location: ${data.location || 'Not provided'}
+Rating: ${'★'.repeat(data.rating)}${'☆'.repeat(5 - data.rating)}
+
+Testimonial:
+"${data.testimonial}"
+
+To approve this testimonial for display on the website:
+1. Open the CartCure spreadsheet
+2. Go to the Testimonials tab
+3. Check the "Show on Website" checkbox
+
+Submitted: ${data.submitted}`;
+
+    MailApp.sendEmail({
+      to: CONFIG.ADMIN_EMAIL,
+      subject: subject,
+      body: body
+    });
+    Logger.log('Testimonial notification email sent');
+  } catch (error) {
+    Logger.log('Error sending testimonial notification: ' + error.message);
   }
 }
 
@@ -10243,7 +10389,7 @@ function generateStatusUpdateEmailHtml(data) {
             </p>
           </div>
         ` : ''}
-        <p><strong>Note:</strong> Our 7-day turnaround guarantee is also paused while your job is on hold.</p>
+        <p><strong>Note:</strong> The job completion timer is also <strong>paused</strong> while your job is on hold.</p>
         <p>We'll notify you as soon as we resume work.</p>
       `;
       break;
@@ -10307,7 +10453,7 @@ function generateStatusUpdateEmailPlainText(data) {
       if (data.explanation) {
         statusMessage += '\n\nReason: ' + data.explanation;
       }
-      statusMessage += '\n\nNote: Our 7-day turnaround guarantee is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
+      statusMessage += '\n\nNote: The job completion timer is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
       break;
     case 'Completed':
       statusMessage = 'Excellent news! We\'ve completed the work on your job.\n\nWe\'ll be in touch shortly with the final details and invoice.\n\n───────────────────────────────────────────────────\nHOW WAS YOUR EXPERIENCE?\n───────────────────────────────────────────────────\n\nWe\'d love to hear your feedback!\nShare your experience: https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(data.jobNumber);
