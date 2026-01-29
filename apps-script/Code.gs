@@ -5434,8 +5434,25 @@ function refreshAnalytics() {
   // Get jobs data
   const jobsData = jobsSheet ? jobsSheet.getDataRange().getValues() : [[]];
   const jobHeaders = jobsData[0] || [];
-  const jobNumCol = jobHeaders.indexOf('Job #');
-  const jobs = jobsData.slice(1).filter(row => row[jobNumCol !== -1 ? jobNumCol : 0]); // Filter out empty rows
+
+  // PERFORMANCE: Cache all column indices ONCE before any loops
+  // (Previously: 15+ indexOf calls per row × N rows = many lookups)
+  // (Now: 11 indexOf calls total, regardless of row count)
+  const cols = {
+    jobNum: jobHeaders.indexOf('Job #'),
+    status: jobHeaders.indexOf('Status'),
+    paymentStatus: jobHeaders.indexOf('Payment Status'),
+    totalInclGst: jobHeaders.indexOf('Total (incl GST)'),
+    slaStatus: jobHeaders.indexOf('SLA Status'),
+    category: jobHeaders.indexOf('Category'),
+    clientName: jobHeaders.indexOf('Client Name'),
+    daysRemaining: jobHeaders.indexOf('Days Remaining'),
+    createdDate: jobHeaders.indexOf('Created Date'),
+    completionDate: jobHeaders.indexOf('Actual Completion Date'),
+    paymentDate: jobHeaders.indexOf('Payment Date')
+  };
+
+  const jobs = jobsData.slice(1).filter(row => row[cols.jobNum !== -1 ? cols.jobNum : 0]); // Filter out empty rows
 
   // Get submissions data
   const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
@@ -5443,36 +5460,90 @@ function refreshAnalytics() {
   const subNumCol = subHeaders.indexOf('Submission #');
   const submissions = subData.slice(1).filter(row => row[subNumCol !== -1 ? subNumCol : 0]);
 
-  // === CALCULATE KEY METRICS ===
-  const totalJobs = jobs.length;
-  const totalRevenue = jobs.reduce((sum, row) => {
-    const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
+  // === CALCULATE ALL METRICS IN A SINGLE LOOP ===
+  // PERFORMANCE: Consolidated from 5+ separate loops into 1
+  const metrics = {
+    totalRevenue: 0,
+    paidJobCount: 0,
+    completedJobs: 0,
+    onTimeJobs: 0,
+    statusCounts: {},
+    paymentCounts: {},
+    paymentAmounts: {},
+    slaCounts: { 'On Track': 0, 'AT RISK': 0, 'OVERDUE': 0 },
+    categoryCounts: {},
+    categoryRevenue: {}
+  };
+
+  // Initialize status and payment counts
+  Object.values(JOB_STATUS).forEach(status => metrics.statusCounts[status] = 0);
+  Object.values(PAYMENT_STATUS).forEach(status => {
+    metrics.paymentCounts[status] = 0;
+    metrics.paymentAmounts[status] = 0;
+  });
+
+  // Single loop to calculate all metrics
+  jobs.forEach(row => {
+    const status = row[cols.status];
+    const paymentStatus = row[cols.paymentStatus];
+    const amount = parseFloat(row[cols.totalInclGst]) || 0;
+    const sla = row[cols.slaStatus];
+    const category = row[cols.category] || 'Uncategorized';
+
+    // Revenue (only from paid jobs)
     if (paymentStatus === PAYMENT_STATUS.PAID) {
-      return sum + (parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0);
+      metrics.totalRevenue += amount;
+      metrics.paidJobCount++;
     }
-    return sum;
-  }, 0);
-  const avgJobValue = totalJobs > 0 ? totalRevenue / jobs.filter(row => row[jobHeaders.indexOf('Payment Status')] === PAYMENT_STATUS.PAID).length : 0;
 
-  // Conversion rate: jobs created / submissions
+    // Completed and on-time counts
+    if (status === JOB_STATUS.COMPLETED) {
+      metrics.completedJobs++;
+      if (sla !== 'OVERDUE') {
+        metrics.onTimeJobs++;
+      }
+    }
+
+    // Status counts
+    if (status && metrics.statusCounts.hasOwnProperty(status)) {
+      metrics.statusCounts[status]++;
+    }
+
+    // Payment counts and amounts
+    if (paymentStatus && metrics.paymentCounts.hasOwnProperty(paymentStatus)) {
+      metrics.paymentCounts[paymentStatus]++;
+      metrics.paymentAmounts[paymentStatus] += amount;
+    }
+
+    // SLA counts (only active jobs)
+    if (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) {
+      if (sla === 'OVERDUE') metrics.slaCounts['OVERDUE']++;
+      else if (sla === 'AT RISK') metrics.slaCounts['AT RISK']++;
+      else metrics.slaCounts['On Track']++;
+    }
+
+    // Category counts
+    if (!metrics.categoryCounts[category]) {
+      metrics.categoryCounts[category] = 0;
+      metrics.categoryRevenue[category] = 0;
+    }
+    metrics.categoryCounts[category]++;
+    if (paymentStatus === PAYMENT_STATUS.PAID) {
+      metrics.categoryRevenue[category] += amount;
+    }
+  });
+
+  // Calculate derived metrics
+  const totalJobs = jobs.length;
+  const avgJobValue = metrics.paidJobCount > 0 ? metrics.totalRevenue / metrics.paidJobCount : 0;
   const conversionRate = submissions.length > 0 ? (totalJobs / submissions.length * 100) : 0;
-
-  // Completion rate: completed jobs / total jobs
-  const completedJobs = jobs.filter(row => row[jobHeaders.indexOf('Status')] === JOB_STATUS.COMPLETED).length;
-  const completionRate = totalJobs > 0 ? (completedJobs / totalJobs * 100) : 0;
-
-  // On-time rate: jobs completed on time / completed jobs
-  const onTimeJobs = jobs.filter(row => {
-    const status = row[jobHeaders.indexOf('Status')];
-    const slaStatus = row[jobHeaders.indexOf('SLA Status')];
-    return status === JOB_STATUS.COMPLETED && slaStatus !== 'OVERDUE';
-  }).length;
-  const onTimeRate = completedJobs > 0 ? (onTimeJobs / completedJobs * 100) : 0;
+  const completionRate = totalJobs > 0 ? (metrics.completedJobs / totalJobs * 100) : 0;
+  const onTimeRate = metrics.completedJobs > 0 ? (metrics.onTimeJobs / metrics.completedJobs * 100) : 0;
 
   // Populate key metrics row
   analytics.getRange(6, 1, 1, 6).setValues([[
     totalJobs,
-    formatCurrency(totalRevenue),
+    formatCurrency(metrics.totalRevenue),
     isNaN(avgJobValue) || !isFinite(avgJobValue) ? formatCurrency(0) : formatCurrency(avgJobValue),
     conversionRate.toFixed(1) + '%',
     completionRate.toFixed(1) + '%',
@@ -5481,43 +5552,19 @@ function refreshAnalytics() {
   analytics.getRange(6, 1, 1, 6).setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
 
   // === JOB STATUS BREAKDOWN ===
-  const statusCounts = {};
-  Object.values(JOB_STATUS).forEach(status => statusCounts[status] = 0);
-  jobs.forEach(row => {
-    const status = row[jobHeaders.indexOf('Status')];
-    if (status && statusCounts.hasOwnProperty(status)) {
-      statusCounts[status]++;
-    }
-  });
-
   analytics.getRange(11, 1, 8, 3).clearContent();
   let statusRow = 11;
-  Object.entries(statusCounts).forEach(([status, count]) => {
+  Object.entries(metrics.statusCounts).forEach(([status, count]) => {
     const pct = totalJobs > 0 ? (count / totalJobs * 100).toFixed(1) + '%' : '0%';
     analytics.getRange(statusRow, 1, 1, 3).setValues([[status, count, pct]]);
     statusRow++;
   });
 
   // === PAYMENT STATUS ===
-  const paymentCounts = {};
-  const paymentAmounts = {};
-  Object.values(PAYMENT_STATUS).forEach(status => {
-    paymentCounts[status] = 0;
-    paymentAmounts[status] = 0;
-  });
-  jobs.forEach(row => {
-    const status = row[jobHeaders.indexOf('Payment Status')];
-    const amount = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
-    if (status && paymentCounts.hasOwnProperty(status)) {
-      paymentCounts[status]++;
-      paymentAmounts[status] += amount;
-    }
-  });
-
   analytics.getRange(11, 5, 4, 3).clearContent();
   let paymentRow = 11;
-  Object.entries(paymentCounts).forEach(([status, count]) => {
-    analytics.getRange(paymentRow, 5, 1, 3).setValues([[status, count, formatCurrency(paymentAmounts[status])]]);
+  Object.entries(metrics.paymentCounts).forEach(([status, count]) => {
+    analytics.getRange(paymentRow, 5, 1, 3).setValues([[status, count, formatCurrency(metrics.paymentAmounts[status])]]);
     // Color code using brand colors
     if (status === PAYMENT_STATUS.PAID) {
       analytics.getRange(paymentRow, 5).setBackground(SHEET_COLORS.paymentPaid);
@@ -5530,18 +5577,7 @@ function refreshAnalytics() {
   });
 
   // === SLA PERFORMANCE ===
-  const slaCounts = { 'On Track': 0, 'AT RISK': 0, 'OVERDUE': 0 };
-  jobs.forEach(row => {
-    const status = row[jobHeaders.indexOf('Status')];
-    const sla = row[jobHeaders.indexOf('SLA Status')];
-    // Only count active jobs
-    if (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) {
-      if (sla === 'OVERDUE') slaCounts['OVERDUE']++;
-      else if (sla === 'AT RISK') slaCounts['AT RISK']++;
-      else slaCounts['On Track']++;
-    }
-  });
-  const activeSlaTotal = slaCounts['On Track'] + slaCounts['AT RISK'] + slaCounts['OVERDUE'];
+  const activeSlaTotal = metrics.slaCounts['On Track'] + metrics.slaCounts['AT RISK'] + metrics.slaCounts['OVERDUE'];
 
   analytics.getRange(11, 9, 3, 3).clearContent();
   let slaRow = 11;
@@ -5552,7 +5588,7 @@ function refreshAnalytics() {
     ['OVERDUE', SHEET_COLORS.slaOverdue, SHEET_COLORS.slaOverdueText]
   ];
   slaColorMap.forEach(([status, bgColor, textColor]) => {
-    const count = slaCounts[status];
+    const count = metrics.slaCounts[status];
     const pct = activeSlaTotal > 0 ? (count / activeSlaTotal * 100).toFixed(1) + '%' : '0%';
     analytics.getRange(slaRow, 9, 1, 3).setValues([[status, count, pct]]);
     analytics.getRange(slaRow, 9).setBackground(bgColor);
@@ -5564,6 +5600,7 @@ function refreshAnalytics() {
   });
 
   // === MONTHLY PERFORMANCE (Last 6 months) ===
+  // Note: This still requires a separate loop per month since we're grouping by date ranges
   const now = new Date();
   const monthlyData = [];
   for (let i = 5; i >= 0; i--) {
@@ -5572,12 +5609,13 @@ function refreshAnalytics() {
     const monthName = monthDate.toLocaleString('en-NZ', { month: 'short', year: '2-digit' });
 
     let created = 0, completed = 0, revenue = 0;
+    // PERFORMANCE: Uses cached column indices instead of indexOf calls in loop
     jobs.forEach(row => {
-      const createdDate = row[jobHeaders.indexOf('Created Date')];
-      const completionDate = row[jobHeaders.indexOf('Actual Completion Date')];
-      const paymentDate = row[jobHeaders.indexOf('Payment Date')];
-      const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
-      const total = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
+      const createdDate = row[cols.createdDate];
+      const completionDate = row[cols.completionDate];
+      const paymentDate = row[cols.paymentDate];
+      const paymentStatus = row[cols.paymentStatus];
+      const total = parseFloat(row[cols.totalInclGst]) || 0;
 
       if (createdDate) {
         const cd = new Date(createdDate);
@@ -5601,44 +5639,29 @@ function refreshAnalytics() {
   analytics.getRange(22, 1, 6, 5).setValues(monthlyData);
 
   // === CATEGORY BREAKDOWN ===
-  const categoryCounts = {};
-  const categoryRevenue = {};
-  jobs.forEach(row => {
-    const category = row[jobHeaders.indexOf('Category')] || 'Uncategorized';
-    const total = parseFloat(row[jobHeaders.indexOf('Total (incl GST)')]) || 0;
-    const paymentStatus = row[jobHeaders.indexOf('Payment Status')];
-
-    if (!categoryCounts[category]) {
-      categoryCounts[category] = 0;
-      categoryRevenue[category] = 0;
-    }
-    categoryCounts[category]++;
-    if (paymentStatus === PAYMENT_STATUS.PAID) {
-      categoryRevenue[category] += total;
-    }
-  });
-
+  // PERFORMANCE: Already calculated in the single metrics loop above
   // Sort by count descending
-  const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+  const sortedCategories = Object.entries(metrics.categoryCounts).sort((a, b) => b[1] - a[1]);
 
   analytics.getRange(22, 7, 10, 3).clearContent();
   let catRow = 22;
   sortedCategories.slice(0, 10).forEach(([category, count]) => {
-    analytics.getRange(catRow, 7, 1, 3).setValues([[category, count, formatCurrency(categoryRevenue[category])]]);
+    analytics.getRange(catRow, 7, 1, 3).setValues([[category, count, formatCurrency(metrics.categoryRevenue[category])]]);
     catRow++;
   });
 
   // === ATTENTION REQUIRED (Overdue & At Risk jobs) ===
+  // PERFORMANCE: Uses cached column indices
   const attentionJobs = jobs.filter(row => {
-    const status = row[jobHeaders.indexOf('Status')];
-    const sla = row[jobHeaders.indexOf('SLA Status')];
+    const status = row[cols.status];
+    const sla = row[cols.slaStatus];
     return (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) &&
            (sla === 'OVERDUE' || sla === 'AT RISK');
   }).map(row => ({
-    jobNum: row[jobNumCol],
-    client: row[jobHeaders.indexOf('Client Name')],
-    sla: row[jobHeaders.indexOf('SLA Status')],
-    daysRemaining: row[jobHeaders.indexOf('Days Remaining')]
+    jobNum: row[cols.jobNum],
+    client: row[cols.clientName],
+    sla: row[cols.slaStatus],
+    daysRemaining: row[cols.daysRemaining]
   })).sort((a, b) => {
     // OVERDUE first, then by days remaining
     if (a.sla === 'OVERDUE' && b.sla !== 'OVERDUE') return -1;
@@ -10220,7 +10243,7 @@ function generateStatusUpdateEmailHtml(data) {
             </p>
           </div>
         ` : ''}
-        <p><strong>Note:</strong> The 7-day SLA timer is also paused while your job is on hold.</p>
+        <p><strong>Note:</strong> Our 7-day turnaround guarantee is also paused while your job is on hold.</p>
         <p>We'll notify you as soon as we resume work.</p>
       `;
       break;
@@ -10284,7 +10307,7 @@ function generateStatusUpdateEmailPlainText(data) {
       if (data.explanation) {
         statusMessage += '\n\nReason: ' + data.explanation;
       }
-      statusMessage += '\n\nNote: The 7-day SLA timer is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
+      statusMessage += '\n\nNote: Our 7-day turnaround guarantee is also paused while your job is on hold.\n\nWe\'ll notify you as soon as we resume work.';
       break;
     case 'Completed':
       statusMessage = 'Excellent news! We\'ve completed the work on your job.\n\nWe\'ll be in touch shortly with the final details and invoice.\n\n───────────────────────────────────────────────────\nHOW WAS YOUR EXPERIENCE?\n───────────────────────────────────────────────────\n\nWe\'d love to hear your feedback!\nShare your experience: https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(data.jobNumber);
@@ -13390,13 +13413,15 @@ function showOverdueJobs() {
 
   const data = jobsSheet.getDataRange().getValues();
   const headers = data[0];
+  // PERFORMANCE: Cache all column indices before loop
   const jobNumCol = headers.indexOf('Job #');
   const slaCol = headers.indexOf('SLA Status');
+  const clientNameCol = headers.indexOf('Client Name');
 
   const overdueJobs = [];
   for (let i = 1; i < data.length; i++) {
     if (data[i][slaCol] === 'OVERDUE') {
-      overdueJobs.push(data[i][jobNumCol] + ' - ' + data[i][headers.indexOf('Client Name')]);
+      overdueJobs.push(data[i][jobNumCol] + ' - ' + data[i][clientNameCol]);
     }
   }
 
@@ -13425,9 +13450,11 @@ function showOutstandingPayments() {
 
   const data = jobsSheet.getDataRange().getValues();
   const headers = data[0];
+  // PERFORMANCE: Cache all column indices before loop
   const jobNumCol = headers.indexOf('Job #');
   const paymentStatusCol = headers.indexOf('Payment Status');
   const totalCol = headers.indexOf('Total (incl GST)');
+  const clientNameCol = headers.indexOf('Client Name');
 
   let totalOutstanding = 0;
   const unpaidJobs = [];
@@ -13438,7 +13465,7 @@ function showOutstandingPayments() {
       const amount = parseFloat(data[i][totalCol]) || 0;
       if (amount > 0) {
         totalOutstanding += amount;
-        unpaidJobs.push(data[i][jobNumCol] + ' - ' + data[i][headers.indexOf('Client Name')] + ' - ' + formatCurrency(amount));
+        unpaidJobs.push(data[i][jobNumCol] + ' - ' + data[i][clientNameCol] + ' - ' + formatCurrency(amount));
       }
     }
   }
@@ -13469,6 +13496,15 @@ function showMonthlySummary() {
   const data = jobsSheet.getDataRange().getValues();
   const headers = data[0];
 
+  // PERFORMANCE: Cache column indices before loop
+  const cols = {
+    completionDate: headers.indexOf('Actual Completion Date'),
+    paymentDate: headers.indexOf('Payment Date'),
+    createdDate: headers.indexOf('Created Date'),
+    totalInclGst: headers.indexOf('Total (incl GST)'),
+    paymentStatus: headers.indexOf('Payment Status')
+  };
+
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -13477,11 +13513,11 @@ function showMonthlySummary() {
   let jobsStarted = 0;
 
   for (let i = 1; i < data.length; i++) {
-    const completionDate = data[i][headers.indexOf('Actual Completion Date')];
-    const paymentDate = data[i][headers.indexOf('Payment Date')];
-    const createdDate = data[i][headers.indexOf('Created Date')];
-    const total = parseFloat(data[i][headers.indexOf('Total (incl GST)')]) || 0;
-    const paymentStatus = data[i][headers.indexOf('Payment Status')];
+    const completionDate = data[i][cols.completionDate];
+    const paymentDate = data[i][cols.paymentDate];
+    const createdDate = data[i][cols.createdDate];
+    const total = parseFloat(data[i][cols.totalInclGst]) || 0;
+    const paymentStatus = data[i][cols.paymentStatus];
 
     if (completionDate && new Date(completionDate) >= monthStart) {
       jobsCompleted++;

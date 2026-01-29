@@ -10,14 +10,15 @@ Read apps-script/PERFORMANCE_OPTIMIZATION_GUIDE.md for full details.
 COMPLETED:
 - Settings caching (already worked)
 - Column index caching in refreshDashboard()
+- Column index caching in refreshAnalytics() with consolidated single metrics loop
+- Column index caching in showOverdueJobs(), showOutstandingPayments(), showMonthlySummary()
+- autoSendQuoteReminders(), autoSendInvoiceReminders(), autoSendOverdueInvoices() already had proper caching
 
-TODO (in priority order):
-1. Add column index caching to refreshAnalytics() - same pattern as refreshDashboard
-2. Add column index caching to autoSendQuoteReminders(), autoSendInvoiceReminders(), autoSendOverdueInvoices()
-3. Consolidate the 5 loops in refreshAnalytics() into a single loop
-4. Add column index caching to showOverdueJobs() and similar functions
+TODO (if needed):
+- Batch setValue operations in updateAllSLAStatus() (more complex, low priority)
+- TextFinder for invoice lookups (if performance issues persist)
 
-Pattern to follow: See refreshDashboard() around line 13121 for example of column caching.
+Pattern to follow: See refreshDashboard() around line 13121 or refreshAnalytics() around line 5435 for examples of column caching.
 ```
 
 ---
@@ -281,11 +282,11 @@ for (const match of matches) {
 
 ## Implementation Order (Priority)
 
-1. **getSetting → getSettingCached** (easiest, biggest impact)
-2. **Column index caching in loops** (moderate effort, good impact)
-3. **Consolidate analytics loops** (moderate effort, cleaner code)
-4. **TextFinder for invoice lookups** (if time permits)
-5. **Batch setValue operations** (more complex, do last)
+1. ✅ **getSetting → getSettingCached** - Already implemented (getSetting calls getSettingCached)
+2. ✅ **Column index caching in loops** - Done in refreshDashboard, refreshAnalytics, showOverdueJobs, showOutstandingPayments, showMonthlySummary
+3. ✅ **Consolidate analytics loops** - Done in refreshAnalytics (5 loops → 1 single metrics loop)
+4. ⏳ **TextFinder for invoice lookups** (if time permits)
+5. ⏳ **Batch setValue operations** (more complex, do last)
 
 ---
 
