@@ -13121,7 +13121,21 @@ function refreshDashboard(force) {
   // Get all jobs data
   const jobsData = jobsSheet.getDataRange().getValues();
   const headers = jobsData[0];
-  const jobNumColIndex = headers.indexOf('Job #');
+
+  // PERFORMANCE: Cache all column indices ONCE before loop
+  // (Previously: 10+ indexOf calls per row × 50 rows = 500+ lookups)
+  // (Now: 9 indexOf calls total, regardless of row count)
+  const cols = {
+    jobNum: headers.indexOf('Job #'),
+    status: headers.indexOf('Status'),
+    clientName: headers.indexOf('Client Name'),
+    jobDescription: headers.indexOf('Job Description'),
+    totalInclGst: headers.indexOf('Total (incl GST)'),
+    daysRemaining: headers.indexOf('Days Remaining'),
+    slaStatus: headers.indexOf('SLA Status'),
+    quoteSentDate: headers.indexOf('Quote Sent Date'),
+    quoteValidUntil: headers.indexOf('Quote Valid Until')
+  };
 
   // Update SLA calculations for active jobs
   updateAllSLAStatus(jobsSheet, jobsData, headers);
@@ -13132,31 +13146,31 @@ function refreshDashboard(force) {
 
   for (let i = 1; i < jobsData.length; i++) {
     const row = jobsData[i];
-    const status = row[headers.indexOf('Status')];
-    const jobNum = jobNumColIndex >= 0 ? row[jobNumColIndex] : null;
+    const status = row[cols.status];
+    const jobNum = cols.jobNum >= 0 ? row[cols.jobNum] : null;
 
     if (!jobNum) continue;
 
     if (status === JOB_STATUS.ACCEPTED || status === JOB_STATUS.IN_PROGRESS) {
       activeJobs.push({
         jobNumber: jobNum,
-        client: row[headers.indexOf('Client Name')],
-        description: (row[headers.indexOf('Job Description')] || '').substring(0, 30),
-        quotedAmount: formatCurrency(row[headers.indexOf('Total (incl GST)')] || 0),
-        daysRemaining: row[headers.indexOf('Days Remaining')],
-        slaStatus: row[headers.indexOf('SLA Status')],
+        client: row[cols.clientName],
+        description: (row[cols.jobDescription] || '').substring(0, 30),
+        quotedAmount: formatCurrency(row[cols.totalInclGst] || 0),
+        daysRemaining: row[cols.daysRemaining],
+        slaStatus: row[cols.slaStatus],
         status: status
       });
     } else if (status === JOB_STATUS.QUOTED) {
-      const quoteSentDate = row[headers.indexOf('Quote Sent Date')];
+      const quoteSentDate = row[cols.quoteSentDate];
       const daysWaiting = quoteSentDate ? daysBetween(new Date(quoteSentDate), new Date()) : 0;
 
       pendingQuotes.push({
         jobNumber: jobNum,
-        client: row[headers.indexOf('Client Name')],
-        quoteAmount: formatCurrency(row[headers.indexOf('Total (incl GST)')] || 0),
+        client: row[cols.clientName],
+        quoteAmount: formatCurrency(row[cols.totalInclGst] || 0),
         daysWaiting: daysWaiting,
-        validUntil: row[headers.indexOf('Quote Valid Until')],
+        validUntil: row[cols.quoteValidUntil],
         action: daysWaiting > 5 ? 'Follow up!' : 'Waiting'
       });
     }
