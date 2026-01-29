@@ -252,6 +252,7 @@
         <li><a href="#part12"><strong>Part 12:</strong> Testimonials Sheet - Customer Feedback</a></li>
         <li><a href="#part13"><strong>Part 13:</strong> Performance Optimizations</a></li>
         <li><a href="#part14"><strong>Part 14:</strong> Activity Log - Audit Trail</a></li>
+        <li><a href="#part15"><strong>Part 15:</strong> Data Management & Maintenance</a></li>
     </ul>
 </div>
 
@@ -2535,10 +2536,134 @@ Unpaid → Invoiced → Paid
     <strong>Note:</strong> The email scanner checks the cartcuredrive@gmail.com inbox for BCC'd emails from your MS365 account. Client replies sent directly to info@cartcure.co.nz won't be logged automatically - add manual notes for important client responses.
 </div>
 
+<div class="page-break"></div>
+
+<h1 id="part15">Part 15: Data Management & Maintenance</h1>
+
+<div class="success">
+    <strong>Scalability Feature:</strong> The system now includes tools to manage data growth over time, including archiving old records and automatic newest-first ordering.
+</div>
+
+<h2>Newest Items First</h2>
+
+<p>New submissions, jobs, invoices, and activity log entries now appear at the <strong>top</strong> of their respective sheets (row 2, just below the header). This means:</p>
+
+<ul>
+    <li><strong>Latest submissions</strong> are immediately visible when you open the Submissions sheet</li>
+    <li><strong>New jobs</strong> appear at the top of the Jobs sheet</li>
+    <li><strong>Recent invoices</strong> are at the top of the Invoice Log</li>
+    <li><strong>Latest activity</strong> is at the top of the Activity Log</li>
+</ul>
+
+<div class="info">
+    <strong>Tip:</strong> No more scrolling to the bottom to find recent entries! The newest data is always visible first.
+</div>
+
+<h2>Archive Settings</h2>
+
+<p>Two new settings control automatic archiving thresholds:</p>
+
+<table>
+    <tr>
+        <th>Setting</th>
+        <th>Default</th>
+        <th>Description</th>
+    </tr>
+    <tr>
+        <td>Archive Jobs After Days</td>
+        <td>90</td>
+        <td>Completed/cancelled jobs older than this will be moved to archive</td>
+    </tr>
+    <tr>
+        <td>Archive Activity After Days</td>
+        <td>365</td>
+        <td>Activity log entries older than this will be archived</td>
+    </tr>
+</table>
+
+<p>Set either value to <strong>0</strong> to disable that archive feature.</p>
+
+<h2>Maintenance Menu</h2>
+
+<p>Access maintenance tools via: <strong>CartCure &gt; Setup &gt; Maintenance</strong></p>
+
+<h3>Archive Old Jobs</h3>
+
+<p>Moves completed, cancelled, or declined jobs to a separate "Jobs Archive" sheet. Only jobs older than your threshold (default 90 days) are archived.</p>
+
+<ol>
+    <li>Click <strong>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Jobs</strong></li>
+    <li>Review the count of jobs to be archived</li>
+    <li>Click Yes to confirm</li>
+</ol>
+
+<div class="warning">
+    <strong>Note:</strong> Archived jobs are <em>moved</em> (not copied). They will no longer appear in the main Jobs sheet but will be preserved in the Jobs Archive sheet.
+</div>
+
+<h3>Archive Old Activity</h3>
+
+<p>Moves old activity log entries to "Activity Log Archive" sheet. Keeps your main Activity Log manageable.</p>
+
+<ol>
+    <li>Click <strong>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Activity</strong></li>
+    <li>Review the count of entries to be archived</li>
+    <li>Click Yes to confirm</li>
+</ol>
+
+<h3>Clean Up Testimonials</h3>
+
+<p>Clears empty pre-formatted rows from the Testimonials sheet. Run this if new testimonials aren't appearing correctly.</p>
+
+<h3>Extend Validation Ranges</h3>
+
+<p>If dropdown menus stop working on new rows, run this to extend the validation range. This happens automatically during Setup but can be triggered manually if needed.</p>
+
+<h3>View Archive Stats</h3>
+
+<p>Shows a summary of active and archived data counts, plus your current archive settings.</p>
+
+<h2>When to Archive</h2>
+
+<p>Consider archiving when:</p>
+
+<ul>
+    <li>The Jobs or Activity Log sheet feels slow to load</li>
+    <li>You have 500+ completed jobs</li>
+    <li>You want to focus on active work without old data clutter</li>
+</ul>
+
+<div class="info">
+    <strong>Recommendation:</strong> Run the archive functions quarterly (every 3 months) to keep your main sheets fast and focused on current work.
+</div>
+
+<h2>Archive Sheets</h2>
+
+<p>When you run an archive operation, the system creates archive sheets automatically:</p>
+
+<ul>
+    <li><strong>Jobs Archive</strong> - Same column structure as Jobs sheet</li>
+    <li><strong>Activity Log Archive</strong> - Same column structure as Activity Log</li>
+</ul>
+
+<p>These archive sheets are regular Google Sheets - you can search, filter, and export data from them if needed.</p>
+
+<h2>Dropdown Menus & Validation</h2>
+
+<p>The system now uses <strong>dynamic row counts</strong> for dropdown menus and formatting. This means:</p>
+
+<ul>
+    <li>Dropdown menus automatically extend as your data grows</li>
+    <li>No more "missing dropdown" issues on new rows</li>
+    <li>Status colors and formatting apply to all rows</li>
+</ul>
+
+<p>If you ever notice dropdowns missing on new rows, run <strong>CartCure &gt; Setup &gt; Maintenance &gt; Extend Validation Ranges</strong>.</p>
+
 <hr>
 
 <div style="text-align: center; margin-top: 60px; color: #8a8a8a;">
-    <p><strong>CartCure Job Management System v1.0</strong></p>
+    <p><strong>CartCure Job Management System v2.0</strong></p>
     <p>Built for CartCure - Quick Shopify Fixes for NZ Businesses</p>
     <p style="margin-top: 20px;">For support, review the troubleshooting section or contact your developer.</p>
 </div>

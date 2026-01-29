@@ -64,6 +64,14 @@ const CONFIG = {
   ]
 };
 
+// Validation/Formatting Row Configuration
+// Controls how many rows receive dropdowns, conditional formatting, etc.
+const VALIDATION_CONFIG = {
+  BUFFER_ROWS: 100,        // Extra rows beyond current data to pre-format
+  MIN_ROWS: 50,            // Minimum rows to validate/format (for new sheets)
+  MAX_ROWS: 10000          // Safety cap to prevent excessive processing time
+};
+
 // Validation regexes
 const REGEX = {
   EMAIL: /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
@@ -704,7 +712,7 @@ function handleTestimonialSubmission(data) {
       debugFolder.createFile('TESTIMONIAL_APPEND_' + new Date().getTime() + '.txt', appendDebug.join('\n'));
     }
 
-    // Append the testimonial using appendRow() - this correctly finds the last row with actual data
+    // Insert testimonial at top (row 2) so newest appear first
     // Note: Column A is left empty here - the checkbox is added by applyTestimonialRowValidation()
     const rowData = [
       '',  // Placeholder for checkbox - will be set properly after validation is applied
@@ -717,12 +725,11 @@ function handleTestimonialSubmission(data) {
       sanitizedData.jobNumber,
       sanitizedData.email
     ];
-    testimonialsSheet.appendRow(rowData);
+    insertAtTopSafe(testimonialsSheet, rowData, false); // false = no toast (doPost context)
 
-    // Apply validation (checkbox, rating dropdown, text wrap) to the newly added row
-    // This must happen AFTER appendRow so the checkbox validation is set before the value
-    const newRow = testimonialsSheet.getLastRow();
-    applyTestimonialRowValidation(testimonialsSheet, newRow);
+    // Apply validation (checkbox, rating dropdown, text wrap) to the newly added row (always row 2)
+    // This must happen AFTER insert so the checkbox validation is set before the value
+    applyTestimonialRowValidation(testimonialsSheet, 2);
 
     // Debug: Confirm append completed
     if (!IS_PRODUCTION) {
@@ -1904,10 +1911,8 @@ function saveToSheet(data) {
       debugLog.push('Audio file saved: ' + audioFileUrl);
     }
 
-    // Find the first empty row (starting from row 2 to skip headers)
-    const targetRow = findFirstEmptyRow(sheet);
     debugLog.push('=== WRITING DATA ===');
-    debugLog.push('Target row: ' + targetRow);
+    debugLog.push('Inserting at top (row 2) - newest submissions first');
     debugLog.push('Writing to sheet: "' + sheet.getName() + '"');
     debugLog.push('Sheet index: ' + sheet.getIndex());
     debugLog.push('');
@@ -1938,20 +1943,19 @@ function saveToSheet(data) {
 
     debugLog.push('rowData[5] (phone column): "' + rowData[5] + '"');
 
-    // Write to the target row
-    Logger.log('Writing to sheet: "' + sheet.getName() + '" at row: ' + targetRow);
+    // Insert at top (row 2) so newest submissions appear first
+    Logger.log('Writing to sheet: "' + sheet.getName() + '" at row 2 (top)');
     Logger.log('Sheet index: ' + sheet.getIndex());
-    const range = sheet.getRange(targetRow, 1, 1, rowData.length);
-    range.setValues([rowData]);
+    insertAtTopSafe(sheet, rowData, false); // false = no toast (no UI context from doPost)
 
     debugLog.push('✓ Data written successfully!');
     debugLog.push('');
     debugLog.push('=== VERIFICATION ===');
     debugLog.push('Final sheet name: "' + sheet.getName() + '"');
     debugLog.push('Final sheet index: ' + sheet.getIndex());
-    debugLog.push('Row written: ' + targetRow);
+    debugLog.push('Row written: 2 (top)');
 
-    const msg = 'Data saved successfully to sheet "' + sheet.getName() + '" at row ' + targetRow;
+    const msg = 'Data saved successfully to sheet "' + sheet.getName() + '" at row 2 (top)';
     Logger.log(msg);
     debugLog.push('');
     debugLog.push('✓ SUCCESS: ' + msg);
@@ -2908,6 +2912,217 @@ function buildDashboardFormula(formulaTemplate) {
 }
 
 // ============================================================================
+// FILTER-SAFE ROW INSERTION HELPERS
+// ============================================================================
+
+/**
+ * Safely appends a row to a sheet, handling active filters.
+ * When filters are active, they are temporarily removed and recreated
+ * to ensure the new row is visible and the filter range includes it.
+ *
+ * @param {Sheet} sheet - The Google Sheet to append to
+ * @param {Array} rowData - Array of values for the new row
+ * @param {boolean} [showToast=false] - Whether to show a toast notification if filters were cleared
+ * @returns {number} The row number where data was inserted
+ */
+function appendRowSafe(sheet, rowData, showToast) {
+  const filter = sheet.getFilter();
+  let hadFilter = false;
+  let filterRange = null;
+
+  // If filter exists, capture its range and remove it
+  if (filter) {
+    hadFilter = true;
+    filterRange = filter.getRange();
+    filter.remove();
+  }
+
+  // Use appendRow to add the data
+  sheet.appendRow(rowData);
+  const newRowNum = sheet.getLastRow();
+
+  // Recreate filter if one existed, expanding range to include new row
+  if (hadFilter) {
+    try {
+      // Create new filter range that includes all data (header to new row)
+      const numCols = filterRange.getNumColumns();
+      const newFilterRange = sheet.getRange(1, 1, newRowNum, numCols);
+      newFilterRange.createFilter();
+
+      // Optionally notify user that filter was reset
+      if (showToast) {
+        try {
+          SpreadsheetApp.getActiveSpreadsheet().toast(
+            'Filter was reset to show all rows. New data added at row ' + newRowNum + '.',
+            'Filter Reset',
+            5
+          );
+        } catch (e) {
+          // Toast may fail if no UI context (e.g., from doPost)
+        }
+      }
+    } catch (e) {
+      Logger.log('Warning: Could not recreate filter after row insert: ' + e.message);
+    }
+  }
+
+  return newRowNum;
+}
+
+/**
+ * Safely inserts a row at a specific position, handling active filters.
+ * When filters are active, they are temporarily removed and recreated
+ * to ensure the new row is visible and the filter range includes it.
+ *
+ * @param {Sheet} sheet - The Google Sheet to insert into
+ * @param {number} rowNum - The row number to insert at
+ * @param {Array} rowData - Array of values for the new row
+ * @param {boolean} [showToast=false] - Whether to show a toast notification if filters were cleared
+ * @returns {number} The row number where data was inserted
+ */
+function insertRowSafe(sheet, rowNum, rowData, showToast) {
+  const filter = sheet.getFilter();
+  let hadFilter = false;
+  let filterRange = null;
+
+  // If filter exists, capture its range and remove it
+  if (filter) {
+    hadFilter = true;
+    filterRange = filter.getRange();
+    filter.remove();
+  }
+
+  // Insert the data at the specified row
+  sheet.getRange(rowNum, 1, 1, rowData.length).setValues([rowData]);
+  const lastRow = sheet.getLastRow();
+
+  // Recreate filter if one existed, expanding range to include all data
+  if (hadFilter) {
+    try {
+      // Create new filter range that includes all data (header to last row)
+      const numCols = filterRange.getNumColumns();
+      const newFilterRange = sheet.getRange(1, 1, Math.max(lastRow, rowNum), numCols);
+      newFilterRange.createFilter();
+
+      // Optionally notify user that filter was reset
+      if (showToast) {
+        try {
+          SpreadsheetApp.getActiveSpreadsheet().toast(
+            'Filter was reset to show all rows. New data added at row ' + rowNum + '.',
+            'Filter Reset',
+            5
+          );
+        } catch (e) {
+          // Toast may fail if no UI context (e.g., from doPost)
+        }
+      }
+    } catch (e) {
+      Logger.log('Warning: Could not recreate filter after row insert: ' + e.message);
+    }
+  }
+
+  return rowNum;
+}
+
+/**
+ * Finds the actual last row with data by checking a specific column.
+ * Useful when sheets have pre-formatted empty rows that confuse getLastRow().
+ *
+ * @param {Sheet} sheet - The Google Sheet
+ * @param {string} sheetKey - Key in COLUMN_CONFIG (e.g., 'JOBS')
+ * @param {string} columnName - Column to check for data (e.g., 'Job #')
+ * @returns {number} The last row number with data in the specified column
+ */
+function findActualLastRow(sheet, sheetKey, columnName) {
+  const colLetter = getColLetter(sheetKey, columnName);
+  const columnData = sheet.getRange(colLetter + ':' + colLetter).getValues();
+
+  let actualLastRow = 1; // Start at 1 (header row)
+  for (let i = columnData.length - 1; i >= 0; i--) {
+    if (columnData[i][0] !== '' && columnData[i][0] !== null) {
+      actualLastRow = i + 1; // Convert to 1-indexed
+      break;
+    }
+  }
+  return actualLastRow;
+}
+
+/**
+ * Calculate dynamic validation row count based on current data + buffer.
+ * Used to replace hardcoded row limits (500, 1000) in setup functions.
+ *
+ * @param {Sheet} sheet - The sheet to check
+ * @param {number} [buffer] - Additional rows beyond data (default: VALIDATION_CONFIG.BUFFER_ROWS)
+ * @param {number} [minRows] - Minimum rows to return (default: VALIDATION_CONFIG.MIN_ROWS)
+ * @returns {number} Number of rows to apply validation/formatting to
+ */
+function getDynamicRowCount(sheet, buffer, minRows) {
+  buffer = buffer || VALIDATION_CONFIG.BUFFER_ROWS;
+  minRows = minRows || VALIDATION_CONFIG.MIN_ROWS;
+
+  const lastRow = sheet.getLastRow();
+  // Subtract 1 because lastRow includes header, we want data rows only
+  const dynamicCount = Math.max(lastRow - 1 + buffer, minRows);
+
+  return Math.min(dynamicCount, VALIDATION_CONFIG.MAX_ROWS);
+}
+
+/**
+ * Safely inserts a row at the TOP of the data area (row 2), shifting existing data down.
+ * Handles active filters by temporarily removing and recreating them.
+ * Used for Jobs, Submissions, Invoices, Activity Log so newest items appear first.
+ *
+ * @param {Sheet} sheet - The Google Sheet
+ * @param {Array} rowData - Array of values for the new row
+ * @param {boolean} [showToast=false] - Whether to show toast notification
+ * @returns {number} Always returns 2 (the inserted row)
+ */
+function insertAtTopSafe(sheet, rowData, showToast) {
+  const filter = sheet.getFilter();
+  let hadFilter = false;
+  let filterRange = null;
+
+  // Capture and remove filter if exists
+  if (filter) {
+    hadFilter = true;
+    filterRange = filter.getRange();
+    filter.remove();
+  }
+
+  // Insert a new row at position 2 (shifts existing data down)
+  sheet.insertRowBefore(2);
+
+  // Write data to the new row 2
+  sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+
+  // Recreate filter if one existed
+  if (hadFilter) {
+    try {
+      const lastRow = sheet.getLastRow();
+      const numCols = filterRange.getNumColumns();
+      const newFilterRange = sheet.getRange(1, 1, lastRow, numCols);
+      newFilterRange.createFilter();
+
+      if (showToast) {
+        try {
+          SpreadsheetApp.getActiveSpreadsheet().toast(
+            'New data added at top (row 2). Filter reset to show all rows.',
+            'Data Added',
+            5
+          );
+        } catch (e) {
+          // Toast may fail in doPost context
+        }
+      }
+    } catch (e) {
+      Logger.log('Warning: Could not recreate filter after top insert: ' + e.message);
+    }
+  }
+
+  return 2;
+}
+
+// ============================================================================
 // SHEET SETUP HELPERS (using column config)
 // ============================================================================
 
@@ -3192,10 +3407,12 @@ function buildMenu() {
     Logger.log('buildMenu: Could not check trigger states (authorization required): ' + e.message);
   }
 
-  // Check confirm selection setting
+  // Check settings-based toggles
   let confirmSelectionEnabled = false;
+  let headerProtectionEnabled = false;
   try {
     confirmSelectionEnabled = getSetting('Confirm Selection Dialog') === 'Yes';
+    headerProtectionEnabled = getSetting('Header Row Protection') === 'Yes';
   } catch (e) {
     // Settings may not be available yet
   }
@@ -3205,6 +3422,7 @@ function buildMenu() {
   const emailLoggingLabel = emailLoggingEnabled ? '📧 Disable Email Logging' : '📧 Enable Email Logging';
   const autoEmailsLabel = autoEmailsEnabled ? '⏰ Disable Auto Emails' : '⏰ Enable Auto Emails';
   const confirmSelectionLabel = confirmSelectionEnabled ? '✓ Disable Selection Confirmation' : '☐ Enable Selection Confirmation';
+  const headerProtectionLabel = headerProtectionEnabled ? '🔒 Disable Header Protection' : '🔓 Enable Header Protection';
 
   ui.createMenu('🛒 CartCure')
     .addSubMenu(ui.createMenu('📊 Dashboard')
@@ -3244,11 +3462,20 @@ function buildMenu() {
       .addItem('📐 Reset Column Widths', 'resetColumnWidths')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
       .addSeparator()
+      .addSubMenu(ui.createMenu('🗄️ Maintenance')
+        .addItem('📦 Archive Old Jobs', 'archiveOldJobs')
+        .addItem('📋 Archive Old Activity', 'archiveOldActivity')
+        .addItem('🧹 Clean Up Testimonials', 'cleanupTestimonialsSheet')
+        .addItem('🔄 Extend Validation Ranges', 'extendValidationRanges')
+        .addSeparator()
+        .addItem('📊 View Archive Stats', 'showArchiveStats'))
+      .addSeparator()
       .addItem(emailLoggingLabel, 'toggleEmailLogging')
       .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs')
       .addSeparator()
       .addItem(autoEmailsLabel, 'toggleAutoEmails')
       .addItem(confirmSelectionLabel, 'toggleConfirmSelection')
+      .addItem(headerProtectionLabel, 'toggleHeaderProtection')
       .addSeparator()
       .addSubMenu(ui.createMenu('🧪 Tests')
         .addItem('▶️ Run Automated Tests', 'runAllAutomatedTests')
@@ -3258,9 +3485,7 @@ function buildMenu() {
         .addItem('📝 Create 10 Test Submissions', 'createTestSubmissions')
         .addItem('⭐ Create 20 Test Testimonials', 'createTestTestimonials')
         .addItem('📋 Create Test Job for Testimonials', 'createTestJobForTestimonials')
-        .addItem('📧 Send All Test Emails', 'sendAllTestEmails')
-        .addSeparator()
-        .addItem('🧹 Clean Up Testimonials Sheet', 'cleanupTestimonialsSheet')))
+        .addItem('📧 Send All Test Emails', 'sendAllTestEmails')))
     .addToUi();
 }
 
@@ -3524,6 +3749,86 @@ function toggleConfirmSelection() {
 
   // Rebuild menu to reflect new state
   buildMenu();
+}
+
+/**
+ * Toggle header row protection on/off
+ * When enabled, shows a warning dialog when trying to edit header rows
+ */
+function toggleHeaderProtection() {
+  const ui = SpreadsheetApp.getUi();
+  const currentValue = getSetting('Header Row Protection');
+  const isEnabled = currentValue === 'Yes';
+
+  if (isEnabled) {
+    removeHeaderProtections();
+    updateSetting('Header Row Protection', 'No');
+    ui.alert('Header Protection Disabled',
+      'You can now edit header rows, apply filters, and resize columns without warnings.',
+      ui.ButtonSet.OK);
+  } else {
+    applyHeaderProtections();
+    updateSetting('Header Row Protection', 'Yes');
+    ui.alert('Header Protection Enabled',
+      'Header rows are now protected. You will see a warning if you try to edit them.\n\n' +
+      'Note: This warning also appears when applying filters or resizing columns.',
+      ui.ButtonSet.OK);
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
+}
+
+/**
+ * Apply warning-only protection to header rows on key sheets
+ */
+function applyHeaderProtections() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheetsToProtect = [
+    { name: SHEETS.SUBMISSIONS, cols: 10 },
+    { name: SHEETS.JOBS, cols: COLUMN_CONFIG.JOBS.length },
+    { name: SHEETS.INVOICES, cols: COLUMN_CONFIG.INVOICES.length },
+    { name: SHEETS.TESTIMONIALS, cols: 9 },
+    { name: SHEETS.ACTIVITY_LOG, cols: 7 }
+  ];
+
+  sheetsToProtect.forEach(({ name, cols }) => {
+    const sheet = ss.getSheetByName(name);
+    if (sheet) {
+      try {
+        const protection = sheet.getRange(1, 1, 1, cols).protect();
+        protection.setDescription('Protected header row - ' + name);
+        protection.setWarningOnly(true);
+      } catch (e) {
+        Logger.log('Could not protect ' + name + ': ' + e.message);
+      }
+    }
+  });
+
+  Logger.log('Header protections applied');
+}
+
+/**
+ * Remove all header row protections from sheets
+ */
+function removeHeaderProtections() {
+  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const sheets = ss.getSheets();
+
+  sheets.forEach(sheet => {
+    try {
+      const protections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+      protections.forEach(protection => {
+        if (protection.getDescription().startsWith('Protected header row')) {
+          protection.remove();
+        }
+      });
+    } catch (e) {
+      Logger.log('Could not remove protection from ' + sheet.getName() + ': ' + e.message);
+    }
+  });
+
+  Logger.log('Header protections removed');
 }
 
 // ============================================================================
@@ -4233,16 +4538,28 @@ function setupJobsSheet(ss, clearData) {
   applyConfigColumnWidths(sheet, 'JOBS');
 
   // Apply data validation from config (Status, Category, Payment Status dropdowns)
-  applyConfigValidation(sheet, 'JOBS', 2, 500);
+  // Use dynamic row count instead of hardcoded 500 for scalability
+  const numRows = getDynamicRowCount(sheet);
+  applyConfigValidation(sheet, 'JOBS', 2, numRows);
 
   // Apply conditional formatting from config (Status, SLA, Payment colors)
-  applyConfigConditionalFormatting(sheet, 'JOBS', 2, 500);
+  applyConfigConditionalFormatting(sheet, 'JOBS', 2, numRows);
 
   // Apply formulas from config (Remaining Balance)
-  applyConfigFormulas(sheet, 'JOBS', 2, 500);
+  applyConfigFormulas(sheet, 'JOBS', 2, numRows);
 
   // Apply number formats from config
-  applyConfigNumberFormats(sheet, 'JOBS', 2, 500);
+  applyConfigNumberFormats(sheet, 'JOBS', 2, numRows);
+
+  // Enable filtering for all columns
+  try {
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
+  } catch (e) {
+    Logger.log('Filter already exists or could not be created: ' + e.message);
+  }
 
   Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -4252,7 +4569,8 @@ function setupJobsSheet(ss, clearData) {
  */
 function addSLAConditionalFormatting(sheet) {
   const slaColumn = 18; // SLA Status column
-  const range = sheet.getRange(2, slaColumn, 500, 1);
+  const numRows = getDynamicRowCount(sheet);
+  const range = sheet.getRange(2, slaColumn, numRows, 1);
 
   // Clear existing rules for this column
   const rules = sheet.getConditionalFormatRules();
@@ -4296,7 +4614,8 @@ function addSLAConditionalFormatting(sheet) {
  */
 function addStatusConditionalFormatting(sheet) {
   const statusColumn = 1; // Status column
-  const range = sheet.getRange(2, statusColumn, 500, 1);
+  const numRows = getDynamicRowCount(sheet);
+  const range = sheet.getRange(2, statusColumn, numRows, 1);
 
   const rules = sheet.getConditionalFormatRules();
 
@@ -4358,7 +4677,8 @@ function addStatusConditionalFormatting(sheet) {
  */
 function addPaymentConditionalFormatting(sheet) {
   const paymentColumn = 23; // Payment Status column
-  const range = sheet.getRange(2, paymentColumn, 500, 1);
+  const numRows = getDynamicRowCount(sheet);
+  const range = sheet.getRange(2, paymentColumn, numRows, 1);
 
   const rules = sheet.getConditionalFormatRules();
 
@@ -4458,13 +4778,25 @@ function setupInvoiceLogSheet(ss, clearData) {
   applyConfigColumnWidths(sheet, 'INVOICES');
 
   // Apply data validation from config (Status, Invoice Type dropdowns)
-  applyConfigValidation(sheet, 'INVOICES', 2, 500);
+  // Use dynamic row count instead of hardcoded 500 for scalability
+  const numRows = getDynamicRowCount(sheet);
+  applyConfigValidation(sheet, 'INVOICES', 2, numRows);
 
   // Apply conditional formatting from config (Status colors)
-  applyConfigConditionalFormatting(sheet, 'INVOICES', 2, 500);
+  applyConfigConditionalFormatting(sheet, 'INVOICES', 2, numRows);
 
   // Apply number formats from config
-  applyConfigNumberFormats(sheet, 'INVOICES', 2, 500);
+  applyConfigNumberFormats(sheet, 'INVOICES', 2, numRows);
+
+  // Enable filtering for all columns
+  try {
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
+  } catch (e) {
+    Logger.log('Filter already exists or could not be created: ' + e.message);
+  }
 
   Logger.log('Invoice Log sheet ' + (isNew ? 'created' : 'updated'));
 }
@@ -4474,7 +4806,8 @@ function setupInvoiceLogSheet(ss, clearData) {
  */
 function addInvoiceStatusConditionalFormatting(sheet) {
   const statusColumn = 11; // Status column
-  const range = sheet.getRange(2, statusColumn, 500, 1);
+  const numRows = getDynamicRowCount(sheet);
+  const range = sheet.getRange(2, statusColumn, numRows, 1);
 
   const rules = sheet.getConditionalFormatRules();
 
@@ -4535,7 +4868,10 @@ function setupSettingsSheet(ss, clearData) {
     ['Default SLA Days', '7', 'Your turnaround promise in days'],
     ['Admin Email', CONFIG.ADMIN_EMAIL || '', 'Email for notifications'],
     ['Next Invoice Number', '1', 'Auto-incremented invoice number counter'],
-    ['Confirm Selection Dialog', 'No', 'Show confirmation when job/invoice auto-detected (Yes/No)']
+    ['Confirm Selection Dialog', 'No', 'Show confirmation when job/invoice auto-detected (Yes/No)'],
+    ['Header Row Protection', 'No', 'Show warning when editing header rows (Yes/No)'],
+    ['Archive Jobs After Days', '90', 'Days after completion to archive jobs (0 = never archive)'],
+    ['Archive Activity After Days', '365', 'Days to keep in Activity Log before archiving (0 = never)']
   ];
 
   if (!sheet) {
@@ -5397,13 +5733,15 @@ function setupSubmissionsSheet(ss) {
   applyConfigColumnWidths(sheet, 'SUBMISSIONS');
 
   // Apply wrap text from config (Message column)
-  applyConfigWrapText(sheet, 'SUBMISSIONS', 2, 1000);
+  // Use dynamic row count instead of hardcoded 1000 for scalability
+  const numRows = getDynamicRowCount(sheet);
+  applyConfigWrapText(sheet, 'SUBMISSIONS', 2, numRows);
 
   // Apply data validation from config (Status dropdown)
-  applyConfigValidation(sheet, 'SUBMISSIONS', 2, 1000);
+  applyConfigValidation(sheet, 'SUBMISSIONS', 2, numRows);
 
   // Apply conditional formatting from config (Status colors)
-  applyConfigConditionalFormatting(sheet, 'SUBMISSIONS', 2, 1000);
+  applyConfigConditionalFormatting(sheet, 'SUBMISSIONS', 2, numRows);
 
   // Enable filtering for all columns
   try {
@@ -5416,11 +5754,6 @@ function setupSubmissionsSheet(ss) {
     Logger.log('Filter already exists or could not be created');
   }
 
-  // Protect the header row from accidental edits
-  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
-  protection.setDescription('Protected header row');
-  protection.setWarningOnly(true);
-
   Logger.log('Submissions sheet setup completed successfully');
 }
 
@@ -5429,7 +5762,8 @@ function setupSubmissionsSheet(ss) {
  */
 function addSubmissionStatusFormatting(sheet) {
   const statusColumn = 1; // Status column (now column A)
-  const range = sheet.getRange(2, statusColumn, 1000, 1);
+  const numRows = getDynamicRowCount(sheet);
+  const range = sheet.getRange(2, statusColumn, numRows, 1);
 
   // Clear existing conditional formatting rules for this column
   const rules = sheet.getConditionalFormatRules();
@@ -5568,7 +5902,8 @@ function setupTestimonialsSheet(ss, clearData) {
   // This is a row-level rule using formula, so we apply it manually
   const showOnWebsiteCol = getColLetter('TESTIMONIALS', 'Show on Website');
   const rules = sheet.getConditionalFormatRules();
-  const approvedRange = sheet.getRange(2, 1, 1000, headers.length);
+  const testimonialsNumRows = getDynamicRowCount(sheet);
+  const approvedRange = sheet.getRange(2, 1, testimonialsNumRows, headers.length);
 
   const approvedRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$' + showOnWebsiteCol + '2=TRUE')
@@ -5588,11 +5923,6 @@ function setupTestimonialsSheet(ss, clearData) {
   } catch (e) {
     Logger.log('Filter already exists or could not be created: ' + e.message);
   }
-
-  // Protect the header row from accidental edits
-  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
-  protection.setDescription('Protected header row');
-  protection.setWarningOnly(true);
 
   Logger.log('Testimonials sheet setup completed successfully');
 }
@@ -5675,6 +6005,338 @@ function cleanupTestimonialsSheet() {
   Logger.log('Testimonials sheet cleanup completed. Data rows: ' + (lastDataRow - 1));
 }
 
+// ============================================================================
+// DATA ARCHIVAL FUNCTIONS
+// ============================================================================
+// These functions help manage data growth by moving old completed/cancelled
+// jobs and old activity log entries to separate archive sheets.
+
+/**
+ * Setup or get the Jobs Archive sheet with same structure as Jobs
+ * @param {Spreadsheet} ss - The spreadsheet
+ * @returns {Sheet} The archive sheet
+ */
+function setupJobsArchiveSheet(ss) {
+  if (!ss) {
+    ss = getSpreadsheet();
+  }
+
+  let sheet = ss.getSheetByName('Jobs Archive');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Jobs Archive');
+
+    // Copy headers from COLUMN_CONFIG
+    const headers = getColHeaders('JOBS');
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    // Apply same styling as Jobs sheet
+    applyPaperBackground(sheet);
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    applyHeaderStyle(headerRange);
+    sheet.setFrozenRows(1);
+    applyConfigColumnWidths(sheet, 'JOBS');
+
+    Logger.log('Created Jobs Archive sheet');
+  }
+
+  return sheet;
+}
+
+/**
+ * Setup or get the Activity Log Archive sheet
+ * @param {Spreadsheet} ss - The spreadsheet
+ * @returns {Sheet} The archive sheet
+ */
+function setupActivityLogArchiveSheet(ss) {
+  if (!ss) {
+    ss = getSpreadsheet();
+  }
+
+  let sheet = ss.getSheetByName('Activity Log Archive');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Activity Log Archive');
+
+    // Copy headers from COLUMN_CONFIG
+    const headers = getColHeaders('ACTIVITY_LOG');
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    // Apply same styling
+    applyPaperBackground(sheet);
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    applyHeaderStyle(headerRange);
+    sheet.setFrozenRows(1);
+    applyConfigColumnWidths(sheet, 'ACTIVITY_LOG');
+
+    Logger.log('Created Activity Log Archive sheet');
+  }
+
+  return sheet;
+}
+
+/**
+ * Archive completed/cancelled jobs older than threshold
+ * Called from menu: CartCure > Setup > Maintenance > Archive Old Jobs
+ */
+function archiveOldJobs() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet();
+
+  // Get threshold from settings
+  const daysThreshold = parseInt(getSetting('Archive Jobs After Days')) || 90;
+  if (daysThreshold <= 0) {
+    ui.alert('Archiving Disabled', 'Archive threshold is set to 0. Change "Archive Jobs After Days" in Settings to enable.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const jobsSheet = getSheet(SHEETS.JOBS);
+  if (!jobsSheet) {
+    ui.alert('Error', 'Jobs sheet not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const jobsData = jobsSheet.getDataRange().getValues();
+  if (jobsData.length <= 1) {
+    ui.alert('No Jobs', 'No jobs found to archive.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const headers = jobsData[0];
+  const statusCol = headers.indexOf('Status');
+  const completedDateCol = headers.indexOf('Completed Date');
+  const createdDateCol = headers.indexOf('Created Date');
+
+  if (statusCol === -1) {
+    ui.alert('Error', 'Status column not found in Jobs sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysThreshold);
+
+  const archivableStatuses = [JOB_STATUS.COMPLETED, JOB_STATUS.CANCELLED, JOB_STATUS.DECLINED];
+  const rowsToArchive = [];
+
+  // Find rows to archive (iterate from bottom to avoid index shifting issues when deleting)
+  for (let i = jobsData.length - 1; i >= 1; i--) {
+    const status = jobsData[i][statusCol];
+    if (!archivableStatuses.includes(status)) continue;
+
+    // Check date - prefer Completed Date, fall back to Created Date
+    const dateValue = jobsData[i][completedDateCol] || jobsData[i][createdDateCol];
+    if (!dateValue) continue;
+
+    const rowDate = new Date(dateValue);
+    if (isNaN(rowDate.getTime())) continue; // Skip invalid dates
+
+    if (rowDate < cutoffDate) {
+      rowsToArchive.push({
+        rowIndex: i + 1, // 1-indexed for sheet operations
+        data: jobsData[i]
+      });
+    }
+  }
+
+  if (rowsToArchive.length === 0) {
+    ui.alert('No Jobs to Archive', 'No completed/cancelled jobs found older than ' + daysThreshold + ' days.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Confirm with user
+  const response = ui.alert(
+    'Archive ' + rowsToArchive.length + ' Jobs?',
+    'This will move ' + rowsToArchive.length + ' completed/cancelled/declined jobs older than ' + daysThreshold + ' days to the Jobs Archive sheet.\n\nThis action cannot be undone.',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  // Setup archive sheet
+  const archiveSheet = setupJobsArchiveSheet(ss);
+
+  // Archive rows (already sorted bottom-to-top for safe deletion)
+  let archivedCount = 0;
+  for (const row of rowsToArchive) {
+    // Add to archive at top (row 2)
+    insertAtTopSafe(archiveSheet, row.data, false);
+    // Delete from Jobs
+    jobsSheet.deleteRow(row.rowIndex);
+    archivedCount++;
+  }
+
+  // Clear cache since we modified sheets
+  _cache.sheets = {};
+
+  ui.alert('Archive Complete', 'Archived ' + archivedCount + ' jobs to Jobs Archive sheet.', ui.ButtonSet.OK);
+  Logger.log('Archived ' + archivedCount + ' jobs');
+}
+
+/**
+ * Archive old activity log entries
+ * Called from menu: CartCure > Setup > Maintenance > Archive Old Activity
+ */
+function archiveOldActivity() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet();
+
+  const daysThreshold = parseInt(getSetting('Archive Activity After Days')) || 365;
+  if (daysThreshold <= 0) {
+    ui.alert('Archiving Disabled', 'Activity archive threshold is set to 0. Change "Archive Activity After Days" in Settings to enable.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const activitySheet = getSheet(SHEETS.ACTIVITY_LOG);
+  if (!activitySheet) {
+    ui.alert('Error', 'Activity Log sheet not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const data = activitySheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    ui.alert('No Activity', 'No activity entries found to archive.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const headers = data[0];
+  const timestampCol = headers.indexOf('Timestamp');
+
+  if (timestampCol === -1) {
+    ui.alert('Error', 'Timestamp column not found in Activity Log sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysThreshold);
+
+  const rowsToArchive = [];
+
+  // Find rows to archive (iterate from bottom to avoid index shifting)
+  for (let i = data.length - 1; i >= 1; i--) {
+    const timestamp = data[i][timestampCol];
+    if (!timestamp) continue;
+
+    const rowDate = new Date(timestamp);
+    if (isNaN(rowDate.getTime())) continue; // Skip invalid dates
+
+    if (rowDate < cutoffDate) {
+      rowsToArchive.push({
+        rowIndex: i + 1,
+        data: data[i]
+      });
+    }
+  }
+
+  if (rowsToArchive.length === 0) {
+    ui.alert('No Activity to Archive', 'No activity entries older than ' + daysThreshold + ' days.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const response = ui.alert(
+    'Archive ' + rowsToArchive.length + ' Entries?',
+    'Move ' + rowsToArchive.length + ' activity entries older than ' + daysThreshold + ' days to archive?\n\nThis action cannot be undone.',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  // Setup archive sheet
+  const archiveSheet = setupActivityLogArchiveSheet(ss);
+
+  let archivedCount = 0;
+  for (const row of rowsToArchive) {
+    insertAtTopSafe(archiveSheet, row.data, false);
+    activitySheet.deleteRow(row.rowIndex);
+    archivedCount++;
+  }
+
+  // Clear cache
+  _cache.sheets = {};
+
+  ui.alert('Archive Complete', 'Archived ' + archivedCount + ' activity entries to Activity Log Archive sheet.', ui.ButtonSet.OK);
+  Logger.log('Archived ' + archivedCount + ' activity entries');
+}
+
+/**
+ * Manually extend validation/formatting ranges for all sheets
+ * Useful when sheets have grown significantly and need more dropdown rows
+ * Called from menu: CartCure > Setup > Maintenance > Extend Validation Ranges
+ */
+function extendValidationRanges() {
+  const ui = SpreadsheetApp.getUi();
+
+  const sheets = [
+    { sheet: getSheet(SHEETS.JOBS), key: 'JOBS', name: 'Jobs' },
+    { sheet: getSheet(SHEETS.INVOICES), key: 'INVOICES', name: 'Invoices' },
+    { sheet: getSheet(SHEETS.SUBMISSIONS), key: 'SUBMISSIONS', name: 'Submissions' }
+  ];
+
+  let updatedCount = 0;
+
+  for (const s of sheets) {
+    if (!s.sheet) continue;
+    const numRows = getDynamicRowCount(s.sheet);
+
+    // Apply validation
+    applyConfigValidation(s.sheet, s.key, 2, numRows);
+    applyConfigConditionalFormatting(s.sheet, s.key, 2, numRows);
+
+    Logger.log('Extended validation for ' + s.name + ' to ' + numRows + ' rows');
+    updatedCount++;
+  }
+
+  ui.alert('Validation Extended',
+    'Validation and formatting ranges have been extended for ' + updatedCount + ' sheets.\n\n' +
+    'Dropdown menus should now work for all existing and new rows.',
+    ui.ButtonSet.OK);
+}
+
+/**
+ * Show statistics about active and archived data
+ * Called from menu: CartCure > Setup > Maintenance > View Archive Stats
+ */
+function showArchiveStats() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet();
+
+  // Get active sheet counts
+  const jobsSheet = getSheet(SHEETS.JOBS);
+  const submissionsSheet = getSheet(SHEETS.SUBMISSIONS);
+  const invoicesSheet = getSheet(SHEETS.INVOICES);
+  const activitySheet = getSheet(SHEETS.ACTIVITY_LOG);
+
+  const activeJobs = jobsSheet ? Math.max(0, jobsSheet.getLastRow() - 1) : 0;
+  const activeSubmissions = submissionsSheet ? Math.max(0, submissionsSheet.getLastRow() - 1) : 0;
+  const activeInvoices = invoicesSheet ? Math.max(0, invoicesSheet.getLastRow() - 1) : 0;
+  const activeActivity = activitySheet ? Math.max(0, activitySheet.getLastRow() - 1) : 0;
+
+  // Get archive sheet counts
+  const jobsArchive = ss.getSheetByName('Jobs Archive');
+  const activityArchive = ss.getSheetByName('Activity Log Archive');
+
+  const archivedJobs = jobsArchive ? Math.max(0, jobsArchive.getLastRow() - 1) : 0;
+  const archivedActivity = activityArchive ? Math.max(0, activityArchive.getLastRow() - 1) : 0;
+
+  // Get archive settings
+  const jobsArchiveDays = getSetting('Archive Jobs After Days') || '90';
+  const activityArchiveDays = getSetting('Archive Activity After Days') || '365';
+
+  ui.alert('Data Statistics',
+    '=== Active Data ===\n' +
+    'Jobs: ' + activeJobs + '\n' +
+    'Submissions: ' + activeSubmissions + '\n' +
+    'Invoices: ' + activeInvoices + '\n' +
+    'Activity Log Entries: ' + activeActivity + '\n\n' +
+    '=== Archived Data ===\n' +
+    'Jobs: ' + archivedJobs + '\n' +
+    'Activity Log: ' + archivedActivity + '\n\n' +
+    '=== Archive Settings ===\n' +
+    'Archive jobs after: ' + jobsArchiveDays + ' days\n' +
+    'Archive activity after: ' + activityArchiveDays + ' days',
+    ui.ButtonSet.OK
+  );
+}
+
 /**
  * Setup the Activity Log sheet for tracking all job-related activities
  * This sheet stores emails sent, status changes, and other audit trail items
@@ -5743,7 +6405,9 @@ function setupActivityLogSheet(ss, clearData) {
   applyConfigColumnWidths(sheet, 'ACTIVITY_LOG');
 
   // Apply wrap text from config (Details column)
-  applyConfigWrapText(sheet, 'ACTIVITY_LOG', 2, 1000);
+  // Use dynamic row count instead of hardcoded 1000 for scalability
+  const numRows = getDynamicRowCount(sheet);
+  applyConfigWrapText(sheet, 'ACTIVITY_LOG', 2, numRows);
 
   // Enable filtering for all columns
   try {
@@ -5754,11 +6418,6 @@ function setupActivityLogSheet(ss, clearData) {
   } catch (e) {
     Logger.log('Filter already exists or could not be created: ' + e.message);
   }
-
-  // Protect the header row from accidental edits
-  const protection = sheet.getRange(1, 1, 1, headers.length).protect();
-  protection.setDescription('Protected header row');
-  protection.setWarningOnly(true);
 
   // Add refresh checkbox for manual email scan (column H+1)
   const extraCol = headers.length + 1; // Column after main headers
@@ -5813,8 +6472,8 @@ function logJobActivity(jobNumber, activityType, summary, details, fromTo, logge
       loggedBy || 'Auto'
     ];
 
-    // Append to the sheet
-    sheet.appendRow(rowData);
+    // Insert at top (row 2) so newest activity appears first
+    insertAtTopSafe(sheet, rowData, false); // false = no toast (secondary operation)
 
     Logger.log('Activity logged for job ' + jobNumber + ': ' + activityType);
     return true;
@@ -7902,23 +8561,10 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Creating job: ' + jobNumber);
   debugLog.push('Job row data: ' + JSON.stringify(jobRow));
 
-  // Find actual last row with data by checking the Job # column
-  // This avoids issues with empty formatted rows that appendRow() would skip to
-  const jobNumColLetter = getColLetter('JOBS', 'Job #');
-  const jobsColumnData = jobsSheet.getRange(jobNumColLetter + ':' + jobNumColLetter).getValues();
-  let actualLastRow = 1; // Start at 1 (header row)
-  for (let i = jobsColumnData.length - 1; i >= 0; i--) {
-    if (jobsColumnData[i][0] !== '') {
-      actualLastRow = i + 1; // Convert to 1-indexed
-      break;
-    }
-  }
-  const insertRow = actualLastRow + 1;
-  debugLog.push('Inserting at row: ' + insertRow + ' (actual last row with data: ' + actualLastRow + ')');
-
-  // Use getRange().setValues() instead of appendRow() to insert at correct position
-  jobsSheet.getRange(insertRow, 1, 1, jobRow.length).setValues([jobRow]);
-  debugLog.push('Job row inserted successfully at row ' + insertRow);
+  // Insert at top (row 2) so newest jobs appear first
+  // (filter-safe: handles active filters, shows toast notification)
+  insertAtTopSafe(jobsSheet, jobRow, true);
+  debugLog.push('Job row inserted at top (row 2) - newest jobs first');
 
   // Update the submission status to "Job Created"
   const statusColumnIndex = headers.indexOf('Status');
@@ -8312,7 +8958,8 @@ function generateAndSendDepositInvoice(jobNumber, job) {
       'Notes': 'Auto-generated on quote acceptance'
     });
 
-    invoiceSheet.appendRow(invoiceRow);
+    // Insert at top (row 2) so newest invoices appear first
+    insertAtTopSafe(invoiceSheet, invoiceRow, false); // false = no toast (called from web form)
 
     // Flush to ensure invoice is committed before attempting to send email
     SpreadsheetApp.flush();
@@ -10299,7 +10946,8 @@ function generateInvoiceForJob(jobNumber) {
     'Invoice Type': invoiceType
   });
 
-  invoiceSheet.appendRow(invoiceRow);
+  // Insert at top (row 2) so newest invoices appear first
+  insertAtTopSafe(invoiceSheet, invoiceRow, true); // true = show toast (menu action)
 
   // Update job with latest invoice number
   updateJobField(jobNumber, 'Invoice #', invoiceNumber);
@@ -13065,11 +13713,10 @@ function createTestTestimonials() {
         testNames[i].toLowerCase().replace(' ', '.') + '@test.com'
       ];
 
-      // Append the row
-      sheet.appendRow(rowData);
+      // Append the row (filter-safe)
+      const newRow = appendRowSafe(sheet, rowData, false);
 
       // Apply validation to the new row
-      const newRow = sheet.getLastRow();
       applyTestimonialRowValidation(sheet, newRow);
 
       successCount++;
@@ -13191,9 +13838,6 @@ function createTestSubmissions() {
       date.setHours(date.getHours() - hoursAgo);
       const timestamp = date.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
-      // Find first empty row
-      const targetRow = findFirstEmptyRow(sheet);
-
       // Create row data
       const rowData = [
         statuses[i],
@@ -13208,8 +13852,8 @@ function createTestSubmissions() {
         ''
       ];
 
-      // Write to sheet
-      sheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
+      // Insert at top (row 2) so newest submissions appear first
+      insertAtTopSafe(sheet, rowData, false);
       successCount++;
     }
 
@@ -13302,8 +13946,8 @@ function createTestJobForTestimonials() {
       insertRow = i + 2;
     }
 
-    // Insert the job
-    jobsSheet.getRange(insertRow, 1, 1, rowData.length).setValues([rowData]);
+    // Insert the job (filter-safe)
+    insertRowSafe(jobsSheet, insertRow, rowData, true);
 
     ui.alert(
       '✅ Test Job Created',
