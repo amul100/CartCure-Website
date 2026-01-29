@@ -3587,7 +3587,9 @@ function buildMenu() {
       .addSeparator()
       .addItem('📜 View Activity Log', 'viewJobActivityLog')
       .addItem('📝 Add Activity Note', 'addManualActivityNote')
-      .addItem('⭐ Request Testimonial', 'showRequestTestimonialDialog'))
+      .addItem('⭐ Request Testimonial', 'showRequestTestimonialDialog')
+      .addSeparator()
+      .addItem('🔽 Sort Newest First', 'sortJobsNewestFirst'))
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('📤 Send Quote', 'showSendQuoteDialog')
       .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
@@ -4707,7 +4709,40 @@ function setupJobsSheet(ss, clearData) {
     Logger.log('Filter already exists or could not be created: ' + e.message);
   }
 
+  // Apply default sort: newest jobs first (by Created Date descending)
+  sortJobsNewestFirst(sheet);
+
   Logger.log('Jobs sheet ' + (isNew ? 'created' : 'updated'));
+}
+
+/**
+ * Sort Jobs sheet by Created Date (newest first)
+ * This ensures newest jobs always appear at the top
+ */
+function sortJobsNewestFirst(sheet) {
+  if (!sheet) {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    sheet = ss.getSheetByName(SHEETS.JOBS);
+  }
+  if (!sheet) return;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return; // No data to sort
+
+  // Get Created Date column index
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const createdDateCol = headers.indexOf('Created Date') + 1; // 1-based
+
+  if (createdDateCol === 0) {
+    Logger.log('Created Date column not found for sorting');
+    return;
+  }
+
+  // Sort data rows (excluding header) by Created Date descending
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+  dataRange.sort({ column: createdDateCol, ascending: false });
+
+  Logger.log('Jobs sorted by Created Date (newest first)');
 }
 
 /**
