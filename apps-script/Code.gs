@@ -980,15 +980,92 @@ function processBackgroundTasks() {
 
   Logger.log('Processing ' + queue.length + ' background tasks');
 
+  const failedTasks = [];
+  const MAX_RETRIES = 3;
+
   // Process each task
   for (const task of queue) {
     try {
       if (task.type === 'quoteAcceptance') {
-        processQuoteAcceptanceTask(task);
+        const result = processQuoteAcceptanceTask(task);
+
+        // If there were failures, check if we should retry
+        if (result.failures && result.failures.length > 0) {
+          const retryCount = (task.retryCount || 0) + 1;
+
+          if (retryCount < MAX_RETRIES) {
+            // Re-queue with incremented retry count and only failed subtasks
+            const retryTask = {
+              ...task,
+              retryCount: retryCount,
+              pendingSubtasks: result.failures
+            };
+            failedTasks.push(retryTask);
+            Logger.log('Task ' + task.jobNumber + ' had failures, queued for retry ' + retryCount + '/' + MAX_RETRIES);
+          } else {
+            // Max retries reached - notify admin
+            notifyTaskFailure(task, result.failures);
+          }
+        }
       }
       // Add other task types here as needed
     } catch (taskError) {
       Logger.log('Error processing task ' + task.type + ': ' + taskError.message);
+
+      // Re-queue the entire task if it completely failed
+      const retryCount = (task.retryCount || 0) + 1;
+      if (retryCount < MAX_RETRIES) {
+        failedTasks.push({ ...task, retryCount: retryCount, error: taskError.message });
+      } else {
+        notifyTaskFailure(task, ['Complete task failure: ' + taskError.message]);
+      }
+    }
+  }
+
+  // Re-queue failed tasks for retry
+  if (failedTasks.length > 0) {
+    for (const task of failedTasks) {
+      queueBackgroundTask(task);
+    }
+    Logger.log('Re-queued ' + failedTasks.length + ' tasks for retry');
+  }
+}
+
+/**
+ * Notify admin when a background task has permanently failed
+ */
+function notifyTaskFailure(task, failures) {
+  const jobNumber = task.jobNumber || 'Unknown';
+  Logger.log('TASK PERMANENTLY FAILED for ' + jobNumber + ': ' + failures.join(', '));
+
+  // Try to send admin notification about the failure
+  if (CONFIG.ADMIN_EMAIL) {
+    try {
+      const subject = '⚠️ Background Task Failed - ' + jobNumber;
+      const body = `A background task failed after ${task.retryCount || 3} retries.
+
+Job Number: ${jobNumber}
+Task Type: ${task.type}
+Original Timestamp: ${task.timestamp}
+
+Failed Operations:
+${failures.map(f => '- ' + f).join('\n')}
+
+Please check manually:
+1. Verify the job status is correct
+2. Check if deposit invoice needs to be sent manually
+3. Send confirmation emails if needed
+
+The job status was updated successfully - only the follow-up tasks failed.`;
+
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: subject,
+        body: body
+      });
+      Logger.log('Failure notification sent to admin for ' + jobNumber);
+    } catch (notifyError) {
+      Logger.log('Could not send failure notification: ' + notifyError.message);
     }
   }
 }
@@ -996,6 +1073,7 @@ function processBackgroundTasks() {
 /**
  * Process a quote acceptance background task
  * Handles: signature save, activity log, deposit invoice, admin email, client email
+ * Returns: { success: boolean, failures: string[] } for retry handling
  */
 function processQuoteAcceptanceTask(task) {
   const jobNumber = task.jobNumber;
@@ -1009,11 +1087,17 @@ function processQuoteAcceptanceTask(task) {
   const dueDate = task.dueDate;
   const turnaround = task.turnaround;
 
-  Logger.log('Processing quote acceptance task for ' + jobNumber);
+  // Track which subtasks need to run (on retry, only run failed ones)
+  const pendingSubtasks = task.pendingSubtasks || ['signature', 'activityLog', 'depositInvoice', 'adminEmail', 'clientEmail'];
+  const failures = [];
+
+  Logger.log('Processing quote acceptance task for ' + jobNumber + ' (subtasks: ' + pendingSubtasks.join(', ') + ')');
+
+  const requiresDeposit = total >= 200;
 
   // 1. Save signature to Google Drive
-  let signatureFileUrl = '';
-  if (signatureData) {
+  let signatureFileUrl = task.signatureFileUrl || ''; // Use cached URL if available from previous attempt
+  if (pendingSubtasks.includes('signature') && signatureData && !signatureFileUrl) {
     try {
       const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
       const signatureBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature.png');
@@ -1027,34 +1111,47 @@ function processQuoteAcceptanceTask(task) {
       Logger.log('Signature saved: ' + signatureFileUrl);
     } catch (sigError) {
       Logger.log('Error saving signature: ' + sigError.message);
+      failures.push('signature');
     }
   }
 
-  // 2. Log acceptance to Activity Log
-  const acceptanceDetails = [
-    'Accepted by: ' + escapeHtml(fullName),
-    acceptanceDate ? 'Date: ' + acceptanceDate : '',
-    signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
-    comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
-  ].filter(Boolean).join(', ');
-  logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via web form', acceptanceDetails, '', 'Auto');
+  // 2. Log acceptance to Activity Log (non-critical, don't retry)
+  if (pendingSubtasks.includes('activityLog')) {
+    try {
+      const acceptanceDetails = [
+        'Accepted by: ' + escapeHtml(fullName),
+        acceptanceDate ? 'Date: ' + acceptanceDate : '',
+        signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
+        comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
+      ].filter(Boolean).join(', ');
+      logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via web form', acceptanceDetails, '', 'Auto');
+    } catch (logError) {
+      Logger.log('Error logging activity: ' + logError.message);
+      // Don't add to failures - activity log is non-critical
+    }
+  }
 
   // 3. Generate and send deposit invoice if required
-  const requiresDeposit = total >= 200;
-  if (requiresDeposit) {
-    const job = getJobByNumber(jobNumber);
-    if (job) {
-      const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
-      if (invoiceResult.success) {
-        Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
-      } else {
-        Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
+  if (pendingSubtasks.includes('depositInvoice') && requiresDeposit) {
+    try {
+      const job = getJobByNumber(jobNumber);
+      if (job) {
+        const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
+        if (invoiceResult.success) {
+          Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
+        } else {
+          Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
+          failures.push('depositInvoice');
+        }
       }
+    } catch (invoiceError) {
+      Logger.log('Error with deposit invoice: ' + invoiceError.message);
+      failures.push('depositInvoice');
     }
   }
 
   // 4. Send admin notification
-  if (CONFIG.ADMIN_EMAIL) {
+  if (pendingSubtasks.includes('adminEmail') && CONFIG.ADMIN_EMAIL) {
     const adminSubject = 'Quote Accepted - ' + jobNumber + ' - ' + fullName;
     const adminBody = `A quote has been accepted via the web form.
 
@@ -1086,11 +1183,12 @@ Use CartCure > Jobs > Start Work when you begin.`;
       Logger.log('Admin notification sent for ' + jobNumber);
     } catch (emailError) {
       Logger.log('Failed to send admin notification: ' + emailError.message);
+      failures.push('adminEmail');
     }
   }
 
   // 5. Send confirmation email to client
-  if (clientEmail) {
+  if (pendingSubtasks.includes('clientEmail') && clientEmail) {
     try {
       const businessName = getSetting('Business Name') || 'CartCure';
       const isGSTRegistered = getSetting('GST Registered') === 'Yes';
@@ -1152,10 +1250,17 @@ https://cartcure.co.nz`;
       Logger.log('Client confirmation email sent to: ' + clientEmail);
     } catch (clientEmailError) {
       Logger.log('Failed to send client confirmation email: ' + clientEmailError.message);
+      failures.push('clientEmail');
     }
   }
 
-  Logger.log('Quote acceptance task completed for ' + jobNumber);
+  if (failures.length > 0) {
+    Logger.log('Quote acceptance task for ' + jobNumber + ' completed with failures: ' + failures.join(', '));
+  } else {
+    Logger.log('Quote acceptance task completed successfully for ' + jobNumber);
+  }
+
+  return { success: failures.length === 0, failures: failures, signatureFileUrl: signatureFileUrl };
 }
 
 /**
