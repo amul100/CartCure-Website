@@ -4660,8 +4660,8 @@ function setupSheets(clearData) {
     saveSetupDebugLog(debugLog.join('\n'), 'SUCCESS');
 
     const message = clearData
-      ? 'Hard reset complete! All data has been deleted and sheets have been reset.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning'
-      : 'Setup complete! All sheets have been created/repaired with data preserved.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
+      ? 'Hard reset complete! All data has been deleted and sheets have been reset.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning\n• Background task processing'
+      : 'Setup complete! All sheets have been created/repaired with data preserved.\n\nAutomatic features enabled:\n• Quote reminders (7 days after quote sent)\n• Invoice reminders (before due date)\n• Overdue invoice notices\n• Email scanning\n• Background task processing\n\nNext steps:\n1. Fill in your business details in the Settings sheet\n2. Use the CartCure menu to manage jobs';
 
     ui.alert(clearData ? '✅ Hard Reset Complete' : '✅ Setup Complete', message, ui.ButtonSet.OK);
 
@@ -12894,6 +12894,7 @@ function ensureAutoTriggersExist() {
   let hasOverdueInvoices = false;
   let hasQuoteReminders = false;
   let hasEmailScan = false;
+  let hasBackgroundTasks = false;
 
   triggers.forEach(trigger => {
     const handler = trigger.getHandlerFunction();
@@ -12902,6 +12903,7 @@ function ensureAutoTriggersExist() {
     if (handler === 'autoSendOverdueInvoices') hasOverdueInvoices = true;
     if (handler === 'autoSendQuoteReminders') hasQuoteReminders = true;
     if (handler === 'scanSentEmailsForJobs') hasEmailScan = true;
+    if (handler === 'processBackgroundTasks') hasBackgroundTasks = true;
   });
 
   let created = 0;
@@ -12958,6 +12960,16 @@ function ensureAutoTriggersExist() {
       .create();
     created++;
     Logger.log('Created scanSentEmailsForJobs trigger');
+  }
+
+  // Create background task processor trigger (every 15 minutes)
+  if (!hasBackgroundTasks) {
+    ScriptApp.newTrigger('processBackgroundTasks')
+      .timeBased()
+      .everyMinutes(15)
+      .create();
+    created++;
+    Logger.log('Created processBackgroundTasks trigger');
   }
 
   if (created > 0) {
