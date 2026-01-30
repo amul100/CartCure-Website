@@ -5382,47 +5382,74 @@ function setupSettingsSheet(ss, clearData) {
     sheet.getRange(1, 1, mergedSettings.length, 3).setValues(mergedSettings);
   }
 
-  // Apply paper-like background
-  applyPaperBackground(sheet);
+  // === DARK MODE STYLING ===
+  const darkColors = {
+    background: '#1a1a2e',      // Deep navy
+    backgroundAlt: '#16213e',   // Slightly lighter navy
+    headerBg: '#0f3460',        // Dark blue header
+    text: '#e4e4e7',            // Light gray text
+    accent: '#00d4aa',          // Green accent (same as dialog)
+    muted: '#71717a',           // Muted gray for descriptions
+    border: '#2d3748'           // Subtle border color
+  };
 
-  // Format header with brand styling
+  // Apply dark background to entire visible area
+  const maxCols = 10;
+  const maxRows = 50;
+  sheet.getRange(1, 1, maxRows, maxCols).setBackground(darkColors.background);
+
+  // Format header row - dark blue with white text
   const headerRange = sheet.getRange(1, 1, 1, 3);
-  applyHeaderStyle(headerRange);
-  applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  headerRange.setBackground(darkColors.headerBg);
+  headerRange.setFontColor('#ffffff');
+  headerRange.setFontWeight('bold');
+  headerRange.setFontFamily('Arial');
+  headerRange.setFontSize(11);
+  headerRange.setHorizontalAlignment('center');
+  headerRange.setVerticalAlignment('middle');
+  sheet.setRowHeight(1, 40);
 
-  // Apply alternating row colors for settings rows
-  applyAlternatingRows(sheet, 2, defaultSettings.length - 1, 3);
+  // Apply alternating dark rows for settings
+  for (let i = 2; i <= defaultSettings.length; i++) {
+    const rowRange = sheet.getRange(i, 1, 1, 3);
+    const bgColor = (i % 2 === 0) ? darkColors.backgroundAlt : darkColors.background;
+    rowRange.setBackground(bgColor);
+    sheet.setRowHeight(i, 32);
+  }
 
-  // Format setting names (first column)
+  // Format setting names (first column) - white bold text
   const settingNamesRange = sheet.getRange(2, 1, defaultSettings.length - 1, 1);
   settingNamesRange.setFontWeight('bold');
-  settingNamesRange.setFontColor(SHEET_COLORS.inkBlack);
+  settingNamesRange.setFontColor(darkColors.text);
   settingNamesRange.setFontFamily('Arial');
   settingNamesRange.setFontSize(10);
+  settingNamesRange.setVerticalAlignment('middle');
 
-  // Format value column
+  // Format value column - green accent color
   const valueRange = sheet.getRange(2, 2, defaultSettings.length - 1, 1);
   valueRange.setFontFamily('Arial');
   valueRange.setFontSize(10);
-  valueRange.setFontColor(SHEET_COLORS.brandGreen);
+  valueRange.setFontColor(darkColors.accent);
+  valueRange.setFontWeight('bold');
   valueRange.setHorizontalAlignment('center');
+  valueRange.setVerticalAlignment('middle');
 
-  // Format description column (muted text)
+  // Format description column - muted gray italic
   const descRange = sheet.getRange(2, 3, defaultSettings.length - 1, 1);
   descRange.setFontFamily('Arial');
   descRange.setFontSize(9);
-  descRange.setFontColor(SHEET_COLORS.inkLight);
+  descRange.setFontColor(darkColors.muted);
   descRange.setFontStyle('italic');
+  descRange.setVerticalAlignment('middle');
 
-  // Add subtle borders to the entire settings table
+  // Add subtle borders
   const tableRange = sheet.getRange(1, 1, defaultSettings.length, 3);
-  applyBorders(tableRange, true, true);
+  tableRange.setBorder(true, true, true, true, true, true, darkColors.border, SpreadsheetApp.BorderStyle.SOLID);
 
-  // Set column widths (fixed widths for settings)
-  sheet.setColumnWidth(1, 180);  // Setting Name
-  sheet.setColumnWidth(2, 200);  // Value
-  sheet.setColumnWidth(3, 300);  // Description
+  // Set column widths
+  sheet.setColumnWidth(1, 200);  // Setting Name
+  sheet.setColumnWidth(2, 180);  // Value
+  sheet.setColumnWidth(3, 320);  // Description
 
   sheet.setFrozenRows(1);
 
@@ -5432,6 +5459,9 @@ function setupSettingsSheet(ss, clearData) {
     .setAllowInvalid(false)
     .build();
   sheet.getRange(3, 2).setDataValidation(gstRule);
+
+  // Hide gridlines for cleaner look
+  sheet.setHiddenGridlines(true);
 
   Logger.log('Settings sheet ' + (isNew ? 'created' : (clearData ? 'reset' : 'updated')));
 }
