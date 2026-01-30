@@ -5965,7 +5965,7 @@ function setupSubmissionsSheet(ss) {
  * Add conditional formatting for Submission Status column with brand colors
  */
 function addSubmissionStatusFormatting(sheet) {
-  const statusColumn = 1; // Status column (now column A)
+  const statusColumn = getColIndex('SUBMISSIONS', 'Status');
   const numRows = getDynamicRowCount(sheet);
   const range = sheet.getRange(2, statusColumn, numRows, 1);
 
@@ -6138,20 +6138,25 @@ function setupTestimonialsSheet(ss, clearData) {
  * @param {number} row - The row number to apply validation to
  */
 function applyTestimonialRowValidation(sheet, row) {
-  // Add checkbox for "Show on Website" column (column 1)
+  // Get column indices from config for maintainability
+  const showOnWebsiteCol = getColIndex('TESTIMONIALS', 'Show on Website');
+  const ratingCol = getColIndex('TESTIMONIALS', 'Rating');
+  const testimonialCol = getColIndex('TESTIMONIALS', 'Testimonial');
+
+  // Add checkbox for "Show on Website" column
   // Using insertCheckboxes() which is the proper way to create a checkbox
-  const checkboxCell = sheet.getRange(row, 1);
+  const checkboxCell = sheet.getRange(row, showOnWebsiteCol);
   checkboxCell.insertCheckboxes();
 
-  // Add rating validation (1-5) for column 6
+  // Add rating validation (1-5)
   const ratingRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['1', '2', '3', '4', '5'], true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(row, 6).setDataValidation(ratingRule);
+  sheet.getRange(row, ratingCol).setDataValidation(ratingRule);
 
-  // Enable wrap text for testimonial column (column 7)
-  sheet.getRange(row, 7).setWrap(true);
+  // Enable wrap text for testimonial column
+  sheet.getRange(row, testimonialCol).setWrap(true);
 }
 
 /**
@@ -6168,8 +6173,9 @@ function cleanupTestimonialsSheet() {
     return;
   }
 
-  // Find the actual last row with data by checking column B (Submitted timestamp)
-  const submittedCol = sheet.getRange('B:B').getValues();
+  // Find the actual last row with data by checking Submitted timestamp column
+  const submittedColLetter = getColLetter('TESTIMONIALS', 'Submitted');
+  const submittedCol = sheet.getRange(submittedColLetter + ':' + submittedColLetter).getValues();
   let lastDataRow = 1; // Header row
   for (let i = 1; i < submittedCol.length; i++) {
     if (submittedCol[i][0] === '' || submittedCol[i][0] === null || submittedCol[i][0] === undefined) {
@@ -14165,8 +14171,9 @@ function createTestJobForTestimonials() {
       'Last Updated': timestamp
     });
 
-    // Find first empty row (checking Status column A)
-    const jobCol = jobsSheet.getRange('A:A').getValues();
+    // Find first empty row (checking Status column)
+    const statusColLetter = getColLetter('JOBS', 'Status');
+    const jobCol = jobsSheet.getRange(statusColLetter + ':' + statusColLetter).getValues();
     let insertRow = 2; // Start after header
     for (let i = 1; i < jobCol.length; i++) {
       if (jobCol[i][0] === '') {
