@@ -1276,14 +1276,14 @@ function setupBackgroundTaskTrigger() {
     }
   }
 
-  // Create new trigger to run every minute
+  // Create new trigger to run every 15 minutes
   ScriptApp.newTrigger('processBackgroundTasks')
     .timeBased()
-    .everyMinutes(1)
+    .everyMinutes(15)
     .create();
 
-  Logger.log('Background task trigger created (runs every 1 minute)');
-  SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every minute.', SpreadsheetApp.getUi().ButtonSet.OK);
+  Logger.log('Background task trigger created (runs every 15 minutes)');
+  SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every 15 minutes.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 /**
