@@ -390,7 +390,7 @@ function doGet(e) {
  */
 function getApprovedTestimonials(fiveStarOnly, limit) {
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
     if (!sheet) {
@@ -412,18 +412,17 @@ function getApprovedTestimonials(fiveStarOnly, limit) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Get all data including header for dynamic column lookup
+    // Get all data (header not needed since we use COLUMN_CONFIG)
     const allData = sheet.getDataRange().getValues();
-    const headers = allData[0];
     const data = allData.slice(1); // Exclude header row
 
-    // Find column indices dynamically
-    const approvedColIndex = headers.indexOf('Approved');
-    const nameColIndex = headers.indexOf('Name');
-    const businessColIndex = headers.indexOf('Business');
-    const locationColIndex = headers.indexOf('Location');
-    const ratingColIndex = headers.indexOf('Rating');
-    const testimonialColIndex = headers.indexOf('Testimonial');
+    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+    const approvedColIndex = getColIndex('TESTIMONIALS', 'Show on Website') - 1;
+    const nameColIndex = getColIndex('TESTIMONIALS', 'Name') - 1;
+    const businessColIndex = getColIndex('TESTIMONIALS', 'Business') - 1;
+    const locationColIndex = getColIndex('TESTIMONIALS', 'Location') - 1;
+    const ratingColIndex = getColIndex('TESTIMONIALS', 'Rating') - 1;
+    const testimonialColIndex = getColIndex('TESTIMONIALS', 'Testimonial') - 1;
 
     // Filter to only approved testimonials and format for website
     let approvedTestimonials = data
@@ -542,7 +541,7 @@ function handleTestimonialSubmission(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
 
     // Debug log array for file output
     const debugLog = [];
@@ -575,13 +574,12 @@ function handleTestimonialSubmission(data) {
     debugLog.push('Jobs sheet found: YES');
 
     const jobsData = jobsSheet.getDataRange().getValues();
-    // Column is named "Job #" not "Job Number"
-    const jobNumberColIndex = jobsData[0].indexOf('Job #');
+    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+    const jobNumberColIndex = getColIndex('JOBS', 'Job #') - 1;
     debugLog.push('Row count: ' + jobsData.length);
-    debugLog.push('Headers: ' + jobsData[0].join(', '));
-    debugLog.push('Job Number column index: ' + jobNumberColIndex);
+    debugLog.push('Job Number column index (from COLUMN_CONFIG): ' + jobNumberColIndex);
 
-    if (jobNumberColIndex === -1) {
+    if (jobNumberColIndex < 0) {
       debugLog.push('ERROR: Job Number column not found in headers');
 
       // Save debug file
@@ -643,8 +641,9 @@ function handleTestimonialSubmission(data) {
 
     if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
       const testimonialData = testimonialsSheet.getDataRange().getValues();
-      const jobColIndex = testimonialData[0].indexOf('Job Number');
-      if (jobColIndex !== -1) {
+      // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+      const jobColIndex = getColIndex('TESTIMONIALS', 'Job Number') - 1;
+      if (jobColIndex >= 0) {
         const alreadySubmitted = testimonialData.slice(1).some(row => {
           const cellValue = (row[jobColIndex] || '').toString().toUpperCase();
           return cellValue === jobNumber;
@@ -2062,7 +2061,7 @@ function saveToSheet(data) {
   }
 
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
 
     // Only do expensive debug operations in development mode
     if (!IS_PRODUCTION) {
@@ -3925,13 +3924,13 @@ function enableAutoRefresh() {
   // Remove any existing triggers first
   disableAutoRefreshSilent();
 
-  // Create new time-driven trigger
+  // Create new time-driven trigger (5 min interval for better quota usage)
   ScriptApp.newTrigger('autoRefreshDashboard')
     .timeBased()
-    .everyMinutes(1)
+    .everyMinutes(5)
     .create();
 
-  ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 1 minute.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
+  ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 5 minutes.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
   Logger.log('Auto-refresh enabled');
 }
 
@@ -3977,11 +3976,11 @@ function ensureAutoRefreshEnabled() {
   const triggers = ScriptApp.getProjectTriggers();
   const hasAutoRefresh = triggers.some(trigger => trigger.getHandlerFunction() === 'autoRefreshDashboard');
 
-  // If no trigger exists, create one
+  // If no trigger exists, create one (5 min interval for better quota usage)
   if (!hasAutoRefresh) {
     ScriptApp.newTrigger('autoRefreshDashboard')
       .timeBased()
-      .everyMinutes(1)
+      .everyMinutes(5)
       .create();
     Logger.log('Auto-refresh enabled on spreadsheet open');
   }
@@ -4014,9 +4013,9 @@ function toggleAutoRefresh() {
   } else {
     ScriptApp.newTrigger('autoRefreshDashboard')
       .timeBased()
-      .everyMinutes(1)
+      .everyMinutes(5)
       .create();
-    ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 1 minute.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
+    ui.alert('Auto-Refresh Enabled', 'Dashboard will automatically refresh every 5 minutes.\n\nNote: This uses Google Apps Script quota.', ui.ButtonSet.OK);
   }
 
   // Rebuild menu to reflect new state
@@ -4177,7 +4176,7 @@ function toggleHeaderProtection() {
  * Apply warning-only protection to header rows on key sheets
  */
 function applyHeaderProtections() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const sheetsToProtect = [
     { name: SHEETS.SUBMISSIONS, cols: 10 },
     { name: SHEETS.JOBS, cols: COLUMN_CONFIG.JOBS.length },
@@ -4206,7 +4205,7 @@ function applyHeaderProtections() {
  * Remove all header row protections from sheets
  */
 function removeHeaderProtections() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const sheets = ss.getSheets();
 
   sheets.forEach(sheet => {
@@ -4254,7 +4253,7 @@ function showSetupDialog() {
  * Reset column widths to the values defined in COLUMN_CONFIG (with UI feedback)
  */
 function resetColumnWidths() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
   const resetCount = resetColumnWidthsInternal(ss);
@@ -4439,7 +4438,7 @@ function restoreSheetData(ss, backup) {
  * @param {boolean} clearData - If true, deletes all data (hard reset mode)
  */
 function setupSheets(clearData) {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
   // Debug log array - will be saved to file
@@ -4967,7 +4966,7 @@ function setupJobsSheet(ss, clearData) {
  */
 function sortJobsNewestFirst(sheet) {
   if (!sheet) {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     sheet = ss.getSheetByName(SHEETS.JOBS);
   }
   if (!sheet) return;
@@ -4975,11 +4974,10 @@ function sortJobsNewestFirst(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return; // No data to sort
 
-  // Get Created Date column index
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const createdDateCol = headers.indexOf('Created Date') + 1; // 1-based
+  // Get Created Date column index from COLUMN_CONFIG (already 1-based)
+  const createdDateCol = getColIndex('JOBS', 'Created Date');
 
-  if (createdDateCol === 0) {
+  if (createdDateCol === -1) {
     Logger.log('Created Date column not found for sorting');
     return;
   }
@@ -5391,7 +5389,7 @@ function setupSettingsSheet(ss, clearData) {
  */
 function createDashboardSheet(ss) {
   if (!ss) {
-    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    ss = getSpreadsheet();
   }
   let sheet = ss.getSheetByName(SHEETS.DASHBOARD);
 
@@ -5587,7 +5585,7 @@ function formatDashboardSheet(sheet) {
  */
 function createAnalyticsSheet(ss) {
   if (!ss) {
-    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    ss = getSpreadsheet();
   }
   let sheet = ss.getSheetByName(SHEETS.ANALYTICS);
 
@@ -5860,32 +5858,30 @@ function refreshAnalytics() {
 
   // Get jobs data
   const jobsData = jobsSheet ? jobsSheet.getDataRange().getValues() : [[]];
-  const jobHeaders = jobsData[0] || [];
 
-  // PERFORMANCE: Cache all column indices ONCE before any loops
-  // (Previously: 15+ indexOf calls per row × N rows = many lookups)
-  // (Now: 11 indexOf calls total, regardless of row count)
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  // This ensures column positions always match COLUMN_CONFIG, even if sheet headers differ
   const cols = {
-    jobNum: jobHeaders.indexOf('Job #'),
-    status: jobHeaders.indexOf('Status'),
-    paymentStatus: jobHeaders.indexOf('Payment Status'),
-    totalInclGst: jobHeaders.indexOf('Total (incl GST)'),
-    slaStatus: jobHeaders.indexOf('SLA Status'),
-    category: jobHeaders.indexOf('Category'),
-    clientName: jobHeaders.indexOf('Client Name'),
-    daysRemaining: jobHeaders.indexOf('Days Remaining'),
-    createdDate: jobHeaders.indexOf('Created Date'),
-    completionDate: jobHeaders.indexOf('Actual Completion Date'),
-    paymentDate: jobHeaders.indexOf('Payment Date')
+    jobNum: getColIndex('JOBS', 'Job #') - 1,
+    status: getColIndex('JOBS', 'Status') - 1,
+    paymentStatus: getColIndex('JOBS', 'Payment Status') - 1,
+    totalInclGst: getColIndex('JOBS', 'Total (incl GST)') - 1,
+    slaStatus: getColIndex('JOBS', 'SLA Status') - 1,
+    category: getColIndex('JOBS', 'Category') - 1,
+    clientName: getColIndex('JOBS', 'Client Name') - 1,
+    daysRemaining: getColIndex('JOBS', 'Days Remaining') - 1,
+    createdDate: getColIndex('JOBS', 'Created Date') - 1,
+    completionDate: getColIndex('JOBS', 'Actual Completion Date') - 1,
+    paymentDate: getColIndex('JOBS', 'Payment Date') - 1
   };
 
-  const jobs = jobsData.slice(1).filter(row => row[cols.jobNum !== -1 ? cols.jobNum : 0]); // Filter out empty rows
+  const jobs = jobsData.slice(1).filter(row => row[cols.jobNum >= 0 ? cols.jobNum : 0]); // Filter out empty rows
 
   // Get submissions data
   const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
-  const subHeaders = subData[0] || [];
-  const subNumCol = subHeaders.indexOf('Submission #');
-  const submissions = subData.slice(1).filter(row => row[subNumCol !== -1 ? subNumCol : 0]);
+  // Use COLUMN_CONFIG for submissions too
+  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const submissions = subData.slice(1).filter(row => row[subNumCol >= 0 ? subNumCol : 0]);
 
   // === CALCULATE ALL METRICS IN A SINGLE LOOP ===
   // PERFORMANCE: Consolidated from 5+ separate loops into 1
@@ -6411,7 +6407,7 @@ function applyTestimonialRowValidation(sheet, row) {
  * This fixes the issue where appendRow() was adding data at the bottom due to pre-populated checkboxes
  */
 function cleanupTestimonialsSheet() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
   if (!sheet) {
@@ -6558,10 +6554,10 @@ function archiveOldJobs() {
     return;
   }
 
-  const headers = jobsData[0];
-  const statusCol = headers.indexOf('Status');
-  const completedDateCol = headers.indexOf('Completed Date');
-  const createdDateCol = headers.indexOf('Created Date');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const statusCol = getColIndex('JOBS', 'Status') - 1;
+  const completedDateCol = getColIndex('JOBS', 'Actual Completion Date') - 1;
+  const createdDateCol = getColIndex('JOBS', 'Created Date') - 1;
 
   if (statusCol === -1) {
     ui.alert('Error', 'Status column not found in Jobs sheet.', ui.ButtonSet.OK);
@@ -6654,8 +6650,8 @@ function archiveOldActivity() {
     return;
   }
 
-  const headers = data[0];
-  const timestampCol = headers.indexOf('Timestamp');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const timestampCol = getColIndex('ACTIVITY_LOG', 'Timestamp') - 1;
 
   if (timestampCol === -1) {
     ui.alert('Error', 'Timestamp column not found in Activity Log sheet.', ui.ButtonSet.OK);
@@ -6799,7 +6795,7 @@ function showArchiveStats() {
  */
 function setupActivityLogSheet(ss, clearData) {
   if (!ss) {
-    ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    ss = getSpreadsheet();
   }
 
   let sheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
@@ -6951,7 +6947,7 @@ function logJobActivity(jobNumber, activityType, summary, details, fromTo, logge
  */
 function scanSentEmailsForJobs() {
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
 
     // Get last scan timestamp from settings (or default to 24 hours ago)
@@ -7080,7 +7076,7 @@ function saveProcessedMessageId(messageId) {
  * Update the last scan timestamp in settings
  */
 function updateLastScanTimestamp() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   let settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
 
   if (!settingsSheet) return;
@@ -7168,7 +7164,7 @@ function viewJobActivityLog() {
  */
 function displayActivityLogForJob(jobNumber) {
   const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const activitySheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
 
   if (!activitySheet || activitySheet.getLastRow() <= 1) {
@@ -7178,14 +7174,14 @@ function displayActivityLogForJob(jobNumber) {
 
   // Find all activities for this job
   const data = activitySheet.getDataRange().getValues();
-  const headers = data[0];
-  const jobNumColIndex = headers.indexOf('Job #');
-  const timestampColIndex = headers.indexOf('Timestamp');
-  const typeColIndex = headers.indexOf('Activity Type');
-  const summaryColIndex = headers.indexOf('Subject/Summary');
-  const detailsColIndex = headers.indexOf('Details');
-  const fromToColIndex = headers.indexOf('From/To');
-  const loggedByColIndex = headers.indexOf('Logged By');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumColIndex = getColIndex('ACTIVITY_LOG', 'Job #') - 1;
+  const timestampColIndex = getColIndex('ACTIVITY_LOG', 'Timestamp') - 1;
+  const typeColIndex = getColIndex('ACTIVITY_LOG', 'Activity Type') - 1;
+  const summaryColIndex = getColIndex('ACTIVITY_LOG', 'Subject/Summary') - 1;
+  const detailsColIndex = getColIndex('ACTIVITY_LOG', 'Details') - 1;
+  const fromToColIndex = getColIndex('ACTIVITY_LOG', 'From/To') - 1;
+  const loggedByColIndex = getColIndex('ACTIVITY_LOG', 'Logged By') - 1;
   const activities = [];
 
   for (let i = 1; i < data.length; i++) {
@@ -7524,11 +7520,12 @@ function sendTestimonialRequest(jobNumber) {
   }
 
   // Check if testimonial already exists
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
   if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
     const testimonialData = testimonialsSheet.getDataRange().getValues();
-    const jobColIndex = testimonialData[0].indexOf('Job Number');
+    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+    const jobColIndex = getColIndex('TESTIMONIALS', 'Job Number') - 1;
     if (jobColIndex >= 0) {
       const alreadySubmitted = testimonialData.slice(1).some(row =>
         row[jobColIndex] && row[jobColIndex].toString().trim() === jobNumber.trim()
@@ -7860,9 +7857,10 @@ function calculateLateFee(originalAmount, dueDate, currentDate) {
 /**
  * Update late fees for all overdue invoices
  * Called from menu or on schedule to recalculate late fees
+ * OPTIMIZED: Uses batch setValues() instead of individual setValue() calls
  */
 function updateAllLateFees() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
 
   if (!invoiceSheet) {
@@ -7871,21 +7869,22 @@ function updateAllLateFees() {
   }
 
   const data = invoiceSheet.getDataRange().getValues();
-  const headers = data[0];
 
-  // Find column indices
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
   const cols = {
-    status: headers.indexOf('Status'),
-    dueDate: headers.indexOf('Due Date'),
-    total: headers.indexOf('Total'),
-    daysOverdue: headers.indexOf('Days Overdue'),
-    lateFee: headers.indexOf('Late Fee'),
-    totalWithFees: headers.indexOf('Total With Fees')
+    status: getColIndex('INVOICES', 'Status') - 1,
+    dueDate: getColIndex('INVOICES', 'Due Date') - 1,
+    total: getColIndex('INVOICES', 'Total') - 1,
+    daysOverdue: getColIndex('INVOICES', 'Days Overdue') - 1,
+    lateFee: getColIndex('INVOICES', 'Late Fee') - 1,
+    totalWithFees: getColIndex('INVOICES', 'Total With Fees') - 1
   };
 
   let updatedCount = 0;
   const now = new Date();
+  let hasChanges = false;
 
+  // Modify data array in-place (much faster than individual setValue calls)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const status = row[cols.status];
@@ -7900,18 +7899,23 @@ function updateAllLateFees() {
 
     const feeCalc = calculateLateFee(total, dueDate, now);
 
-    // Update the row
-    const rowNum = i + 1;
-    invoiceSheet.getRange(rowNum, cols.daysOverdue + 1).setValue(feeCalc.daysOverdue > 0 ? feeCalc.daysOverdue : '');
-    invoiceSheet.getRange(rowNum, cols.lateFee + 1).setValue(feeCalc.lateFee > 0 ? feeCalc.lateFee.toFixed(2) : '');
-    invoiceSheet.getRange(rowNum, cols.totalWithFees + 1).setValue(feeCalc.totalWithFees.toFixed(2));
+    // Update the data array in-place
+    data[i][cols.daysOverdue] = feeCalc.daysOverdue > 0 ? feeCalc.daysOverdue : '';
+    data[i][cols.lateFee] = feeCalc.lateFee > 0 ? feeCalc.lateFee.toFixed(2) : '';
+    data[i][cols.totalWithFees] = feeCalc.totalWithFees.toFixed(2);
 
     // Update status to Overdue if past due
     if (feeCalc.daysOverdue > 0 && status === 'Sent') {
-      invoiceSheet.getRange(rowNum, cols.status + 1).setValue('Overdue');
+      data[i][cols.status] = 'Overdue';
     }
 
+    hasChanges = true;
     updatedCount++;
+  }
+
+  // Single batch write for all changes (replaces 150-200 individual setValue calls)
+  if (hasChanges && data.length > 1) {
+    invoiceSheet.getRange(2, 1, data.length - 1, data[0].length).setValues(data.slice(1));
   }
 
   Logger.log('Updated late fees for ' + updatedCount + ' invoices');
@@ -7923,7 +7927,7 @@ function updateAllLateFees() {
  */
 function showOverdueInvoicesWithFees() {
   const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
 
   if (!invoiceSheet) {
@@ -7935,17 +7939,17 @@ function showOverdueInvoicesWithFees() {
   updateAllLateFees();
 
   const data = invoiceSheet.getDataRange().getValues();
-  const headers = data[0];
 
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
   const cols = {
-    invoiceNum: headers.indexOf('Invoice #'),
-    clientName: headers.indexOf('Client Name'),
-    status: headers.indexOf('Status'),
-    dueDate: headers.indexOf('Due Date'),
-    total: headers.indexOf('Total'),
-    daysOverdue: headers.indexOf('Days Overdue'),
-    lateFee: headers.indexOf('Late Fee'),
-    totalWithFees: headers.indexOf('Total With Fees')
+    invoiceNum: getColIndex('INVOICES', 'Invoice #') - 1,
+    clientName: getColIndex('INVOICES', 'Client Name') - 1,
+    status: getColIndex('INVOICES', 'Status') - 1,
+    dueDate: getColIndex('INVOICES', 'Due Date') - 1,
+    total: getColIndex('INVOICES', 'Total') - 1,
+    daysOverdue: getColIndex('INVOICES', 'Days Overdue') - 1,
+    lateFee: getColIndex('INVOICES', 'Late Fee') - 1,
+    totalWithFees: getColIndex('INVOICES', 'Total With Fees') - 1
   };
 
   let overdueList = [];
@@ -8020,8 +8024,8 @@ function getAvailableSubmissions() {
   const existingJobSubmissions = new Set();
   if (jobsSheet && jobsSheet.getLastRow() > 1) {
     const jobsData = jobsSheet.getDataRange().getValues();
-    const jobsHeaders = jobsData[0];
-    const jobSubNumColIdx = jobsHeaders.indexOf('Submission #'); // Column AD (index 29)
+    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+    const jobSubNumColIdx = getColIndex('JOBS', 'Submission #') - 1;
     for (let i = 1; i < jobsData.length; i++) {
       if (jobsData[i][jobSubNumColIdx]) {
         existingJobSubmissions.add(jobsData[i][jobSubNumColIdx]);
@@ -8034,19 +8038,18 @@ function getAvailableSubmissions() {
 
   // OPTIMIZATION: Single batch read from Submissions sheet
   const allData = submissionsSheet.getDataRange().getValues();
-  const headers = allData[0];
 
-  // Find column indices dynamically from headers
-  const submissionNumCol = headers.indexOf('Submission #');
-  const timestampCol = headers.indexOf('Timestamp');
-  const nameColIndex = headers.indexOf('Name');
-  const emailColIndex = headers.indexOf('Email');
-  const statusColIndex = headers.indexOf('Status');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const timestampCol = getColIndex('SUBMISSIONS', 'Timestamp') - 1;
+  const nameColIndex = getColIndex('SUBMISSIONS', 'Name') - 1;
+  const emailColIndex = getColIndex('SUBMISSIONS', 'Email') - 1;
+  const statusColIndex = getColIndex('SUBMISSIONS', 'Status') - 1;
 
-  // Fallback if columns not found
-  if (submissionNumCol === -1 || nameColIndex === -1 || statusColIndex === -1) {
-    Logger.log('[PERF] getAvailableSubmissions() - Required columns not found, using fallback');
-    return getAvailableSubmissionsFallback(existingJobSubmissions);
+  // Fallback if columns not found in COLUMN_CONFIG (should not happen)
+  if (submissionNumCol === -2 || nameColIndex === -2 || statusColIndex === -2) {
+    Logger.log('[PERF] getAvailableSubmissions() - Required columns not found in COLUMN_CONFIG');
+    return [];
   }
 
   const submissions = [];
@@ -8092,25 +8095,24 @@ function getAvailableSubmissionsFallback(existingJobSubmissions) {
   if (!submissionsSheet) return [];
 
   const submissionsData = submissionsSheet.getDataRange().getValues();
-  const headers = submissionsData[0];
   const submissions = [];
 
-  // Get column indices once outside the loop
-  const submissionNumCol = headers.indexOf('Submission #');
-  const statusCol = headers.indexOf('Status');
-  const nameCol = headers.indexOf('Name');
-  const emailCol = headers.indexOf('Email');
-  const timestampCol = headers.indexOf('Timestamp');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const statusCol = getColIndex('SUBMISSIONS', 'Status') - 1;
+  const nameCol = getColIndex('SUBMISSIONS', 'Name') - 1;
+  const emailCol = getColIndex('SUBMISSIONS', 'Email') - 1;
+  const timestampCol = getColIndex('SUBMISSIONS', 'Timestamp') - 1;
 
   for (let i = 1; i < submissionsData.length; i++) {
     const row = submissionsData[i];
-    const submissionNum = submissionNumCol !== -1 ? row[submissionNumCol] : null;
-    const status = statusCol !== -1 ? row[statusCol] : 'New';
+    const submissionNum = submissionNumCol >= 0 ? row[submissionNumCol] : null;
+    const status = statusCol >= 0 ? row[statusCol] : 'New';
 
     if (submissionNum && !existingJobSubmissions.has(submissionNum)) {
-      const name = nameCol !== -1 ? row[nameCol] : 'Unknown';
-      const email = emailCol !== -1 ? row[emailCol] : '';
-      const timestamp = timestampCol !== -1 ? row[timestampCol] : new Date();
+      const name = nameCol >= 0 ? row[nameCol] : 'Unknown';
+      const email = emailCol >= 0 ? row[emailCol] : '';
+      const timestamp = timestampCol >= 0 ? row[timestampCol] : new Date();
 
       submissions.push({
         number: submissionNum,
@@ -8160,18 +8162,17 @@ function getJobsByStatus(statusFilter = []) {
   // OPTIMIZATION: Single getRange call to load all data at once
   // This is faster than multiple getRange calls even if we load extra columns
   const allData = jobsSheet.getDataRange().getValues();
-  const headers = allData[0];
 
-  // Find the column indices we need
-  const jobNumColIndex = headers.indexOf('Job #');
-  const statusColIndex = headers.indexOf('Status');
-  const clientNameColIndex = headers.indexOf('Client Name');
-  const storeUrlColIndex = headers.indexOf('Store URL');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumColIndex = getColIndex('JOBS', 'Job #') - 1;
+  const statusColIndex = getColIndex('JOBS', 'Status') - 1;
+  const clientNameColIndex = getColIndex('JOBS', 'Client Name') - 1;
+  const storeUrlColIndex = getColIndex('JOBS', 'Store URL') - 1;
 
-  // Fallback: if critical columns not found, use original implementation
-  if (jobNumColIndex === -1 || statusColIndex === -1 || clientNameColIndex === -1) {
-    Logger.log('[PERF] getJobsByStatus() - Required columns not found, using fallback');
-    return getJobsByStatusFallback(statusFilter);
+  // Validation: ensure columns exist in COLUMN_CONFIG
+  if (jobNumColIndex < 0 || statusColIndex < 0 || clientNameColIndex < 0) {
+    Logger.log('[PERF] getJobsByStatus() - Required columns not found in COLUMN_CONFIG');
+    return [];
   }
 
   const jobs = [];
@@ -8185,7 +8186,7 @@ function getJobsByStatus(statusFilter = []) {
     // Filter by status if provided
     if (jobNum && (statusFilter.length === 0 || statusFilter.includes(status))) {
       const clientName = row[clientNameColIndex];
-      const storeUrl = storeUrlColIndex !== -1 ? row[storeUrlColIndex] : '';
+      const storeUrl = storeUrlColIndex >= 0 ? row[storeUrlColIndex] : '';
 
       jobs.push({
         number: jobNum,
@@ -8216,21 +8217,20 @@ function getJobsByStatusFallback(statusFilter = []) {
   if (!jobsSheet) return [];
 
   const data = jobsSheet.getDataRange().getValues();
-  const headers = data[0];
   const jobs = [];
 
-  // Find column indices - require them to exist
-  const jobNumColIdx = headers.indexOf('Job #');
-  const statusColIdx = headers.indexOf('Status');
-  const clientNameColIdx = headers.indexOf('Client Name');
-  const storeUrlColIdx = headers.indexOf('Store URL');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumColIdx = getColIndex('JOBS', 'Job #') - 1;
+  const statusColIdx = getColIndex('JOBS', 'Status') - 1;
+  const clientNameColIdx = getColIndex('JOBS', 'Client Name') - 1;
+  const storeUrlColIdx = getColIndex('JOBS', 'Store URL') - 1;
 
-  if (jobNumColIdx === -1) {
-    Logger.log('Warning: Job # column not found in Jobs sheet');
+  if (jobNumColIdx < 0) {
+    Logger.log('Warning: Job # column not found in COLUMN_CONFIG');
     return [];
   }
-  if (statusColIdx === -1) {
-    Logger.log('Warning: Status column not found in Jobs sheet');
+  if (statusColIdx < 0) {
+    Logger.log('Warning: Status column not found in COLUMN_CONFIG');
   }
 
   for (let i = 1; i < data.length; i++) {
@@ -8287,19 +8287,18 @@ function getInvoicesByStatus(statusFilter = []) {
 
   // OPTIMIZATION: Single getRange call to load all data at once
   const allData = invoiceSheet.getDataRange().getValues();
-  const headers = allData[0];
 
-  // Find the column indices we need
-  const invoiceNumColIndex = headers.indexOf('Invoice #');
-  const jobNumColIndex = headers.indexOf('Job #');
-  const clientNameColIndex = headers.indexOf('Client Name');
-  const totalColIndex = headers.indexOf('Total');
-  const statusColIndex = headers.indexOf('Status');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const invoiceNumColIndex = getColIndex('INVOICES', 'Invoice #') - 1;
+  const jobNumColIndex = getColIndex('INVOICES', 'Job #') - 1;
+  const clientNameColIndex = getColIndex('INVOICES', 'Client Name') - 1;
+  const totalColIndex = getColIndex('INVOICES', 'Total') - 1;
+  const statusColIndex = getColIndex('INVOICES', 'Status') - 1;
 
-  // Fallback: if critical columns not found, use original implementation
-  if (invoiceNumColIndex === -1 || statusColIndex === -1 || totalColIndex === -1) {
-    Logger.log('[PERF] getInvoicesByStatus() - Required columns not found, using fallback');
-    return getInvoicesByStatusFallback(statusFilter);
+  // Validation: ensure columns exist in COLUMN_CONFIG
+  if (invoiceNumColIndex < 0 || statusColIndex < 0 || totalColIndex < 0) {
+    Logger.log('[PERF] getInvoicesByStatus() - Required columns not found in COLUMN_CONFIG');
+    return [];
   }
 
   const invoices = [];
@@ -8346,22 +8345,21 @@ function getInvoicesByStatusFallback(statusFilter = []) {
   if (!invoiceSheet) return [];
 
   const data = invoiceSheet.getDataRange().getValues();
-  const headers = data[0];
   const invoices = [];
 
-  // Find column indices - require them to exist
-  const invoiceNumColIdx = headers.indexOf('Invoice #');
-  const statusColIdx = headers.indexOf('Status');
-  const jobNumColIdx = headers.indexOf('Job #');
-  const clientNameColIdx = headers.indexOf('Client Name');
-  const totalColIdx = headers.indexOf('Total');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const invoiceNumColIdx = getColIndex('INVOICES', 'Invoice #') - 1;
+  const statusColIdx = getColIndex('INVOICES', 'Status') - 1;
+  const jobNumColIdx = getColIndex('INVOICES', 'Job #') - 1;
+  const clientNameColIdx = getColIndex('INVOICES', 'Client Name') - 1;
+  const totalColIdx = getColIndex('INVOICES', 'Total') - 1;
 
-  if (invoiceNumColIdx === -1) {
-    Logger.log('Warning: Invoice # column not found in Invoices sheet');
+  if (invoiceNumColIdx < 0) {
+    Logger.log('Warning: Invoice # column not found in COLUMN_CONFIG');
     return [];
   }
-  if (statusColIdx === -1) {
-    Logger.log('Warning: Status column not found in Invoices sheet');
+  if (statusColIdx < 0) {
+    Logger.log('Warning: Status column not found in COLUMN_CONFIG');
   }
 
   for (let i = 1; i < data.length; i++) {
@@ -8877,7 +8875,7 @@ function createJobFromSubmission(submissionNumber) {
     debugLog.push('Input submissionNumber: ' + submissionNumber);
     debugLog.push('Input type: ' + typeof submissionNumber);
 
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     const ui = SpreadsheetApp.getUi();
 
     // Find the submission
@@ -8893,11 +8891,11 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Submissions sheet found');
 
   const submissionsData = submissionsSheet.getDataRange().getValues();
-  const headers = submissionsData[0];
-  const submissionNumCol = headers.indexOf('Submission #');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
 
-  debugLog.push('Headers: ' + JSON.stringify(headers));
-  debugLog.push('Submission # column index: ' + submissionNumCol);
+  debugLog.push('Submission # column index (from COLUMN_CONFIG): ' + submissionNumCol);
+  debugLog.push('Total rows: ' + submissionsData.length);
   debugLog.push('Total rows: ' + submissionsData.length);
 
   let submissionRow = null;
@@ -8936,11 +8934,11 @@ function createJobFromSubmission(submissionNumber) {
 
   if (jobsSheet) {
     const jobsData = jobsSheet.getDataRange().getValues();
-    const jobsHeaders = jobsData[0];
-    const jobNumColIdx = jobsHeaders.indexOf('Job #');      // Column 3 (index 2)
-    const subNumColIdx = jobsHeaders.indexOf('Submission #'); // Column 30 (index 29)
+    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+    const jobNumColIdx = getColIndex('JOBS', 'Job #') - 1;
+    const subNumColIdx = getColIndex('JOBS', 'Submission #') - 1;
     debugLog.push('Jobs sheet has ' + jobsData.length + ' rows');
-    debugLog.push('Job # column index: ' + jobNumColIdx + ', Submission # column index: ' + subNumColIdx);
+    debugLog.push('Job # column index (from COLUMN_CONFIG): ' + jobNumColIdx + ', Submission # column index: ' + subNumColIdx);
     for (let i = 1; i < jobsData.length; i++) {
       // Use String comparison to handle type mismatches
       if (String(jobsData[i][subNumColIdx]) === String(submissionNumber)) {
@@ -8984,12 +8982,12 @@ function createJobFromSubmission(submissionNumber) {
     jobNumber = submissionNumber.replace(/^CC-/, 'J-') + '-' + (existingJobCount + 1);
   }
 
-  // Extract submission data (fallback indices match new column order with Phone column)
-  const name = submissionRow[headers.indexOf('Name')] || submissionRow[3];
-  const email = submissionRow[headers.indexOf('Email')] || submissionRow[4];
-  const phone = submissionRow[headers.indexOf('Phone')] || submissionRow[5];
-  const storeUrl = submissionRow[headers.indexOf('Store URL')] || submissionRow[6];
-  const message = submissionRow[headers.indexOf('Message')] || submissionRow[7];
+  // Extract submission data using COLUMN_CONFIG (getColIndex returns 1-based, subtract 1 for array indexing)
+  const name = submissionRow[getColIndex('SUBMISSIONS', 'Name') - 1] || '';
+  const email = submissionRow[getColIndex('SUBMISSIONS', 'Email') - 1] || '';
+  const phone = submissionRow[getColIndex('SUBMISSIONS', 'Phone') - 1] || '';
+  const storeUrl = submissionRow[getColIndex('SUBMISSIONS', 'Store URL') - 1] || '';
+  const message = submissionRow[getColIndex('SUBMISSIONS', 'Message') - 1] || '';
 
   // Create job row using config-based helper (auto-orders columns from COLUMN_CONFIG)
   const now = new Date();
@@ -9023,9 +9021,9 @@ function createJobFromSubmission(submissionNumber) {
   debugLog.push('Job row inserted at top (row 2) - newest jobs first');
 
   // Update the submission status to "Job Created"
-  const statusColumnIndex = headers.indexOf('Status');
+  const statusColumnIndex = getColIndex('SUBMISSIONS', 'Status'); // Already 1-based for sheet.getRange()
   if (statusColumnIndex !== -1) {
-    submissionsSheet.getRange(submissionRowIndex, statusColumnIndex + 1).setValue('Job Created');
+    submissionsSheet.getRange(submissionRowIndex, statusColumnIndex).setValue('Job Created');
     debugLog.push('Updated submission status to "Job Created"');
     Logger.log('Updated submission ' + submissionNumber + ' status to "Job Created"');
   }
@@ -9162,11 +9160,11 @@ function updateJobFields(jobNumber, updates) {
 
   // OPTIMIZATION: Single sheet load instead of N loads
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const jobNumColIndex = headers.indexOf('Job #');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumColIndex = getColIndex('JOBS', 'Job #') - 1;
 
   if (jobNumColIndex < 0) {
-    Logger.log('[PERF] updateJobFields() - Job # column not found');
+    Logger.log('[PERF] updateJobFields() - Job # column not found in COLUMN_CONFIG');
     return false;
   }
 
@@ -9188,19 +9186,19 @@ function updateJobFields(jobNumber, updates) {
   const rowData = data[rowIndex].slice(); // Copy current row data
   let fieldsUpdated = 0;
 
-  // Process each field update request
+  // Process each field update request using COLUMN_CONFIG
   for (const [fieldName, value] of Object.entries(updates)) {
-    const colIndex = headers.indexOf(fieldName);
+    const colIndex = getColIndex('JOBS', fieldName) - 1;
     if (colIndex >= 0) {
       rowData[colIndex] = value;
       fieldsUpdated++;
     } else {
-      Logger.log('[PERF] updateJobFields() - Field not found: ' + fieldName);
+      Logger.log('[PERF] updateJobFields() - Field not found in COLUMN_CONFIG: ' + fieldName);
     }
   }
 
   // Always update "Last Updated" timestamp
-  const lastUpdatedCol = headers.indexOf('Last Updated');
+  const lastUpdatedCol = getColIndex('JOBS', 'Last Updated') - 1;
   if (lastUpdatedCol >= 0) {
     rowData[lastUpdatedCol] = formatNZDate(new Date());
   }
@@ -9232,19 +9230,19 @@ function updateJobField(jobNumber, fieldName, value) {
   if (!sheet) return false;
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const jobNumColIndex = headers.indexOf('Job #');
-  const colIndex = headers.indexOf(fieldName);
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based)
+  const jobNumColIndex = getColIndex('JOBS', 'Job #') - 1; // For array indexing
+  const colIndex = getColIndex('JOBS', fieldName); // Keep 1-based for sheet.getRange()
 
-  if (jobNumColIndex < 0 || colIndex < 0) return false;
+  if (jobNumColIndex < 0 || colIndex < 1) return false;
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][jobNumColIndex]).trim() === String(jobNumber).trim()) {
-      sheet.getRange(i + 1, colIndex + 1).setValue(value);
+      sheet.getRange(i + 1, colIndex).setValue(value);
       // Update Last Updated
-      const lastUpdatedCol = headers.indexOf('Last Updated');
-      if (lastUpdatedCol >= 0) {
-        sheet.getRange(i + 1, lastUpdatedCol + 1).setValue(formatNZDate(new Date()));
+      const lastUpdatedCol = getColIndex('JOBS', 'Last Updated'); // 1-based for sheet.getRange()
+      if (lastUpdatedCol >= 1) {
+        sheet.getRange(i + 1, lastUpdatedCol).setValue(formatNZDate(new Date()));
       }
       return true;
     }
@@ -9370,7 +9368,7 @@ function markQuoteAccepted(jobNumber) {
  */
 function generateAndSendDepositInvoice(jobNumber, job) {
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
 
     if (!invoiceSheet) {
@@ -9770,15 +9768,15 @@ function updateSubmissionStatus(submissionNumber, status) {
   }
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const statusCol = headers.indexOf('Status');
-  const submissionNumCol = headers.indexOf('Submission #');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based)
+  const statusCol = getColIndex('SUBMISSIONS', 'Status'); // 1-based for sheet.getRange()
+  const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1; // 0-based for array indexing
 
-  if (statusCol < 0 || submissionNumCol < 0) return;
+  if (statusCol < 1 || submissionNumCol < 0) return;
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][submissionNumCol]).trim() === String(submissionNumber).trim()) {
-      sheet.getRange(i + 1, statusCol + 1).setValue(status);
+      sheet.getRange(i + 1, statusCol).setValue(status);
       return;
     }
   }
@@ -11136,14 +11134,14 @@ function autoSendQuoteReminders() {
   }
 
   const data = jobsSheet.getDataRange().getValues();
-  const headers = data[0];
 
-  const statusCol = headers.indexOf('Status');
-  const jobNumCol = headers.indexOf('Job #');
-  const quoteSentDateCol = headers.indexOf('Quote Sent Date');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const statusCol = getColIndex('JOBS', 'Status') - 1;
+  const jobNumCol = getColIndex('JOBS', 'Job #') - 1;
+  const quoteSentDateCol = getColIndex('JOBS', 'Quote Sent Date') - 1;
 
-  if (statusCol === -1 || jobNumCol === -1 || quoteSentDateCol === -1) {
-    Logger.log('Required columns not found in Jobs sheet');
+  if (statusCol < 0 || jobNumCol < 0 || quoteSentDateCol < 0) {
+    Logger.log('Required columns not found in COLUMN_CONFIG');
     return;
   }
 
@@ -11263,7 +11261,7 @@ function showGenerateInvoiceDialog() {
  */
 function generateInvoiceForJob(jobNumber) {
   const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+  const ss = getSpreadsheet();
   const job = getJobByNumber(jobNumber);
 
   if (!job) {
@@ -11518,11 +11516,12 @@ function getInvoicesByJobNumber(jobNumber) {
 
   // Load all data at once
   const allData = sheet.getDataRange().getValues();
-  const headers = allData[0];
-  const jobNumColIndex = headers.indexOf('Job #');
+  const headers = allData[0]; // Keep headers for building invoice objects
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumColIndex = getColIndex('INVOICES', 'Job #') - 1;
 
-  if (jobNumColIndex === -1) {
-    Logger.log('[PERF] getInvoicesByJobNumber() - Job # column not found');
+  if (jobNumColIndex < 0) {
+    Logger.log('[PERF] getInvoicesByJobNumber() - Job # column not found in COLUMN_CONFIG');
     return [];
   }
 
@@ -11535,7 +11534,9 @@ function getInvoicesByJobNumber(jobNumber) {
 
     if (String(rowJobNum).trim() === String(jobNumber).trim()) {
       const invoice = {};
-      headers.forEach((header, index) => {
+      // Build invoice object using COLUMN_CONFIG headers for consistency
+      const configHeaders = getColHeaders('INVOICES');
+      configHeaders.forEach((header, index) => {
         invoice[header] = row[index];
       });
       invoice._rowIndex = i + 1; // Store row index (1-based)
@@ -11596,11 +11597,11 @@ function updateInvoiceFields(invoiceNumber, updates) {
 
   // OPTIMIZATION: Single sheet load
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const invoiceNumColIndex = headers.indexOf('Invoice #');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const invoiceNumColIndex = getColIndex('INVOICES', 'Invoice #') - 1;
 
   if (invoiceNumColIndex < 0) {
-    Logger.log('[PERF] updateInvoiceFields() - Invoice # column not found');
+    Logger.log('[PERF] updateInvoiceFields() - Invoice # column not found in COLUMN_CONFIG');
     return false;
   }
 
@@ -11622,14 +11623,14 @@ function updateInvoiceFields(invoiceNumber, updates) {
   const rowData = data[rowIndex].slice(); // Copy current row data
   let fieldsUpdated = 0;
 
-  // Process each field update request
+  // Process each field update request using COLUMN_CONFIG
   for (const [fieldName, value] of Object.entries(updates)) {
-    const colIndex = headers.indexOf(fieldName);
+    const colIndex = getColIndex('INVOICES', fieldName) - 1;
     if (colIndex >= 0) {
       rowData[colIndex] = value;
       fieldsUpdated++;
     } else {
-      Logger.log('[PERF] updateInvoiceFields() - Field not found: ' + fieldName);
+      Logger.log('[PERF] updateInvoiceFields() - Field not found in COLUMN_CONFIG: ' + fieldName);
     }
   }
 
@@ -11659,15 +11660,15 @@ function updateInvoiceField(invoiceNumber, fieldName, value) {
   if (!sheet) return false;
 
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const invoiceNumColIndex = headers.indexOf('Invoice #');
-  const colIndex = headers.indexOf(fieldName);
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based)
+  const invoiceNumColIndex = getColIndex('INVOICES', 'Invoice #') - 1; // 0-based for array indexing
+  const colIndex = getColIndex('INVOICES', fieldName); // 1-based for sheet.getRange()
 
-  if (invoiceNumColIndex < 0 || colIndex < 0) return false;
+  if (invoiceNumColIndex < 0 || colIndex < 1) return false;
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][invoiceNumColIndex]).trim() === String(invoiceNumber).trim()) {
-      sheet.getRange(i + 1, colIndex + 1).setValue(value);
+      sheet.getRange(i + 1, colIndex).setValue(value);
       return true;
     }
   }
@@ -12143,15 +12144,14 @@ function getAllInvoices() {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  const headers = data[0];
   const invoices = [];
 
-  // Find column indices dynamically from headers
-  const invoiceNumCol = headers.indexOf('Invoice #');
-  const jobNumColIndex = headers.indexOf('Job #');
-  const clientNameColIndex = headers.indexOf('Client Name');
-  const totalColIndex = headers.indexOf('Total');
-  const statusColIndex = headers.indexOf('Status');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const invoiceNumCol = getColIndex('INVOICES', 'Invoice #') - 1;
+  const jobNumColIndex = getColIndex('INVOICES', 'Job #') - 1;
+  const clientNameColIndex = getColIndex('INVOICES', 'Client Name') - 1;
+  const totalColIndex = getColIndex('INVOICES', 'Total') - 1;
+  const statusColIndex = getColIndex('INVOICES', 'Status') - 1;
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -12523,15 +12523,15 @@ function autoSendInvoiceReminders() {
   }
 
   const data = invoiceSheet.getDataRange().getValues();
-  const headers = data[0];
 
-  const statusCol = headers.indexOf('Status');
-  const invoiceNumCol = headers.indexOf('Invoice #');
-  const dueDateCol = headers.indexOf('Due Date');
-  const invoiceDateCol = headers.indexOf('Invoice Date');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const statusCol = getColIndex('INVOICES', 'Status') - 1;
+  const invoiceNumCol = getColIndex('INVOICES', 'Invoice #') - 1;
+  const dueDateCol = getColIndex('INVOICES', 'Due Date') - 1;
+  const invoiceDateCol = getColIndex('INVOICES', 'Invoice Date') - 1;
 
-  if (statusCol === -1 || invoiceNumCol === -1 || dueDateCol === -1) {
-    Logger.log('Required columns not found in Invoice sheet');
+  if (statusCol < 0 || invoiceNumCol < 0 || dueDateCol < 0) {
+    Logger.log('Required columns not found in COLUMN_CONFIG');
     return;
   }
 
@@ -12732,14 +12732,14 @@ function autoSendOverdueInvoices() {
   }
 
   const data = invoiceSheet.getDataRange().getValues();
-  const headers = data[0];
 
-  const statusCol = headers.indexOf('Status');
-  const invoiceNumCol = headers.indexOf('Invoice #');
-  const dueDateCol = headers.indexOf('Due Date');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const statusCol = getColIndex('INVOICES', 'Status') - 1;
+  const invoiceNumCol = getColIndex('INVOICES', 'Invoice #') - 1;
+  const dueDateCol = getColIndex('INVOICES', 'Due Date') - 1;
 
-  if (statusCol === -1 || invoiceNumCol === -1 || dueDateCol === -1) {
-    Logger.log('Required columns not found in Invoice sheet');
+  if (statusCol < 0 || invoiceNumCol < 0 || dueDateCol < 0) {
+    Logger.log('Required columns not found in COLUMN_CONFIG');
     return;
   }
 
@@ -12908,11 +12908,11 @@ function ensureAutoTriggersExist() {
 
   let created = 0;
 
-  // Create auto-refresh trigger (every 1 minute)
+  // Create auto-refresh trigger (every 5 minutes for better quota usage)
   if (!hasAutoRefresh) {
     ScriptApp.newTrigger('autoRefreshDashboard')
       .timeBased()
-      .everyMinutes(1)
+      .everyMinutes(5)
       .create();
     created++;
     Logger.log('Created autoRefreshDashboard trigger');
@@ -13859,11 +13859,10 @@ function showOverdueJobs() {
   }
 
   const data = jobsSheet.getDataRange().getValues();
-  const headers = data[0];
-  // PERFORMANCE: Cache all column indices before loop
-  const jobNumCol = headers.indexOf('Job #');
-  const slaCol = headers.indexOf('SLA Status');
-  const clientNameCol = headers.indexOf('Client Name');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumCol = getColIndex('JOBS', 'Job #') - 1;
+  const slaCol = getColIndex('JOBS', 'SLA Status') - 1;
+  const clientNameCol = getColIndex('JOBS', 'Client Name') - 1;
 
   const overdueJobs = [];
   for (let i = 1; i < data.length; i++) {
@@ -13896,12 +13895,11 @@ function showOutstandingPayments() {
   }
 
   const data = jobsSheet.getDataRange().getValues();
-  const headers = data[0];
-  // PERFORMANCE: Cache all column indices before loop
-  const jobNumCol = headers.indexOf('Job #');
-  const paymentStatusCol = headers.indexOf('Payment Status');
-  const totalCol = headers.indexOf('Total (incl GST)');
-  const clientNameCol = headers.indexOf('Client Name');
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  const jobNumCol = getColIndex('JOBS', 'Job #') - 1;
+  const paymentStatusCol = getColIndex('JOBS', 'Payment Status') - 1;
+  const totalCol = getColIndex('JOBS', 'Total (incl GST)') - 1;
+  const clientNameCol = getColIndex('JOBS', 'Client Name') - 1;
 
   let totalOutstanding = 0;
   const unpaidJobs = [];
@@ -13941,15 +13939,14 @@ function showMonthlySummary() {
   }
 
   const data = jobsSheet.getDataRange().getValues();
-  const headers = data[0];
 
-  // PERFORMANCE: Cache column indices before loop
+  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
   const cols = {
-    completionDate: headers.indexOf('Actual Completion Date'),
-    paymentDate: headers.indexOf('Payment Date'),
-    createdDate: headers.indexOf('Created Date'),
-    totalInclGst: headers.indexOf('Total (incl GST)'),
-    paymentStatus: headers.indexOf('Payment Status')
+    completionDate: getColIndex('JOBS', 'Actual Completion Date') - 1,
+    paymentDate: getColIndex('JOBS', 'Payment Date') - 1,
+    createdDate: getColIndex('JOBS', 'Created Date') - 1,
+    totalInclGst: getColIndex('JOBS', 'Total (incl GST)') - 1,
+    paymentStatus: getColIndex('JOBS', 'Payment Status') - 1
   };
 
   const now = new Date();
@@ -14084,7 +14081,7 @@ function createTestTestimonials() {
   }
 
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
     // Create sheet if it doesn't exist
@@ -14259,7 +14256,7 @@ function createTestSubmissions() {
   }
 
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
 
     // Create sheet if it doesn't exist
@@ -14390,7 +14387,7 @@ function createTestJobForTestimonials() {
   }
 
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
+    const ss = getSpreadsheet();
     const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
 
     if (!jobsSheet) {
