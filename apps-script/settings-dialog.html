@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 100%;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .header-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #00d4aa, #00b894);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .header-text p {
+      font-size: 12px;
+      color: #a1a1aa;
+      margin-top: 2px;
+    }
+
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #00d4aa;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .setting-row:first-of-type {
+      padding-top: 0;
+    }
+
+    .setting-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setting-label span {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .setting-description {
+      font-size: 11px;
+      color: #71717a;
+      line-height: 1.4;
+    }
+
+    .setting-input {
+      margin-top: 6px;
+    }
+
+    .setting-input input[type="text"],
+    .setting-input input[type="number"],
+    .setting-input input[type="email"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .setting-input input:focus {
+      outline: none;
+      border-color: #00d4aa;
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.15);
+    }
+
+    .setting-input input::placeholder {
+      color: #52525b;
+    }
+
+    /* Toggle switch */
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.1);
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #71717a;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #00d4aa, #00b894);
+    }
+
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+      background: #fff;
+    }
+
+    .toggle-label {
+      font-size: 12px;
+      color: #a1a1aa;
+    }
+
+    /* Buttons */
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4aa, #00b894);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,212,170,0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #e4e4e7;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* Loading state */
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s ease infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #00d4aa;
+      color: #1a1a2e;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.error {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Invoice counter special styling */
+    .invoice-counter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .invoice-counter input {
+      width: 100px !important;
+      text-align: center;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .counter-hint {
+      font-size: 10px;
+      color: #52525b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-icon">&#9881;</div>
+      <div class="header-text">
+        <h1>Settings</h1>
+        <p>Configure your CartCure preferences</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Business Information</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Business Name</span>
+        </div>
+        <div class="setting-description">Your business name shown on quotes and invoices</div>
+        <div class="setting-input">
+          <input type="text" id="businessName" placeholder="CartCure">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Admin Email</span>
+        </div>
+        <div class="setting-description">Email address for notifications and alerts</div>
+        <div class="setting-input">
+          <input type="email" id="adminEmail" placeholder="admin@example.com">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">GST Settings</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>GST Registered</span>
+        </div>
+        <div class="setting-description">Toggle on if your business is GST registered</div>
+        <div class="toggle-wrapper">
+          <label class="toggle">
+            <input type="checkbox" id="gstRegistered">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="gstLabel">No</span>
+        </div>
+      </div>
+
+      <div class="setting-row" id="gstNumberRow" style="display: none;">
+        <div class="setting-label">
+          <span>GST Number</span>
+        </div>
+        <div class="setting-description">Your IRD GST registration number</div>
+        <div class="setting-input">
+          <input type="text" id="gstNumber" placeholder="123-456-789">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Banking Details</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Bank Name</span>
+        </div>
+        <div class="setting-description">Your bank name for payment instructions</div>
+        <div class="setting-input">
+          <input type="text" id="bankName" placeholder="ANZ, ASB, Westpac...">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Bank Account</span>
+        </div>
+        <div class="setting-description">Account number for customer payments</div>
+        <div class="setting-input">
+          <input type="text" id="bankAccount" placeholder="XX-XXXX-XXXXXXX-XX">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Default Timeframes</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Quote Validity (days)</span>
+        </div>
+        <div class="setting-description">How long quotes remain valid</div>
+        <div class="setting-input">
+          <input type="number" id="quoteValidity" placeholder="14" min="1" max="90">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Payment Terms (days)</span>
+        </div>
+        <div class="setting-description">Days allowed to pay after invoice</div>
+        <div class="setting-input">
+          <input type="number" id="paymentTerms" placeholder="7" min="1" max="90">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>SLA Days</span>
+        </div>
+        <div class="setting-description">Your turnaround promise in days</div>
+        <div class="setting-input">
+          <input type="number" id="slaDays" placeholder="7" min="1" max="30">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Archive Settings</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Archive Jobs After (days)</span>
+        </div>
+        <div class="setting-description">Days after completion to archive jobs (0 = never)</div>
+        <div class="setting-input">
+          <input type="number" id="archiveJobsDays" placeholder="90" min="0">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Archive Activity After (days)</span>
+        </div>
+        <div class="setting-description">Days to keep activity logs before archiving</div>
+        <div class="setting-input">
+          <input type="number" id="archiveActivityDays" placeholder="365" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Behavior</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Confirm Selection Dialog</span>
+        </div>
+        <div class="setting-description">Show confirmation when job/invoice is auto-detected</div>
+        <div class="toggle-wrapper">
+          <label class="toggle">
+            <input type="checkbox" id="confirmSelection">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="confirmLabel">No</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Header Row Protection</span>
+        </div>
+        <div class="setting-description">Warn when editing header rows</div>
+        <div class="toggle-wrapper">
+          <label class="toggle">
+            <input type="checkbox" id="headerProtection">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="headerLabel">No</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">System</div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>Next Invoice Number</span>
+        </div>
+        <div class="setting-description">Auto-incremented invoice counter</div>
+        <div class="setting-input">
+          <div class="invoice-counter">
+            <input type="number" id="nextInvoiceNumber" placeholder="1" min="1">
+            <span class="counter-hint">Next invoice will be INV-XXXXX</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-row">
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveSettings()">Save Changes</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Load settings on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      google.script.run
+        .withSuccessHandler(populateSettings)
+        .withFailureHandler(handleError)
+        .getSettingsForDialog();
+    });
+
+    // GST toggle handling
+    document.getElementById('gstRegistered').addEventListener('change', function() {
+      const gstRow = document.getElementById('gstNumberRow');
+      const gstLabel = document.getElementById('gstLabel');
+      if (this.checked) {
+        gstRow.style.display = 'block';
+        gstLabel.textContent = 'Yes';
+      } else {
+        gstRow.style.display = 'none';
+        gstLabel.textContent = 'No';
+      }
+    });
+
+    // Other toggle handlers
+    document.getElementById('confirmSelection').addEventListener('change', function() {
+      document.getElementById('confirmLabel').textContent = this.checked ? 'Yes' : 'No';
+    });
+
+    document.getElementById('headerProtection').addEventListener('change', function() {
+      document.getElementById('headerLabel').textContent = this.checked ? 'Yes' : 'No';
+    });
+
+    function populateSettings(settings) {
+      document.getElementById('businessName').value = settings['Business Name'] || '';
+      document.getElementById('adminEmail').value = settings['Admin Email'] || '';
+
+      const isGstRegistered = settings['GST Registered'] === 'Yes';
+      document.getElementById('gstRegistered').checked = isGstRegistered;
+      document.getElementById('gstLabel').textContent = isGstRegistered ? 'Yes' : 'No';
+      document.getElementById('gstNumberRow').style.display = isGstRegistered ? 'block' : 'none';
+      document.getElementById('gstNumber').value = settings['GST Number'] || '';
+
+      document.getElementById('bankName').value = settings['Bank Name'] || '';
+      document.getElementById('bankAccount').value = settings['Bank Account'] || '';
+
+      document.getElementById('quoteValidity').value = settings['Default Quote Validity'] || '14';
+      document.getElementById('paymentTerms').value = settings['Default Payment Terms'] || '7';
+      document.getElementById('slaDays').value = settings['Default SLA Days'] || '7';
+
+      document.getElementById('archiveJobsDays').value = settings['Archive Jobs After Days'] || '90';
+      document.getElementById('archiveActivityDays').value = settings['Archive Activity After Days'] || '365';
+
+      const confirmSel = settings['Confirm Selection Dialog'] === 'Yes';
+      document.getElementById('confirmSelection').checked = confirmSel;
+      document.getElementById('confirmLabel').textContent = confirmSel ? 'Yes' : 'No';
+
+      const headerProt = settings['Header Row Protection'] === 'Yes';
+      document.getElementById('headerProtection').checked = headerProt;
+      document.getElementById('headerLabel').textContent = headerProt ? 'Yes' : 'No';
+
+      document.getElementById('nextInvoiceNumber').value = settings['Next Invoice Number'] || '1';
+    }
+
+    function saveSettings() {
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Saving...';
+
+      const settings = {
+        'Business Name': document.getElementById('businessName').value,
+        'Admin Email': document.getElementById('adminEmail').value,
+        'GST Registered': document.getElementById('gstRegistered').checked ? 'Yes' : 'No',
+        'GST Number': document.getElementById('gstNumber').value,
+        'Bank Name': document.getElementById('bankName').value,
+        'Bank Account': document.getElementById('bankAccount').value,
+        'Default Quote Validity': document.getElementById('quoteValidity').value || '14',
+        'Default Payment Terms': document.getElementById('paymentTerms').value || '7',
+        'Default SLA Days': document.getElementById('slaDays').value || '7',
+        'Archive Jobs After Days': document.getElementById('archiveJobsDays').value || '90',
+        'Archive Activity After Days': document.getElementById('archiveActivityDays').value || '365',
+        'Confirm Selection Dialog': document.getElementById('confirmSelection').checked ? 'Yes' : 'No',
+        'Header Row Protection': document.getElementById('headerProtection').checked ? 'Yes' : 'No',
+        'Next Invoice Number': document.getElementById('nextInvoiceNumber').value || '1'
+      };
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showToast('Settings saved successfully!');
+          btn.disabled = false;
+          btn.innerHTML = 'Save Changes';
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1000);
+        })
+        .withFailureHandler(function(error) {
+          showToast('Error: ' + error, true);
+          btn.disabled = false;
+          btn.innerHTML = 'Save Changes';
+        })
+        .saveSettingsFromDialog(settings);
+    }
+
+    function showToast(message, isError) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast' + (isError ? ' error' : '');
+      toast.classList.add('show');
+      setTimeout(function() {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    function handleError(error) {
+      showToast('Error loading settings: ' + error, true);
+    }
+  </script>
+</body>
+</html>

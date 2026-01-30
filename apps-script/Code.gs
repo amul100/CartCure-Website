@@ -2783,6 +2783,57 @@ function clearCache() {
   _cache.settingsLoaded = false;
 }
 
+// ============================================================================
+// SETTINGS DIALOG
+// ============================================================================
+
+/**
+ * Show the dark mode settings dialog
+ */
+function showSettingsDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('settings-dialog')
+    .setWidth(480)
+    .setHeight(720);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Settings');
+}
+
+/**
+ * Get all settings for the settings dialog
+ * Called from the dialog HTML via google.script.run
+ * @returns {Object} Object with setting names as keys
+ */
+function getSettingsForDialog() {
+  clearCache(); // Ensure fresh data
+  return getAllSettings();
+}
+
+/**
+ * Save settings from the settings dialog
+ * Called from the dialog HTML via google.script.run
+ * @param {Object} settings - Object with setting names as keys and values
+ */
+function saveSettingsFromDialog(settings) {
+  const sheet = getSheet(SHEETS.SETTINGS);
+  if (!sheet) {
+    throw new Error('Settings sheet not found');
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  // Update each setting in the sheet
+  for (let i = 1; i < data.length; i++) {
+    const settingName = data[i][0];
+    if (settings.hasOwnProperty(settingName)) {
+      sheet.getRange(i + 1, 2).setValue(settings[settingName]);
+    }
+  }
+
+  // Clear cache so next read gets fresh values
+  clearCache();
+
+  Logger.log('Settings saved from dialog');
+}
+
 // Job Status Constants
 const JOB_STATUS = {
   PENDING_QUOTE: 'Pending Quote',
@@ -3850,6 +3901,8 @@ function buildMenu() {
       .addItem('👁️ View Overdue Invoices', 'showOverdueInvoicesWithFees'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
+      .addItem('⚙️ Settings', 'showSettingsDialog')
+      .addSeparator()
       .addItem('🔧 Setup/Repair Sheets', 'showSetupDialog')
       .addItem('📐 Reset Column Widths', 'resetColumnWidths')
       .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog')
