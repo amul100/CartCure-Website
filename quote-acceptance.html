@@ -499,9 +499,9 @@
                     document.getElementById('fullName').value = clientName;
                 }
 
-                // Set today's date
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('acceptanceDate').value = today;
+                // Set today's date in NZ timezone
+                const nzDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
+                document.getElementById('acceptanceDate').value = nzDate;
 
                 // Hide loading, show form
                 loadingInfo.style.display = 'none';
