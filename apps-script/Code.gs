@@ -4654,24 +4654,6 @@ function showOnHoldDialogWithJob(jobNumber) {
 }
 
 /**
- * Show cancel job confirmation for a specific job
- * @param {string} jobNumber - The job number
- */
-function showCancelJobConfirmation(jobNumber) {
-  const ui = SpreadsheetApp.getUi();
-  const response = ui.alert(
-    'Cancel Job?',
-    'Are you sure you want to cancel ' + jobNumber + '?\n\nThis action cannot be undone.',
-    ui.ButtonSet.YES_NO
-  );
-
-  if (response === ui.Button.YES) {
-    cancelJob(jobNumber);
-    ui.alert('Job Cancelled', jobNumber + ' has been cancelled.', ui.ButtonSet.OK);
-  }
-}
-
-/**
  * Show payment method dialog for a specific invoice
  * @param {string} invoiceNumber - The invoice number
  */
@@ -4699,7 +4681,7 @@ function showPaymentMethodDialogForInvoice(invoiceNumber) {
   const paymentRef = refResponse.getResponseText() || '';
 
   // Mark the invoice as paid
-  markInvoiceAsPaid(invoiceNumber, paymentMethod, paymentRef);
+  markInvoicePaid(invoiceNumber, paymentMethod, paymentRef);
   ui.alert('Invoice Paid', invoiceNumber + ' has been marked as paid.', ui.ButtonSet.OK);
 }
 
@@ -8526,19 +8508,6 @@ function formatNZDateTime(date) {
   };
 
   return date.toLocaleString('en-NZ', options);
-}
-
-/**
- * Escape HTML special characters to prevent XSS
- */
-function escapeHtml(text) {
-  if (!text) return '';
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 /**
