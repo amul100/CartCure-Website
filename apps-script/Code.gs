@@ -869,7 +869,7 @@ function handleQuoteAcceptance(data) {
       'Due Date': formatNZDate(dueDate)
     });
 
-    // Queue background tasks (signature save, emails, invoice) for async processing
+    // Queue background tasks (signature save, emails, invoice, client update) for async processing
     const taskData = {
       type: 'quoteAcceptance',
       jobNumber: jobNumber,
@@ -879,6 +879,8 @@ function handleQuoteAcceptance(data) {
       comments: comments,
       clientName: job['Client Name'],
       clientEmail: job['Client Email'],
+      clientPhone: job['Client Phone'] || '',
+      storeUrl: job['Store URL'] || '',
       total: parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0,
       dueDate: formatNZDate(dueDate),
       turnaround: turnaround,
@@ -1087,7 +1089,7 @@ function processQuoteAcceptanceTask(task) {
   const turnaround = task.turnaround;
 
   // Track which subtasks need to run (on retry, only run failed ones)
-  const pendingSubtasks = task.pendingSubtasks || ['signature', 'activityLog', 'depositInvoice', 'adminEmail', 'clientEmail'];
+  const pendingSubtasks = task.pendingSubtasks || ['signature', 'activityLog', 'clientUpdate', 'depositInvoice', 'adminEmail', 'clientEmail'];
   const failures = [];
 
   Logger.log('Processing quote acceptance task for ' + jobNumber + ' (subtasks: ' + pendingSubtasks.join(', ') + ')');
@@ -1127,6 +1129,26 @@ function processQuoteAcceptanceTask(task) {
     } catch (logError) {
       Logger.log('Error logging activity: ' + logError.message);
       // Don't add to failures - activity log is non-critical
+    }
+  }
+
+  // 2b. Add or update client in Clients sheet (non-critical, don't retry)
+  if (pendingSubtasks.includes('clientUpdate')) {
+    try {
+      const clientResult = addOrUpdateClient({
+        email: clientEmail,
+        name: clientName,
+        phone: task.clientPhone || '',
+        storeUrl: task.storeUrl || '',
+        jobNumber: jobNumber,
+        jobTotal: total
+      });
+      if (clientResult.success) {
+        Logger.log('Client ' + (clientResult.isNew ? 'added' : 'updated') + ': ' + clientEmail);
+      }
+    } catch (clientError) {
+      Logger.log('Error updating client: ' + clientError.message);
+      // Don't add to failures - client tracking is non-critical
     }
   }
 
@@ -2684,11 +2706,19 @@ const SHEETS = {
   SUBMISSIONS: 'Submissions',
   JOBS: 'Jobs',
   INVOICES: 'Invoice Log',
+  CLIENTS: 'Clients',
   SETTINGS: 'Settings',
   DASHBOARD: 'Dashboard',
   ANALYTICS: 'Analytics',
   TESTIMONIALS: 'Testimonials',
   ACTIVITY_LOG: 'Activity Log'
+};
+
+// Client Status Constants
+const CLIENT_STATUS = {
+  ACTIVE: 'Active',
+  INACTIVE: 'Inactive',
+  VIP: 'VIP'
 };
 
 // ============================================================================
@@ -3202,6 +3232,38 @@ const COLUMN_CONFIG = {
       validation: { type: 'list', values: ['Full', 'Deposit', 'Balance', 'Additional'], allowInvalid: false }
     },
     { name: 'Notes', width: 150 }
+  ],
+
+  // -------------------------------------------------------------------------
+  // CLIENTS SHEET (14 columns)
+  // -------------------------------------------------------------------------
+  CLIENTS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
+    { name: 'Client Email', width: 200 },  // PRIMARY KEY - unique identifier
+    { name: 'Client Name', width: 150 },
+    { name: 'Client Phone', width: 120 },
+    { name: 'Store URL', width: 180 },
+    { name: 'Total Jobs', width: 80, format: { numberFormat: '0' } },
+    { name: 'Completed Jobs', width: 100, format: { numberFormat: '0' } },
+    { name: 'Total Revenue', width: 120, format: { numberFormat: '$#,##0.00' } },
+    { name: 'First Job Date', width: 100 },
+    { name: 'Last Job Date', width: 100 },
+    {
+      name: 'Client Status',
+      width: 100,
+      validation: { type: 'list', values: Object.values(CLIENT_STATUS), allowInvalid: false },
+      format: {
+        conditionalRules: [
+          { when: 'equals', value: CLIENT_STATUS.ACTIVE, background: SHEET_COLORS.statusCompleted, fontColor: SHEET_COLORS.statusCompletedText },
+          { when: 'equals', value: CLIENT_STATUS.INACTIVE, background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText },
+          { when: 'equals', value: CLIENT_STATUS.VIP, background: SHEET_COLORS.brandGreen, fontColor: '#ffffff' }
+        ]
+      },
+      defaultValue: CLIENT_STATUS.ACTIVE
+    },
+    { name: 'Notes', width: 250, format: { wrapText: true } },
+    { name: 'Created Date', width: 100 },
+    { name: 'Last Updated', width: 110 }
   ],
 
   // -------------------------------------------------------------------------
@@ -3994,6 +4056,11 @@ function buildMenu() {
       .addItem('⚠️ Send Overdue Invoice', 'showSendOverdueInvoiceDialog')
       .addItem('💸 Update Late Fees', 'updateAllLateFees')
       .addItem('👁️ View Overdue Invoices', 'showOverdueInvoicesWithFees'))
+    .addSubMenu(ui.createMenu('👥 Clients')
+      .addItem('📋 View Client History', 'viewClientHistory')
+      .addItem('📊 View All Clients', 'navigateToClientsSheet')
+      .addSeparator()
+      .addItem('🔄 Recalculate All Stats', 'recalculateAllClientStats'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('⚙️ Settings', 'showSettingsDialog')
@@ -4211,9 +4278,33 @@ function getValidInvoiceActions(status) {
 }
 
 /**
+ * Get valid actions for a client based on current status
+ * @param {string} status - Current client status
+ * @returns {Array} Array of action objects
+ */
+function getValidClientActions(status) {
+  // All clients have the same actions regardless of status
+  const actions = [
+    { id: 'viewClientHistory', label: 'View History', icon: '📋' },
+    { id: 'setStatusActive', label: 'Set Active', icon: '✅' },
+    { id: 'setStatusInactive', label: 'Set Inactive', icon: '⏸️' },
+    { id: 'setStatusVIP', label: 'Set VIP', icon: '⭐' },
+    { id: 'recalculateStats', label: 'Recalculate Stats', icon: '🔄' }
+  ];
+
+  // Filter out the current status option
+  return actions.filter(action => {
+    if (status === CLIENT_STATUS.ACTIVE && action.id === 'setStatusActive') return false;
+    if (status === CLIENT_STATUS.INACTIVE && action.id === 'setStatusInactive') return false;
+    if (status === CLIENT_STATUS.VIP && action.id === 'setStatusVIP') return false;
+    return true;
+  });
+}
+
+/**
  * Show the actions dialog for a specific row
  * @param {Sheet} sheet - The active sheet
- * @param {string} sheetName - Name of the sheet (JOBS, SUBMISSIONS, INVOICES)
+ * @param {string} sheetName - Name of the sheet (JOBS, SUBMISSIONS, INVOICES, CLIENTS)
  * @param {number} row - The row number
  */
 function showActionsDialogForRow(sheet, sheetName, row) {
@@ -4275,6 +4366,24 @@ function showActionsDialogForRow(sheet, sheetName, row) {
     entityType = 'invoice';
     entityLabel = entityId + (clientName ? ' - ' + clientName : '');
     actions = getValidInvoiceActions(status);
+
+  } else if (sheetName === SHEETS.CLIENTS) {
+    const emailCol = getColIndex('CLIENTS', 'Client Email');
+    const nameCol = getColIndex('CLIENTS', 'Client Name');
+    const statusCol = getColIndex('CLIENTS', 'Client Status');
+
+    entityId = sheet.getRange(row, emailCol).getValue();
+    const clientName = sheet.getRange(row, nameCol).getValue();
+    status = sheet.getRange(row, statusCol).getValue();
+
+    if (!entityId) {
+      ui.alert('No Client', 'This row does not contain a client.', ui.ButtonSet.OK);
+      return;
+    }
+
+    entityType = 'client';
+    entityLabel = clientName ? clientName + ' (' + entityId + ')' : entityId;
+    actions = getValidClientActions(status);
   }
 
   // If no actions available, show message
@@ -4473,6 +4582,8 @@ function executeActionFromDialog(entityType, entityId, actionId) {
       return executeSubmissionAction(entityId, actionId);
     } else if (entityType === 'invoice') {
       return executeInvoiceAction(entityId, actionId);
+    } else if (entityType === 'client') {
+      return executeClientAction(entityId, actionId);
     }
     return { error: 'Unknown entity type' };
   } catch (error) {
@@ -4610,6 +4721,63 @@ function executeInvoiceAction(invoiceNumber, actionId) {
     default:
       return { error: 'Unknown action: ' + actionId };
   }
+}
+
+/**
+ * Execute a client action
+ * @param {string} clientEmail - The client's email address
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeClientAction(clientEmail, actionId) {
+  switch (actionId) {
+    case 'viewClientHistory':
+      displayClientHistoryDialog(clientEmail);
+      return { keepOpen: true };
+
+    case 'setStatusActive':
+      updateClientStatus(clientEmail, CLIENT_STATUS.ACTIVE);
+      return { success: true };
+
+    case 'setStatusInactive':
+      updateClientStatus(clientEmail, CLIENT_STATUS.INACTIVE);
+      return { success: true };
+
+    case 'setStatusVIP':
+      updateClientStatus(clientEmail, CLIENT_STATUS.VIP);
+      return { success: true };
+
+    case 'recalculateStats':
+      updateClientStatistics(clientEmail);
+      return { success: true };
+
+    default:
+      return { error: 'Unknown action: ' + actionId };
+  }
+}
+
+/**
+ * Update a client's status
+ * @param {string} clientEmail - The client's email address
+ * @param {string} newStatus - The new status (Active, Inactive, VIP)
+ */
+function updateClientStatus(clientEmail, newStatus) {
+  const client = findClientByEmail(clientEmail);
+  if (!client) {
+    Logger.log('updateClientStatus: Client not found: ' + clientEmail);
+    return;
+  }
+
+  const sheet = getSheet(SHEETS.CLIENTS);
+  const statusCol = getColIndex('CLIENTS', 'Client Status');
+  const lastUpdatedCol = getColIndex('CLIENTS', 'Last Updated');
+  const now = new Date();
+  const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  sheet.getRange(client._rowIndex, statusCol).setValue(newStatus);
+  sheet.getRange(client._rowIndex, lastUpdatedCol).setValue(timestampStr);
+
+  Logger.log('Client status updated: ' + clientEmail + ' -> ' + newStatus);
 }
 
 /**
@@ -5275,6 +5443,11 @@ function setupSheets(clearData) {
     logDebug('  3b COMPLETE: Invoice Log sheet done');
     logAllSheets('AFTER setupInvoiceLogSheet()');
 
+    logDebug('  3b2: Creating Clients sheet...');
+    setupClientsSheet(ss, clearData);
+    logDebug('  3b2 COMPLETE: Clients sheet done');
+    logAllSheets('AFTER setupClientsSheet()');
+
     logDebug('  3c: Creating Settings sheet...');
     setupSettingsSheet(ss, clearData);
     logDebug('  3c COMPLETE: Settings sheet done');
@@ -5353,6 +5526,7 @@ function setupSheets(clearData) {
       SHEETS.SUBMISSIONS,
       SHEETS.JOBS,
       SHEETS.INVOICES,
+      SHEETS.CLIENTS,
       SHEETS.TESTIMONIALS,
       SHEETS.ANALYTICS,
       SHEETS.ACTIVITY_LOG,
@@ -5994,6 +6168,90 @@ function setupInvoiceLogSheet(ss, clearData) {
   }
 
   Logger.log('Invoice Log sheet ' + (isNew ? 'created' : 'updated'));
+}
+
+/**
+ * Sets up the Clients sheet with proper formatting and structure.
+ * Clients are tracked by email (primary key) and populated from existing jobs on first setup.
+ * @param {Spreadsheet} ss - The spreadsheet object
+ * @param {boolean} clearData - Whether to clear existing data
+ */
+function setupClientsSheet(ss, clearData) {
+  let sheet = ss.getSheetByName(SHEETS.CLIENTS);
+  const isNew = !sheet;
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.CLIENTS);
+  }
+
+  // Get headers from config (single source of truth)
+  const headers = getColHeaders('CLIENTS');
+
+  // Migrate existing data if column order has changed
+  if (!isNew && sheet.getLastColumn() > 0) {
+    const migration = migrateSheetColumns(sheet, 'CLIENTS');
+    if (migration.migrated) {
+      Logger.log('Clients migration: ' + migration.message);
+    }
+  }
+
+  // Set headers (row 1 only)
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  // Apply paper-like background
+  applyPaperBackground(sheet);
+
+  // Format header with brand styling
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
+
+  // Apply alternating row colors
+  const lastRow = Math.max(sheet.getLastRow(), 50);
+  applyAlternatingRows(sheet, 2, lastRow - 1, headers.length);
+
+  // Set default text styling for data area
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  dataRange.setFontFamily('Arial');
+  dataRange.setFontSize(10);
+  dataRange.setFontColor(SHEET_COLORS.inkBlack);
+  dataRange.setVerticalAlignment('middle');
+
+  sheet.setFrozenRows(1);
+
+  // Set column widths from config
+  applyConfigColumnWidths(sheet, 'CLIENTS');
+
+  // Apply data validation from config (Client Status dropdown)
+  const numRows = getDynamicRowCount(sheet);
+  applyConfigValidation(sheet, 'CLIENTS', 2, numRows);
+
+  // Apply conditional formatting from config (Status colors)
+  applyConfigConditionalFormatting(sheet, 'CLIENTS', 2, numRows);
+
+  // Apply number formats from config
+  applyConfigNumberFormats(sheet, 'CLIENTS', 2, numRows);
+
+  // Apply text wrapping for Notes column
+  applyConfigWrapText(sheet, 'CLIENTS', 2, numRows);
+
+  // Enable filtering for all columns
+  try {
+    const filterRange = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 2), headers.length);
+    if (!sheet.getFilter()) {
+      filterRange.createFilter();
+    }
+  } catch (e) {
+    Logger.log('Filter already exists or could not be created: ' + e.message);
+  }
+
+  // If this is a new sheet, populate from existing jobs
+  if (isNew && !clearData) {
+    populateClientsFromExistingJobs();
+  }
+
+  Logger.log('Clients sheet ' + (isNew ? 'created' : 'updated'));
 }
 
 /**
@@ -11025,6 +11283,15 @@ function markJobComplete(jobNumber) {
     'Days Remaining': ''
   });
 
+  // Update client statistics (increment completed jobs count)
+  if (job['Client Email']) {
+    try {
+      updateClientStatistics(job['Client Email']);
+    } catch (e) {
+      Logger.log('Error updating client statistics: ' + e.message);
+    }
+  }
+
   // Send email notification
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.COMPLETED);
 
@@ -11320,6 +11587,15 @@ function showCancelJobConfirmation(jobNumber) {
 
   updateJobFields(jobNumber, updates);
 
+  // Update client statistics (recalculate after job cancellation)
+  if (job['Client Email']) {
+    try {
+      updateClientStatistics(job['Client Email']);
+    } catch (e) {
+      Logger.log('Error updating client statistics: ' + e.message);
+    }
+  }
+
   // Log to Activity Log
   logJobActivity(jobNumber, 'Cancelled', 'Job cancelled', reason || 'No reason provided', '', 'Auto');
 
@@ -11341,6 +11617,843 @@ function showCancelJobConfirmation(jobNumber) {
 
   // Refresh dashboard to show updated data
   refreshDashboard();
+}
+
+// ============================================================================
+// CLIENT MANAGEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Find a client by email address (primary key)
+ * Uses TextFinder API for efficient server-side search (same pattern as getJobByNumber)
+ * @param {string} email - The client's email address
+ * @returns {Object|null} Client object with all fields and _rowIndex, or null if not found
+ */
+function findClientByEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return null;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const sheet = getSheet(SHEETS.CLIENTS);
+
+  if (!sheet || sheet.getLastRow() < 2) {
+    return null;
+  }
+
+  // Use TextFinder for efficient lookup
+  const finder = sheet.createTextFinder(normalizedEmail)
+    .matchEntireCell(true)
+    .matchCase(false);  // Case-insensitive for email
+
+  const foundRange = finder.findNext();
+
+  if (!foundRange) {
+    return null;
+  }
+
+  // Verify the found cell is in the Client Email column
+  const emailCol = getColIndex('CLIENTS', 'Client Email');
+  if (foundRange.getColumn() !== emailCol) {
+    return null;
+  }
+
+  const rowIndex = foundRange.getRow();
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const rowData = sheet.getRange(rowIndex, 1, 1, lastColumn).getValues()[0];
+
+  // Build client object
+  const client = {};
+  headers.forEach((header, index) => {
+    client[header] = rowData[index];
+  });
+  client._rowIndex = rowIndex;
+
+  return client;
+}
+
+/**
+ * Add a new client to the Clients sheet
+ * @param {Object} clientData - Client data including email, name, phone, storeUrl
+ * @returns {Object} Result with success flag and row index
+ */
+function addNewClient(clientData) {
+  const sheet = getSheet(SHEETS.CLIENTS);
+  const now = new Date();
+  const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  const rowData = buildRowFromConfig('CLIENTS', {
+    'Actions': '☰',
+    'Client Email': (clientData.email || '').toLowerCase().trim(),
+    'Client Name': clientData.name || '',
+    'Client Phone': clientData.phone || '',
+    'Store URL': clientData.storeUrl || '',
+    'Total Jobs': 1,
+    'Completed Jobs': 0,
+    'Total Revenue': 0,
+    'First Job Date': dateStr,
+    'Last Job Date': dateStr,
+    'Client Status': CLIENT_STATUS.ACTIVE,
+    'Notes': '',
+    'Created Date': dateStr,
+    'Last Updated': timestampStr
+  });
+
+  sheet.appendRow(rowData);
+  const newRowIndex = sheet.getLastRow();
+
+  Logger.log('New client added: ' + clientData.email + ' at row ' + newRowIndex);
+
+  return { success: true, rowIndex: newRowIndex, isNew: true };
+}
+
+/**
+ * Update an existing client's information
+ * Updates: name, phone, storeUrl, totalJobs, lastJobDate, lastUpdated
+ * Preserves: email, firstJobDate, notes, clientStatus, createdDate
+ * @param {number} rowIndex - The row index of the client to update
+ * @param {Object} newData - New data to update
+ * @returns {Object} Result with success flag
+ */
+function updateExistingClient(rowIndex, newData) {
+  const sheet = getSheet(SHEETS.CLIENTS);
+  const now = new Date();
+  const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  // Get current row data
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const currentData = sheet.getRange(rowIndex, 1, 1, lastColumn).getValues()[0];
+
+  // Build updated values
+  const updates = {};
+
+  // Always update contact info to latest
+  if (newData.name) updates['Client Name'] = newData.name;
+  if (newData.phone) updates['Client Phone'] = newData.phone;
+  if (newData.storeUrl) updates['Store URL'] = newData.storeUrl;
+
+  // Increment job count
+  const currentJobCount = parseInt(currentData[headers.indexOf('Total Jobs')]) || 0;
+  updates['Total Jobs'] = currentJobCount + 1;
+
+  // Update last job date
+  updates['Last Job Date'] = dateStr;
+
+  // Update timestamp
+  updates['Last Updated'] = timestampStr;
+
+  // Apply updates
+  for (const [colName, value] of Object.entries(updates)) {
+    const colIndex = headers.indexOf(colName) + 1;
+    if (colIndex > 0) {
+      sheet.getRange(rowIndex, colIndex).setValue(value);
+    }
+  }
+
+  Logger.log('Client updated at row ' + rowIndex);
+
+  return { success: true, rowIndex: rowIndex, isNew: false };
+}
+
+/**
+ * Add a new client or update existing client when a quote is accepted
+ * This is the main entry point called from the quote acceptance flow
+ * @param {Object} clientData - { email, name, phone, storeUrl, jobNumber, jobTotal }
+ * @returns {Object} Result with success, isNew, and rowIndex
+ */
+function addOrUpdateClient(clientData) {
+  if (!clientData.email) {
+    Logger.log('addOrUpdateClient: No email provided, skipping client tracking');
+    return { success: false, error: 'No email provided' };
+  }
+
+  const existingClient = findClientByEmail(clientData.email);
+
+  if (existingClient) {
+    return updateExistingClient(existingClient._rowIndex, clientData);
+  } else {
+    return addNewClient(clientData);
+  }
+}
+
+/**
+ * Update client statistics by recalculating from Jobs sheet
+ * Called when job status changes (completed, cancelled) or payment is recorded
+ * @param {string} clientEmail - The client's email address
+ */
+function updateClientStatistics(clientEmail) {
+  if (!clientEmail) return;
+
+  const client = findClientByEmail(clientEmail);
+  if (!client) {
+    Logger.log('updateClientStatistics: Client not found for email: ' + clientEmail);
+    return;
+  }
+
+  const clientJobs = getClientJobs(clientEmail);
+
+  // Calculate statistics
+  let totalJobs = clientJobs.length;
+  let completedJobs = 0;
+  let totalRevenue = 0;
+
+  clientJobs.forEach(job => {
+    if (job['Status'] === JOB_STATUS.COMPLETED) {
+      completedJobs++;
+    }
+    // Only count paid jobs towards revenue
+    if (job['Payment Status'] === PAYMENT_STATUS.PAID) {
+      const amount = parseFloat(job['Total (incl GST)']) || 0;
+      totalRevenue += amount;
+    }
+  });
+
+  // Update client record
+  const sheet = getSheet(SHEETS.CLIENTS);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const now = new Date();
+  const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  const updates = {
+    'Total Jobs': totalJobs,
+    'Completed Jobs': completedJobs,
+    'Total Revenue': totalRevenue,
+    'Last Updated': timestampStr
+  };
+
+  for (const [colName, value] of Object.entries(updates)) {
+    const colIndex = headers.indexOf(colName) + 1;
+    if (colIndex > 0) {
+      sheet.getRange(client._rowIndex, colIndex).setValue(value);
+    }
+  }
+
+  Logger.log('Client statistics updated for ' + clientEmail + ': ' + totalJobs + ' jobs, ' + completedJobs + ' completed, $' + totalRevenue + ' revenue');
+}
+
+/**
+ * Get all jobs for a specific client by email
+ * @param {string} clientEmail - The client's email address
+ * @returns {Array} Array of job objects
+ */
+function getClientJobs(clientEmail) {
+  if (!clientEmail) return [];
+
+  const normalizedEmail = clientEmail.toLowerCase().trim();
+  const sheet = getSheet(SHEETS.JOBS);
+
+  if (!sheet || sheet.getLastRow() < 2) {
+    return [];
+  }
+
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues();
+
+  const emailColIndex = headers.indexOf('Client Email');
+  if (emailColIndex === -1) return [];
+
+  const jobs = [];
+  data.forEach((row, rowIdx) => {
+    const jobEmail = (row[emailColIndex] || '').toString().toLowerCase().trim();
+    if (jobEmail === normalizedEmail) {
+      const job = {};
+      headers.forEach((header, colIdx) => {
+        job[header] = row[colIdx];
+      });
+      job._rowIndex = rowIdx + 2;  // +2 because data starts at row 2
+      jobs.push(job);
+    }
+  });
+
+  return jobs;
+}
+
+/**
+ * Populate Clients sheet from existing jobs
+ * Called on first setup to initialize client data from historical jobs
+ */
+function populateClientsFromExistingJobs() {
+  const jobsSheet = getSheet(SHEETS.JOBS);
+  const clientsSheet = getSheet(SHEETS.CLIENTS);
+
+  if (!jobsSheet || jobsSheet.getLastRow() < 2) {
+    Logger.log('populateClientsFromExistingJobs: No jobs found');
+    return;
+  }
+
+  // Get all jobs data
+  const lastColumn = jobsSheet.getLastColumn();
+  const headers = jobsSheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const data = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, lastColumn).getValues();
+
+  // Column indices
+  const emailIdx = headers.indexOf('Client Email');
+  const nameIdx = headers.indexOf('Client Name');
+  const phoneIdx = headers.indexOf('Client Phone');
+  const storeUrlIdx = headers.indexOf('Store URL');
+  const statusIdx = headers.indexOf('Status');
+  const paymentStatusIdx = headers.indexOf('Payment Status');
+  const totalIdx = headers.indexOf('Total (incl GST)');
+  const createdDateIdx = headers.indexOf('Created Date');
+
+  if (emailIdx === -1) {
+    Logger.log('populateClientsFromExistingJobs: Client Email column not found');
+    return;
+  }
+
+  // Group jobs by client email
+  const clientsMap = new Map();
+
+  data.forEach(row => {
+    const email = (row[emailIdx] || '').toString().toLowerCase().trim();
+    if (!email) return;
+
+    if (!clientsMap.has(email)) {
+      clientsMap.set(email, {
+        email: email,
+        name: row[nameIdx] || '',
+        phone: row[phoneIdx] || '',
+        storeUrl: row[storeUrlIdx] || '',
+        jobs: [],
+        totalJobs: 0,
+        completedJobs: 0,
+        totalRevenue: 0,
+        firstJobDate: null,
+        lastJobDate: null
+      });
+    }
+
+    const client = clientsMap.get(email);
+
+    // Update to latest contact info
+    if (row[nameIdx]) client.name = row[nameIdx];
+    if (row[phoneIdx]) client.phone = row[phoneIdx];
+    if (row[storeUrlIdx]) client.storeUrl = row[storeUrlIdx];
+
+    // Count jobs
+    client.totalJobs++;
+
+    // Count completed jobs
+    if (row[statusIdx] === JOB_STATUS.COMPLETED) {
+      client.completedJobs++;
+    }
+
+    // Sum revenue from paid jobs
+    if (row[paymentStatusIdx] === PAYMENT_STATUS.PAID) {
+      const amount = parseFloat(row[totalIdx]) || 0;
+      client.totalRevenue += amount;
+    }
+
+    // Track job dates
+    const jobDate = row[createdDateIdx];
+    if (jobDate) {
+      const dateValue = new Date(jobDate);
+      if (!isNaN(dateValue.getTime())) {
+        if (!client.firstJobDate || dateValue < client.firstJobDate) {
+          client.firstJobDate = dateValue;
+        }
+        if (!client.lastJobDate || dateValue > client.lastJobDate) {
+          client.lastJobDate = dateValue;
+        }
+      }
+    }
+  });
+
+  // Sort clients by first job date (oldest first)
+  const sortedClients = Array.from(clientsMap.values()).sort((a, b) => {
+    if (!a.firstJobDate) return 1;
+    if (!b.firstJobDate) return -1;
+    return a.firstJobDate - b.firstJobDate;
+  });
+
+  // Add clients to sheet
+  const now = new Date();
+  const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+  sortedClients.forEach(client => {
+    const firstDateStr = client.firstJobDate
+      ? Utilities.formatDate(client.firstJobDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : '';
+    const lastDateStr = client.lastJobDate
+      ? Utilities.formatDate(client.lastJobDate, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+      : '';
+
+    const rowData = buildRowFromConfig('CLIENTS', {
+      'Actions': '☰',
+      'Client Email': client.email,
+      'Client Name': client.name,
+      'Client Phone': client.phone,
+      'Store URL': client.storeUrl,
+      'Total Jobs': client.totalJobs,
+      'Completed Jobs': client.completedJobs,
+      'Total Revenue': client.totalRevenue,
+      'First Job Date': firstDateStr,
+      'Last Job Date': lastDateStr,
+      'Client Status': CLIENT_STATUS.ACTIVE,
+      'Notes': '',
+      'Created Date': firstDateStr || timestampStr,
+      'Last Updated': timestampStr
+    });
+
+    clientsSheet.appendRow(rowData);
+  });
+
+  Logger.log('populateClientsFromExistingJobs: Added ' + sortedClients.length + ' clients from existing jobs');
+}
+
+/**
+ * Recalculate statistics for all clients
+ * Utility function to fix any data inconsistencies
+ */
+function recalculateAllClientStats() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = getSheet(SHEETS.CLIENTS);
+
+  if (!sheet || sheet.getLastRow() < 2) {
+    ui.alert('No Clients', 'No clients found to recalculate.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const response = ui.alert(
+    'Recalculate All Client Statistics',
+    'This will recalculate job counts and revenue for all clients from the Jobs sheet. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  const lastRow = sheet.getLastRow();
+  const emailCol = getColIndex('CLIENTS', 'Client Email');
+  const emails = sheet.getRange(2, emailCol, lastRow - 1, 1).getValues();
+
+  let updated = 0;
+  emails.forEach(row => {
+    const email = row[0];
+    if (email) {
+      updateClientStatistics(email);
+      updated++;
+    }
+  });
+
+  ui.alert('Complete', 'Recalculated statistics for ' + updated + ' clients.', ui.ButtonSet.OK);
+}
+
+/**
+ * Navigate to the Clients sheet
+ */
+function navigateToClientsSheet() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.CLIENTS);
+  if (sheet) {
+    ss.setActiveSheet(sheet);
+    sheet.getRange('A1').activate();
+  }
+}
+
+/**
+ * Show dialog to view client history
+ * Menu entry point - shows client picker then displays history
+ */
+function viewClientHistory() {
+  const selectedClient = getSelectedClientEmail();
+  const clients = getAllClients();
+  showContextAwareDialogForClients(
+    'View Client History',
+    clients,
+    'displayClientHistoryDialog',
+    selectedClient
+  );
+}
+
+/**
+ * Get all clients for dropdown
+ * @returns {Array} Array of client objects with email and name
+ */
+function getAllClients() {
+  const sheet = getSheet(SHEETS.CLIENTS);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return [];
+  }
+
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getValues();
+
+  const emailIdx = headers.indexOf('Client Email');
+  const nameIdx = headers.indexOf('Client Name');
+
+  const clients = [];
+  data.forEach(row => {
+    const email = row[emailIdx];
+    if (email) {
+      clients.push({
+        email: email,
+        name: row[nameIdx] || email
+      });
+    }
+  });
+
+  return clients;
+}
+
+/**
+ * Get currently selected client email (if on Clients sheet)
+ * @returns {string|null} Client email or null
+ */
+function getSelectedClientEmail() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSheet();
+    if (sheet.getName() !== SHEETS.CLIENTS) {
+      return null;
+    }
+
+    const activeCell = sheet.getActiveCell();
+    if (!activeCell) return null;
+
+    const row = activeCell.getRow();
+    if (row < 2) return null; // Header row
+
+    const emailCol = getColIndex('CLIENTS', 'Client Email');
+    const email = sheet.getRange(row, emailCol).getValue();
+
+    return email ? String(email).trim() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Show context-aware dialog for clients (similar to showContextAwareDialog for jobs)
+ */
+function showContextAwareDialogForClients(title, clients, callback, selectedEmail) {
+  const ui = SpreadsheetApp.getUi();
+
+  if (clients.length === 0) {
+    ui.alert('No Clients', 'No clients found in the system.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // If we have a selected client, use it directly
+  if (selectedEmail) {
+    this[callback](selectedEmail);
+    return;
+  }
+
+  // Otherwise show dropdown dialog
+  let optionsHtml = clients.map(c =>
+    '<option value="' + escapeHtml(c.email) + '">' + escapeHtml(c.name) + ' (' + escapeHtml(c.email) + ')</option>'
+  ).join('');
+
+  const html = HtmlService.createHtmlOutput(`
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      select { width: 100%; padding: 10px; margin: 15px 0; font-size: 14px; }
+      button { padding: 10px 20px; background: #2d5d3f; color: white; border: none; cursor: pointer; margin-right: 10px; }
+      button:hover { background: #4a7c59; }
+      .cancel { background: #666; }
+    </style>
+    <p>Select a client:</p>
+    <select id="clientSelect">${optionsHtml}</select>
+    <div>
+      <button onclick="google.script.run.withSuccessHandler(google.script.host.close).${callback}(document.getElementById('clientSelect').value)">View History</button>
+      <button class="cancel" onclick="google.script.host.close()">Cancel</button>
+    </div>
+  `)
+  .setWidth(450)
+  .setHeight(200);
+
+  ui.showModalDialog(html, title);
+}
+
+/**
+ * Display the client history in a formatted HTML dialog
+ * @param {string} clientEmail - The client's email address
+ */
+function displayClientHistoryDialog(clientEmail) {
+  const ui = SpreadsheetApp.getUi();
+
+  if (!clientEmail) {
+    ui.alert('Error', 'No client email provided.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const client = findClientByEmail(clientEmail);
+  if (!client) {
+    ui.alert('Not Found', 'Client not found: ' + clientEmail, ui.ButtonSet.OK);
+    return;
+  }
+
+  const jobs = getClientJobs(clientEmail);
+
+  // Sort jobs by created date descending (newest first)
+  jobs.sort((a, b) => {
+    const dateA = a['Created Date'] ? new Date(a['Created Date']) : new Date(0);
+    const dateB = b['Created Date'] ? new Date(b['Created Date']) : new Date(0);
+    return dateB - dateA;
+  });
+
+  // Build job cards HTML
+  let jobsHtml = '';
+  if (jobs.length === 0) {
+    jobsHtml = '<div class="no-jobs">No jobs found for this client.</div>';
+  } else {
+    jobs.forEach(job => {
+      const status = job['Status'] || '';
+      const statusColor = getStatusColor(status);
+      const jobNum = job['Job #'] || '';
+      const date = job['Created Date'] || '';
+      const total = job['Total (incl GST)'] ? formatCurrency(job['Total (incl GST)']) : '';
+      const paymentStatus = job['Payment Status'] || '';
+      const description = (job['Job Description'] || '').substring(0, 100);
+
+      jobsHtml += `
+        <div class="job-card">
+          <div class="job-header">
+            <span class="job-number">${escapeHtml(jobNum)}</span>
+            <span class="job-status" style="background: ${statusColor.bg}; color: ${statusColor.text};">${escapeHtml(status)}</span>
+            <span class="job-date">${escapeHtml(date)}</span>
+          </div>
+          <div class="job-description">${escapeHtml(description)}${description.length >= 100 ? '...' : ''}</div>
+          <div class="job-footer">
+            <span class="job-amount">${escapeHtml(total)}</span>
+            <span class="job-payment">${escapeHtml(paymentStatus)}</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+          }
+          .container {
+            max-width: 100%;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #2d5d3f 0%, #1e3f2a 100%);
+            color: white;
+            padding: 20px;
+            margin: -20px -20px 20px -20px;
+          }
+          .header h2 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            font-weight: 500;
+          }
+          .header .email {
+            opacity: 0.9;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          .stats-row {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+          }
+          .stat {
+            background: rgba(255,255,255,0.15);
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+          }
+          .stat strong {
+            font-size: 16px;
+            display: block;
+          }
+          .store-url {
+            margin-top: 10px;
+          }
+          .store-url a {
+            color: #a8d4b8;
+            text-decoration: none;
+          }
+          .store-url a:hover {
+            text-decoration: underline;
+          }
+          .job-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .job-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #2d5d3f;
+          }
+          .job-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+          }
+          .job-number {
+            font-weight: 600;
+            color: #2d5d3f;
+            font-size: 14px;
+          }
+          .job-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+          }
+          .job-date {
+            color: #5f6368;
+            font-size: 12px;
+            margin-left: auto;
+          }
+          .job-description {
+            color: #202124;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+          }
+          .job-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px solid #e8eaed;
+          }
+          .job-amount {
+            font-weight: 600;
+            color: #202124;
+          }
+          .job-payment {
+            font-size: 12px;
+            color: #5f6368;
+          }
+          .no-jobs {
+            text-align: center;
+            color: #5f6368;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+          }
+          .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+          }
+          .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+          }
+          .btn-view {
+            background: #2d5d3f;
+            color: white;
+          }
+          .btn-view:hover {
+            background: #4a7c59;
+          }
+          .btn-close {
+            background: #e8eaed;
+            color: #202124;
+          }
+          .btn-close:hover {
+            background: #dadce0;
+          }
+          .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #5f6368;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>${escapeHtml(client['Client Name'] || 'Client')}</h2>
+            <div class="email">${escapeHtml(client['Client Email'])}</div>
+            ${client['Client Phone'] ? '<div class="phone">📞 ' + escapeHtml(client['Client Phone']) + '</div>' : ''}
+            ${client['Store URL'] ? '<div class="store-url">🔗 <a href="' + escapeHtml(client['Store URL']) + '" target="_blank">' + escapeHtml(client['Store URL']) + '</a></div>' : ''}
+            <div class="stats-row">
+              <div class="stat">
+                <strong>${client['Total Jobs'] || 0}</strong>
+                Total Jobs
+              </div>
+              <div class="stat">
+                <strong>${client['Completed Jobs'] || 0}</strong>
+                Completed
+              </div>
+              <div class="stat">
+                <strong>${formatCurrency(client['Total Revenue'] || 0)}</strong>
+                Revenue
+              </div>
+              <div class="stat">
+                <strong>${escapeHtml(client['Client Status'] || 'Active')}</strong>
+                Status
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">Job History (${jobs.length} jobs)</div>
+          <div class="job-list">
+            ${jobsHtml}
+          </div>
+
+          <div class="button-row">
+            <button class="btn btn-view" onclick="google.script.run.navigateToClientsSheet(); google.script.host.close();">View in Sheet</button>
+            <button class="btn btn-close" onclick="google.script.host.close()">Close</button>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(550)
+    .setHeight(600);
+
+  ui.showModalDialog(html, 'Client History');
+}
+
+/**
+ * Get status color for job status badges
+ * @param {string} status - Job status
+ * @returns {Object} Object with bg and text color properties
+ */
+function getStatusColor(status) {
+  const colors = {
+    'Pending Quote': { bg: SHEET_COLORS.statusPendingQuote, text: SHEET_COLORS.statusPendingQuoteText },
+    'Quoted': { bg: SHEET_COLORS.statusQuoted, text: SHEET_COLORS.statusQuotedText },
+    'Quote Reminded': { bg: SHEET_COLORS.statusQuoteReminded, text: SHEET_COLORS.statusQuoteRemindedText },
+    'Accepted': { bg: SHEET_COLORS.statusAccepted, text: SHEET_COLORS.statusAcceptedText },
+    'In Progress': { bg: SHEET_COLORS.statusActive, text: SHEET_COLORS.statusActiveText },
+    'Completed': { bg: SHEET_COLORS.statusCompleted, text: SHEET_COLORS.statusCompletedText },
+    'On Hold': { bg: SHEET_COLORS.slaAtRisk, text: SHEET_COLORS.slaAtRiskText },
+    'Cancelled': { bg: SHEET_COLORS.statusCancelled, text: SHEET_COLORS.statusCancelledText },
+    'Declined': { bg: SHEET_COLORS.slaOverdue, text: SHEET_COLORS.slaOverdueText }
+  };
+  return colors[status] || { bg: '#e8eaed', text: '#5f6368' };
 }
 
 // ============================================================================
@@ -14614,6 +15727,16 @@ function markInvoicePaid(invoiceNumber, method, reference) {
     'Payment Method': method,
     'Payment Reference': reference
   });
+
+  // Update client statistics (recalculate revenue from paid jobs)
+  const clientEmail = invoice['Client Email'];
+  if (clientEmail) {
+    try {
+      updateClientStatistics(clientEmail);
+    } catch (e) {
+      Logger.log('Error updating client statistics: ' + e.message);
+    }
+  }
 
   // Send payment receipt email to client
   const receiptSent = sendPaymentReceiptEmail(invoiceNumber, method, reference);

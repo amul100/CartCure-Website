@@ -253,6 +253,7 @@
         <li><a href="#part13"><strong>Part 13:</strong> Performance Optimizations</a></li>
         <li><a href="#part14"><strong>Part 14:</strong> Activity Log - Audit Trail</a></li>
         <li><a href="#part15"><strong>Part 15:</strong> Data Management & Maintenance</a></li>
+        <li><a href="#part16"><strong>Part 16:</strong> Clients Sheet - Client Directory</a></li>
     </ul>
 </div>
 
@@ -303,7 +304,41 @@
     <li><strong>Fallback:</strong> If no cell is selected, the traditional dropdown dialog appears</li>
 </ul>
 
-<h2>3. Enhanced Submission Form</h2>
+<h2>3. Quick Actions Column</h2>
+
+<p><strong>One-Click Actions:</strong> Every row now has a menu icon (☰) in Column A that opens context-aware actions</p>
+
+<ul>
+    <li><strong>How It Works:</strong>
+        <ol>
+            <li>Click on the ☰ icon in Column A of any row (Jobs, Submissions, or Invoices sheet)</li>
+            <li>A dialog appears showing only the valid actions for that item's current status</li>
+            <li>Click an action button to execute it immediately</li>
+            <li>The icon resets automatically after use</li>
+        </ol>
+    </li>
+    <li><strong>Context-Aware:</strong>
+        <ul>
+            <li><strong>Jobs:</strong> Shows actions like "Send Quote", "Start Work", "Mark Complete" based on job status</li>
+            <li><strong>Submissions:</strong> Shows "Create Job", "Decline", or "Mark as Spam" for new submissions</li>
+            <li><strong>Invoices:</strong> Shows "View", "Send", "Send Reminder", or "Mark as Paid" based on invoice status</li>
+        </ul>
+    </li>
+    <li><strong>Always Available Actions:</strong> "View Activity Log" and "Add Note" are always available for jobs</li>
+    <li><strong>Benefits:</strong>
+        <ul>
+            <li>No need to navigate the menu - actions are right there on the row</li>
+            <li>Only see relevant actions for the current status</li>
+            <li>Faster workflow, especially when processing multiple items</li>
+        </ul>
+    </li>
+</ul>
+
+<div class="success">
+    <strong>Activity Log Enhancement:</strong> When viewing the Activity Log, you can now add notes directly from the dialog using the "Add Note" button - no need to close and use the menu!
+</div>
+
+<h2>4. Enhanced Submission Form</h2>
 
 <p><strong>Better Information Collection:</strong> Form now encourages users to provide more detailed information</p>
 
@@ -314,7 +349,7 @@
     <li><strong>Result:</strong> Better quality submissions = more accurate quotes = less back-and-forth</li>
 </ul>
 
-<h2>4. Visual Analytics Charts</h2>
+<h2>5. Visual Analytics Charts</h2>
 
 <p><strong>New Charts Section:</strong> Analytics sheet now includes visual graphs for at-a-glance insights</p>
 
@@ -326,7 +361,7 @@
     <li><strong>Auto-Update:</strong> Charts refresh automatically when you refresh analytics data</li>
 </ul>
 
-<h2>5. Dashboard Formatting Consistency</h2>
+<h2>6. Dashboard Formatting Consistency</h2>
 
 <p><strong>Visual Polish:</strong> Improved consistency across Dashboard and Analytics sheets</p>
 
@@ -370,11 +405,12 @@
 </ol>
 
 <div class="success">
-    <strong>This creates/updates six sheets:</strong>
+    <strong>This creates/updates seven sheets:</strong>
     <ul>
         <li><strong>Dashboard</strong> - Your daily workflow view</li>
         <li><strong>Jobs</strong> - All job tracking data</li>
         <li><strong>Invoice Log</strong> - Invoice records</li>
+        <li><strong>Clients</strong> - Client directory with job history and statistics</li>
         <li><strong>Settings</strong> - Your business configuration</li>
         <li><strong>Submissions</strong> - Form submissions with status tracking</li>
         <li><strong>Testimonials</strong> - Customer feedback awaiting approval</li>
@@ -1449,6 +1485,18 @@
         <tr>
             <td>Mark Paid</td>
             <td>CartCure &gt; Invoices &gt; Mark as Paid</td>
+        </tr>
+        <tr>
+            <td>View Client History</td>
+            <td>CartCure &gt; Clients &gt; View Client History</td>
+        </tr>
+        <tr>
+            <td>View All Clients</td>
+            <td>CartCure &gt; Clients &gt; View All Clients</td>
+        </tr>
+        <tr>
+            <td>Recalculate Client Stats</td>
+            <td>CartCure &gt; Clients &gt; Recalculate All Stats</td>
         </tr>
         <tr>
             <td>Setup Sheets</td>
@@ -2659,6 +2707,174 @@ Unpaid → Invoiced → Paid
 </ul>
 
 <p>If you ever notice dropdowns missing on new rows, run <strong>CartCure &gt; Setup &gt; Maintenance &gt; Extend Validation Ranges</strong>.</p>
+
+<div class="page-break"></div>
+
+<h1 id="part16">Part 16: Clients Sheet - Client Directory</h1>
+
+<div class="info">
+    <strong>New Feature:</strong> The Clients sheet provides a complete client directory with job history, statistics, and status tracking.
+</div>
+
+<h2>Overview</h2>
+
+<p>The Clients sheet automatically tracks all clients who have accepted quotes. Each client record includes contact information, job statistics, and revenue tracking. When a client accepts their first quote, they're automatically added to the directory. Subsequent jobs update their record with current contact info and statistics.</p>
+
+<h2>How Clients Are Added</h2>
+
+<ol>
+    <li><strong>Quote accepted</strong> by a new client (new email address)</li>
+    <li><strong>Client record created</strong> automatically with contact info from the job</li>
+    <li><strong>Statistics initialized</strong> (1 job, $0 revenue initially)</li>
+    <li><strong>On first setup</strong>, existing jobs are scanned to populate the client list</li>
+</ol>
+
+<h2>Client Sheet Columns</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Column</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Actions</td>
+            <td>Click ☰ to access quick actions for the client</td>
+        </tr>
+        <tr>
+            <td>Client Email</td>
+            <td>Primary identifier - unique per client</td>
+        </tr>
+        <tr>
+            <td>Client Name</td>
+            <td>Updated to latest from most recent job</td>
+        </tr>
+        <tr>
+            <td>Client Phone</td>
+            <td>Updated to latest from most recent job</td>
+        </tr>
+        <tr>
+            <td>Store URL</td>
+            <td>Updated to latest from most recent job</td>
+        </tr>
+        <tr>
+            <td>Total Jobs</td>
+            <td>Count of all jobs for this client</td>
+        </tr>
+        <tr>
+            <td>Completed Jobs</td>
+            <td>Count of jobs with Completed status</td>
+        </tr>
+        <tr>
+            <td>Total Revenue</td>
+            <td>Sum of all paid invoice amounts</td>
+        </tr>
+        <tr>
+            <td>First Job Date</td>
+            <td>When the client first started working with you</td>
+        </tr>
+        <tr>
+            <td>Last Job Date</td>
+            <td>Most recent job acceptance date</td>
+        </tr>
+        <tr>
+            <td>Client Status</td>
+            <td>Active, Inactive, or VIP</td>
+        </tr>
+        <tr>
+            <td>Notes</td>
+            <td>Internal notes about the client</td>
+        </tr>
+        <tr>
+            <td>Created Date</td>
+            <td>When the client record was created</td>
+        </tr>
+        <tr>
+            <td>Last Updated</td>
+            <td>When the record was last modified</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Client Status Options</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Meaning</th>
+            <th>Color</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Active</td>
+            <td>Regular active client</td>
+            <td style="background: #c8e6c9; color: #1b5e20;">Green</td>
+        </tr>
+        <tr>
+            <td>Inactive</td>
+            <td>Client who hasn't had recent work</td>
+            <td style="background: #f5f5f5; color: #757575;">Gray</td>
+        </tr>
+        <tr>
+            <td>VIP</td>
+            <td>High-value or priority client</td>
+            <td style="background: #2d5d3f; color: white;">Brand Green</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>Viewing Client History</h2>
+
+<p>To view a client's complete job history:</p>
+
+<ol>
+    <li>Go to <strong>CartCure &gt; Clients &gt; View Client History</strong></li>
+    <li>Select a client from the dropdown (or click the Actions ☰ on a client row)</li>
+    <li>View the history dialog showing:
+        <ul>
+            <li>Client contact information</li>
+            <li>Statistics (total jobs, completed, revenue)</li>
+            <li>All jobs listed with status, date, and amount</li>
+        </ul>
+    </li>
+</ol>
+
+<h2>Quick Actions</h2>
+
+<p>Click the <strong>☰</strong> in the Actions column on any client row to access:</p>
+
+<ul>
+    <li><strong>View History</strong> - Open the client history dialog</li>
+    <li><strong>Set Active/Inactive/VIP</strong> - Change client status</li>
+    <li><strong>Recalculate Stats</strong> - Refresh statistics from the Jobs sheet</li>
+</ul>
+
+<h2>Automatic Updates</h2>
+
+<p>Client statistics are automatically updated when:</p>
+
+<ul>
+    <li><strong>Quote is accepted</strong> - Job count increases, contact info updates</li>
+    <li><strong>Job is completed</strong> - Completed jobs count increases</li>
+    <li><strong>Payment is recorded</strong> - Revenue is recalculated</li>
+    <li><strong>Job is cancelled</strong> - Statistics are recalculated</li>
+</ul>
+
+<h2>Recalculating Statistics</h2>
+
+<p>If you notice incorrect statistics (e.g., after importing historical data), you can recalculate all client statistics:</p>
+
+<ol>
+    <li>Go to <strong>CartCure &gt; Clients &gt; Recalculate All Stats</strong></li>
+    <li>Confirm the action</li>
+    <li>Wait for the recalculation to complete</li>
+</ol>
+
+<p>This scans all jobs and updates every client's job counts and revenue totals.</p>
 
 <hr>
 
