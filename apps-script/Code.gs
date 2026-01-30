@@ -11216,8 +11216,9 @@ function getInvoiceByNumber(invoiceNumber) {
     return null;
   }
 
-  // Verify the found cell is in column A (Invoice # column)
-  if (foundRange.getColumn() !== 1) {
+  // Verify the found cell is in the Invoice # column (use config to get correct column)
+  const invoiceColIndex = getColIndex('INVOICES', 'Invoice #');
+  if (foundRange.getColumn() !== invoiceColIndex) {
     Logger.log('[PERF] getInvoiceByNumber() - Invoice number found in wrong column for: ' + invoiceNumber);
     return null;
   }
@@ -14051,7 +14052,7 @@ function createTestSubmissions() {
       'My navigation menu is not working on tablet devices. Can you take a look?'
     ];
 
-    const statuses = ['New', 'New', 'New', 'In Review', 'New', 'Job Created', 'New', 'New', 'In Review', 'New'];
+    const statuses = ['New', 'New', 'New', 'New', 'New', 'New', 'New', 'New', 'New', 'New'];
 
     // Generate 10 test submissions
     let successCount = 0;
@@ -14061,12 +14062,10 @@ function createTestSubmissions() {
       const randomNum = Math.floor(100 + Math.random() * 900);
       const submissionNumber = 'CC-' + randomWord + '-' + randomNum;
 
-      // Generate timestamp (spread over last 7 days)
-      const daysAgo = Math.floor(Math.random() * 7);
-      const hoursAgo = Math.floor(Math.random() * 24);
+      // Generate timestamp (all today, spread throughout the day)
       const date = new Date();
-      date.setDate(date.getDate() - daysAgo);
-      date.setHours(date.getHours() - hoursAgo);
+      const minutesAgo = i * 15; // Spread submissions 15 minutes apart
+      date.setMinutes(date.getMinutes() - minutesAgo);
       const timestamp = date.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
       // Create row data
