@@ -2834,6 +2834,98 @@ function saveSettingsFromDialog(settings) {
   Logger.log('Settings saved from dialog');
 }
 
+/**
+ * Apply dark mode styling to the Settings sheet
+ * Can be run standalone from the menu
+ */
+function applySettingsDarkMode() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.SETTINGS);
+
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Error', 'Settings sheet not found. Please run Setup first.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  const ui = SpreadsheetApp.getUi();
+
+  // Dark mode colors matching the dialog
+  const dark = {
+    bg: '#1a1a2e',
+    bgAlt: '#16213e',
+    header: '#0f3460',
+    text: '#e4e4e7',
+    accent: '#00d4aa',
+    muted: '#71717a',
+    border: '#2d3748'
+  };
+
+  // Get data range
+  const lastRow = Math.max(sheet.getLastRow(), 16);
+
+  // Apply dark background to entire sheet area
+  sheet.getRange(1, 1, 100, 26).setBackground(dark.bg);
+
+  // Style header row
+  const headerRange = sheet.getRange(1, 1, 1, 3);
+  headerRange.setBackground(dark.header);
+  headerRange.setFontColor('#ffffff');
+  headerRange.setFontWeight('bold');
+  headerRange.setFontFamily('Arial');
+  headerRange.setFontSize(11);
+  headerRange.setHorizontalAlignment('center');
+  headerRange.setVerticalAlignment('middle');
+  sheet.setRowHeight(1, 40);
+
+  // Style data rows with alternating colors
+  for (let i = 2; i <= lastRow; i++) {
+    const rowRange = sheet.getRange(i, 1, 1, 3);
+    rowRange.setBackground((i % 2 === 0) ? dark.bgAlt : dark.bg);
+    sheet.setRowHeight(i, 32);
+  }
+
+  // Setting names - white bold
+  const namesRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  namesRange.setFontColor(dark.text);
+  namesRange.setFontWeight('bold');
+  namesRange.setFontFamily('Arial');
+  namesRange.setFontSize(10);
+  namesRange.setVerticalAlignment('middle');
+
+  // Values - green accent
+  const valuesRange = sheet.getRange(2, 2, lastRow - 1, 1);
+  valuesRange.setFontColor(dark.accent);
+  valuesRange.setFontWeight('bold');
+  valuesRange.setFontFamily('Arial');
+  valuesRange.setFontSize(10);
+  valuesRange.setHorizontalAlignment('center');
+  valuesRange.setVerticalAlignment('middle');
+
+  // Descriptions - muted gray italic
+  const descRange = sheet.getRange(2, 3, lastRow - 1, 1);
+  descRange.setFontColor(dark.muted);
+  descRange.setFontFamily('Arial');
+  descRange.setFontSize(9);
+  descRange.setFontStyle('italic');
+  descRange.setVerticalAlignment('middle');
+
+  // Borders
+  sheet.getRange(1, 1, lastRow, 3).setBorder(true, true, true, true, true, true, dark.border, SpreadsheetApp.BorderStyle.SOLID);
+
+  // Column widths
+  sheet.setColumnWidth(1, 200);
+  sheet.setColumnWidth(2, 180);
+  sheet.setColumnWidth(3, 320);
+
+  // Hide gridlines
+  sheet.setHiddenGridlines(true);
+
+  // Freeze header
+  sheet.setFrozenRows(1);
+
+  ui.alert('Dark Mode Applied', 'Settings sheet has been styled with dark mode.', ui.ButtonSet.OK);
+}
+
 // Job Status Constants
 const JOB_STATUS = {
   PENDING_QUOTE: 'Pending Quote',
@@ -2982,9 +3074,10 @@ const SHEET_COLORS = {
 
 const COLUMN_CONFIG = {
   // -------------------------------------------------------------------------
-  // JOBS SHEET (31 columns)
+  // JOBS SHEET (32 columns)
   // -------------------------------------------------------------------------
   JOBS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -3070,9 +3163,10 @@ const COLUMN_CONFIG = {
   ],
 
   // -------------------------------------------------------------------------
-  // INVOICE LOG SHEET (19 columns)
+  // INVOICE LOG SHEET (20 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 80,
@@ -3111,9 +3205,10 @@ const COLUMN_CONFIG = {
   ],
 
   // -------------------------------------------------------------------------
-  // SUBMISSIONS SHEET (10 columns)
+  // SUBMISSIONS SHEET (11 columns)
   // -------------------------------------------------------------------------
   SUBMISSIONS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 70,
@@ -3902,6 +3997,7 @@ function buildMenu() {
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('⚙️ Settings', 'showSettingsDialog')
+      .addItem('🌙 Apply Dark Mode to Settings', 'applySettingsDarkMode')
       .addSeparator()
       .addItem('🔧 Setup/Repair Sheets', 'showSetupDialog')
       .addItem('📐 Reset Column Widths', 'resetColumnWidths')
@@ -3966,6 +4062,645 @@ function onEdit(e) {
       scanSentEmailsForJobs();
     }
   }
+
+  // Handle Actions column (column 1) on Jobs, Submissions, or Invoices sheets
+  const sheetName = sheet.getName();
+  if (range.getColumn() === 1 && range.getRow() > 1) {
+    if (sheetName === SHEETS.JOBS || sheetName === SHEETS.SUBMISSIONS || sheetName === SHEETS.INVOICES) {
+      // Reset the cell immediately to prevent confusion
+      range.setValue('☰');
+      SpreadsheetApp.flush();
+      // Show the actions dialog for this row
+      showActionsDialogForRow(sheet, sheetName, range.getRow());
+    }
+  }
+}
+
+// ============================================================================
+// ACTIONS COLUMN FUNCTIONS
+// ============================================================================
+
+/**
+ * Get valid actions for a job based on its current status
+ * @param {string} status - The job's current status
+ * @returns {Array} Array of action objects with id, label, and icon
+ */
+function getValidJobActions(status) {
+  const actions = {
+    [JOB_STATUS.PENDING_QUOTE]: [
+      { id: 'sendQuote', label: 'Send Quote', icon: '📤' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.QUOTED]: [
+      { id: 'sendQuoteReminder', label: 'Send Quote Reminder', icon: '🔔' },
+      { id: 'markAccepted', label: 'Mark Quote Accepted', icon: '✅' },
+      { id: 'markDeclined', label: 'Mark Quote Declined', icon: '👎' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.QUOTE_REMINDED]: [
+      { id: 'markAccepted', label: 'Mark Quote Accepted', icon: '✅' },
+      { id: 'markDeclined', label: 'Mark Quote Declined', icon: '👎' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.ACCEPTED]: [
+      { id: 'startWork', label: 'Start Work', icon: '▶️' },
+      { id: 'generateInvoice', label: 'Generate Invoice', icon: '🧾' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'onHold', label: 'Put On Hold', icon: '⏸️' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.IN_PROGRESS]: [
+      { id: 'markComplete', label: 'Mark Complete', icon: '✔️' },
+      { id: 'generateInvoice', label: 'Generate Invoice', icon: '🧾' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'onHold', label: 'Put On Hold', icon: '⏸️' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.COMPLETED]: [
+      { id: 'generateInvoice', label: 'Generate Invoice', icon: '🧾' },
+      { id: 'requestTestimonial', label: 'Request Testimonial', icon: '⭐' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
+    ],
+    [JOB_STATUS.ON_HOLD]: [
+      { id: 'startWork', label: 'Resume Work', icon: '▶️' },
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' },
+      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+    ],
+    [JOB_STATUS.CANCELLED]: [
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
+    ],
+    [JOB_STATUS.DECLINED]: [
+      { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
+    ]
+  };
+
+  return actions[status] || [
+    { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
+    { id: 'addNote', label: 'Add Note', icon: '📝' }
+  ];
+}
+
+/**
+ * Get valid actions for a submission based on its current status
+ * @param {string} status - The submission's current status
+ * @returns {Array} Array of action objects with id, label, and icon
+ */
+function getValidSubmissionActions(status) {
+  const actions = {
+    'New': [
+      { id: 'createJob', label: 'Create Job', icon: '➕' },
+      { id: 'markInReview', label: 'Mark In Review', icon: '👀' },
+      { id: 'decline', label: 'Decline', icon: '👎' },
+      { id: 'markSpam', label: 'Mark as Spam', icon: '🚫' }
+    ],
+    'In Review': [
+      { id: 'createJob', label: 'Create Job', icon: '➕' },
+      { id: 'decline', label: 'Decline', icon: '👎' },
+      { id: 'markSpam', label: 'Mark as Spam', icon: '🚫' }
+    ],
+    'Job Created': [],
+    'Declined': [],
+    'Spam': []
+  };
+
+  return actions[status] || [];
+}
+
+/**
+ * Get valid actions for an invoice based on its current status
+ * @param {string} status - The invoice's current status
+ * @returns {Array} Array of action objects with id, label, and icon
+ */
+function getValidInvoiceActions(status) {
+  const actions = {
+    'Draft': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'sendInvoice', label: 'Send Invoice', icon: '📤' }
+    ],
+    'Sent': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'sendReminder', label: 'Send Reminder', icon: '🔔' },
+      { id: 'markPaid', label: 'Mark as Paid', icon: '✅' }
+    ],
+    'Overdue': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'sendOverdue', label: 'Send Overdue Notice', icon: '⚠️' },
+      { id: 'markPaid', label: 'Mark as Paid', icon: '✅' }
+    ],
+    'Paid': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }
+    ],
+    'Cancelled': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }
+    ]
+  };
+
+  return actions[status] || [{ id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }];
+}
+
+/**
+ * Show the actions dialog for a specific row
+ * @param {Sheet} sheet - The active sheet
+ * @param {string} sheetName - Name of the sheet (JOBS, SUBMISSIONS, INVOICES)
+ * @param {number} row - The row number
+ */
+function showActionsDialogForRow(sheet, sheetName, row) {
+  const ui = SpreadsheetApp.getUi();
+
+  // Get entity info based on sheet type
+  let entityType, entityId, entityLabel, status, actions;
+
+  if (sheetName === SHEETS.JOBS) {
+    const statusCol = getColIndex('JOBS', 'Status');
+    const jobNumCol = getColIndex('JOBS', 'Job #');
+    const clientCol = getColIndex('JOBS', 'Client Name');
+
+    status = sheet.getRange(row, statusCol).getValue();
+    entityId = sheet.getRange(row, jobNumCol).getValue();
+    const clientName = sheet.getRange(row, clientCol).getValue();
+
+    if (!entityId) {
+      ui.alert('No Job', 'This row does not contain a job.', ui.ButtonSet.OK);
+      return;
+    }
+
+    entityType = 'job';
+    entityLabel = entityId + (clientName ? ' - ' + clientName : '');
+    actions = getValidJobActions(status);
+
+  } else if (sheetName === SHEETS.SUBMISSIONS) {
+    const statusCol = getColIndex('SUBMISSIONS', 'Status');
+    const subNumCol = getColIndex('SUBMISSIONS', 'Submission #');
+    const nameCol = getColIndex('SUBMISSIONS', 'Name');
+
+    status = sheet.getRange(row, statusCol).getValue();
+    entityId = sheet.getRange(row, subNumCol).getValue();
+    const name = sheet.getRange(row, nameCol).getValue();
+
+    if (!entityId) {
+      ui.alert('No Submission', 'This row does not contain a submission.', ui.ButtonSet.OK);
+      return;
+    }
+
+    entityType = 'submission';
+    entityLabel = entityId + (name ? ' - ' + name : '');
+    actions = getValidSubmissionActions(status);
+
+  } else if (sheetName === SHEETS.INVOICES) {
+    const statusCol = getColIndex('INVOICES', 'Status');
+    const invNumCol = getColIndex('INVOICES', 'Invoice #');
+    const clientCol = getColIndex('INVOICES', 'Client Name');
+
+    status = sheet.getRange(row, statusCol).getValue();
+    entityId = sheet.getRange(row, invNumCol).getValue();
+    const clientName = sheet.getRange(row, clientCol).getValue();
+
+    if (!entityId) {
+      ui.alert('No Invoice', 'This row does not contain an invoice.', ui.ButtonSet.OK);
+      return;
+    }
+
+    entityType = 'invoice';
+    entityLabel = entityId + (clientName ? ' - ' + clientName : '');
+    actions = getValidInvoiceActions(status);
+  }
+
+  // If no actions available, show message
+  if (!actions || actions.length === 0) {
+    ui.alert('No Actions Available', 'There are no actions available for this ' + entityType + ' with status "' + status + '".', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Build and show the dialog
+  const htmlContent = buildActionsDialogHtml(entityType, entityId, entityLabel, status, actions);
+  const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(350)
+    .setHeight(Math.min(400, 150 + actions.length * 50));
+
+  ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
+}
+
+/**
+ * Build HTML for the actions dialog
+ * @param {string} entityType - 'job', 'submission', or 'invoice'
+ * @param {string} entityId - The entity ID (job #, submission #, invoice #)
+ * @param {string} entityLabel - Display label for the entity
+ * @param {string} status - Current status
+ * @param {Array} actions - Array of action objects
+ * @returns {string} HTML content
+ */
+function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actions) {
+  // Build action buttons HTML
+  let buttonsHtml = '';
+  actions.forEach(action => {
+    buttonsHtml += `
+      <button class="action-btn" onclick="executeAction('${entityType}', '${escapeHtml(entityId)}', '${action.id}')">
+        <span class="action-icon">${action.icon}</span>
+        <span class="action-label">${escapeHtml(action.label)}</span>
+      </button>
+    `;
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+          }
+          .container {
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
+            color: white;
+            padding: 15px 20px;
+            margin: -20px -20px 20px -20px;
+          }
+          .header h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            font-weight: 500;
+          }
+          .header .status {
+            font-size: 12px;
+            opacity: 0.9;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+          }
+          .actions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s;
+          }
+          .action-btn:hover {
+            background: #f1f3f4;
+            border-color: #2d5d3f;
+          }
+          .action-btn:active {
+            background: #e8f0eb;
+          }
+          .action-icon {
+            font-size: 18px;
+          }
+          .action-label {
+            color: #202124;
+            font-weight: 500;
+          }
+          .btn-close {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #f1f3f4;
+            color: #5f6368;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+          }
+          .btn-close:hover {
+            background: #e8eaed;
+          }
+          .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #5f6368;
+          }
+          .loading.show {
+            display: block;
+          }
+          .actions-list.hidden {
+            display: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h3>☰ Select Action</h3>
+            <span class="status">${escapeHtml(status)}</span>
+          </div>
+          <div id="loadingIndicator" class="loading">
+            <div>Executing action...</div>
+          </div>
+          <div id="actionsList" class="actions-list">
+            ${buttonsHtml}
+          </div>
+          <button class="btn-close" onclick="google.script.host.close()">Cancel</button>
+        </div>
+        <script>
+          function executeAction(entityType, entityId, actionId) {
+            // Show loading state
+            document.getElementById('loadingIndicator').classList.add('show');
+            document.getElementById('actionsList').classList.add('hidden');
+
+            google.script.run
+              .withSuccessHandler(function(result) {
+                if (result && result.keepOpen) {
+                  // Action opened another dialog, just close this one
+                  google.script.host.close();
+                } else if (result && result.error) {
+                  alert('Error: ' + result.error);
+                  document.getElementById('loadingIndicator').classList.remove('show');
+                  document.getElementById('actionsList').classList.remove('hidden');
+                } else {
+                  // Success - close the dialog
+                  google.script.host.close();
+                }
+              })
+              .withFailureHandler(function(error) {
+                alert('Error: ' + error.message);
+                document.getElementById('loadingIndicator').classList.remove('show');
+                document.getElementById('actionsList').classList.remove('hidden');
+              })
+              .executeActionFromDialog(entityType, entityId, actionId);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+}
+
+/**
+ * Execute an action from the actions dialog
+ * Called via google.script.run from the dialog
+ * @param {string} entityType - 'job', 'submission', or 'invoice'
+ * @param {string} entityId - The entity ID
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeActionFromDialog(entityType, entityId, actionId) {
+  try {
+    if (entityType === 'job') {
+      return executeJobAction(entityId, actionId);
+    } else if (entityType === 'submission') {
+      return executeSubmissionAction(entityId, actionId);
+    } else if (entityType === 'invoice') {
+      return executeInvoiceAction(entityId, actionId);
+    }
+    return { error: 'Unknown entity type' };
+  } catch (error) {
+    Logger.log('Error executing action: ' + error.message);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Execute a job action
+ * @param {string} jobNumber - The job number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeJobAction(jobNumber, actionId) {
+  switch (actionId) {
+    case 'sendQuote':
+      sendQuoteEmail(jobNumber);
+      return { success: true };
+
+    case 'sendQuoteReminder':
+      sendQuoteReminder(jobNumber);
+      return { success: true };
+
+    case 'markAccepted':
+      markQuoteAccepted(jobNumber);
+      return { success: true };
+
+    case 'markDeclined':
+      markQuoteDeclined(jobNumber);
+      return { success: true };
+
+    case 'startWork':
+      startWorkOnJob(jobNumber);
+      return { success: true };
+
+    case 'markComplete':
+      markJobComplete(jobNumber);
+      return { success: true };
+
+    case 'onHold':
+      // This shows another dialog, so return keepOpen
+      showOnHoldDialogWithJob(jobNumber);
+      return { keepOpen: true };
+
+    case 'cancel':
+      // This shows a confirmation dialog
+      showCancelJobConfirmation(jobNumber);
+      return { keepOpen: true };
+
+    case 'viewActivity':
+      displayActivityLogForJob(jobNumber);
+      return { keepOpen: true };
+
+    case 'addNote':
+      promptForActivityNote(jobNumber);
+      return { keepOpen: true };
+
+    case 'generateInvoice':
+      generateInvoiceForJob(jobNumber);
+      return { keepOpen: true };
+
+    case 'requestTestimonial':
+      sendTestimonialRequest(jobNumber);
+      return { success: true };
+
+    default:
+      return { error: 'Unknown action: ' + actionId };
+  }
+}
+
+/**
+ * Execute a submission action
+ * @param {string} submissionNumber - The submission number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeSubmissionAction(submissionNumber, actionId) {
+  const ss = getSpreadsheet();
+  const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+
+  switch (actionId) {
+    case 'createJob':
+      createJobFromSubmission(submissionNumber);
+      return { success: true };
+
+    case 'markInReview':
+      updateSubmissionStatus(submissionNumber, 'In Review');
+      SpreadsheetApp.getUi().alert('Updated', 'Submission marked as In Review.', SpreadsheetApp.getUi().ButtonSet.OK);
+      return { success: true };
+
+    case 'decline':
+      updateSubmissionStatus(submissionNumber, 'Declined');
+      SpreadsheetApp.getUi().alert('Declined', 'Submission has been declined.', SpreadsheetApp.getUi().ButtonSet.OK);
+      return { success: true };
+
+    case 'markSpam':
+      updateSubmissionStatus(submissionNumber, 'Spam');
+      SpreadsheetApp.getUi().alert('Marked as Spam', 'Submission has been marked as spam.', SpreadsheetApp.getUi().ButtonSet.OK);
+      return { success: true };
+
+    default:
+      return { error: 'Unknown action: ' + actionId };
+  }
+}
+
+/**
+ * Execute an invoice action
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeInvoiceAction(invoiceNumber, actionId) {
+  switch (actionId) {
+    case 'viewInvoice':
+      previewInvoiceEmail(invoiceNumber);
+      return { keepOpen: true };
+
+    case 'sendInvoice':
+      sendInvoiceEmail(invoiceNumber);
+      return { success: true };
+
+    case 'sendReminder':
+      sendInvoiceReminder(invoiceNumber);
+      return { success: true };
+
+    case 'markPaid':
+      showPaymentMethodDialogForInvoice(invoiceNumber);
+      return { keepOpen: true };
+
+    case 'sendOverdue':
+      sendOverdueInvoice(invoiceNumber);
+      return { success: true };
+
+    default:
+      return { error: 'Unknown action: ' + actionId };
+  }
+}
+
+/**
+ * Update submission status
+ * @param {string} submissionNumber - The submission number
+ * @param {string} newStatus - The new status
+ */
+function updateSubmissionStatus(submissionNumber, newStatus) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const statusCol = getColIndex('SUBMISSIONS', 'Status') - 1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][subNumCol]).trim().toUpperCase() === submissionNumber.toUpperCase()) {
+      sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
+      return;
+    }
+  }
+}
+
+/**
+ * Show on hold dialog for a specific job
+ * @param {string} jobNumber - The job number
+ */
+function showOnHoldDialogWithJob(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt(
+    'Put Job On Hold',
+    'Enter reason for putting ' + jobNumber + ' on hold:',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() === ui.Button.OK) {
+    const reason = response.getResponseText();
+    putJobOnHold(jobNumber, reason);
+    ui.alert('Job On Hold', jobNumber + ' has been put on hold.', ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Show cancel job confirmation for a specific job
+ * @param {string} jobNumber - The job number
+ */
+function showCancelJobConfirmation(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    'Cancel Job?',
+    'Are you sure you want to cancel ' + jobNumber + '?\n\nThis action cannot be undone.',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response === ui.Button.YES) {
+    cancelJob(jobNumber);
+    ui.alert('Job Cancelled', jobNumber + ' has been cancelled.', ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Show payment method dialog for a specific invoice
+ * @param {string} invoiceNumber - The invoice number
+ */
+function showPaymentMethodDialogForInvoice(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+
+  // First, get payment method
+  const methodResponse = ui.prompt(
+    'Payment Method',
+    'Enter payment method for ' + invoiceNumber + ' (e.g., Bank Transfer, PayPal, Stripe):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (methodResponse.getSelectedButton() !== ui.Button.OK) return;
+  const paymentMethod = methodResponse.getResponseText() || 'Not specified';
+
+  // Then get payment reference
+  const refResponse = ui.prompt(
+    'Payment Reference',
+    'Enter payment reference (optional):',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (refResponse.getSelectedButton() !== ui.Button.OK) return;
+  const paymentRef = refResponse.getResponseText() || '';
+
+  // Mark the invoice as paid
+  markInvoiceAsPaid(invoiceNumber, paymentMethod, paymentRef);
+  ui.alert('Invoice Paid', invoiceNumber + ' has been marked as paid.', ui.ButtonSet.OK);
 }
 
 /**
@@ -7428,11 +8163,28 @@ function displayActivityLogForJob(jobNumber) {
             white-space: pre-wrap;
             word-break: break-word;
           }
-          .btn-close {
-            display: block;
-            width: 100%;
-            padding: 12px;
+          .button-row {
+            display: flex;
+            gap: 10px;
             margin-top: 20px;
+          }
+          .btn-add-note {
+            flex: 1;
+            padding: 12px;
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+          }
+          .btn-add-note:hover {
+            background: #2d8a47;
+          }
+          .btn-close {
+            flex: 1;
+            padding: 12px;
             background: #1a73e8;
             color: white;
             border: none;
@@ -7443,6 +8195,66 @@ function displayActivityLogForJob(jobNumber) {
           }
           .btn-close:hover {
             background: #1557b0;
+          }
+          .note-input-area {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          .note-input-area.show {
+            display: block;
+          }
+          .note-textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 14px;
+          }
+          .note-textarea:focus {
+            outline: none;
+            border-color: #1a73e8;
+          }
+          .note-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+          }
+          .btn-cancel {
+            padding: 8px 16px;
+            background: #f1f3f4;
+            color: #5f6368;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+          }
+          .btn-cancel:hover {
+            background: #e8eaed;
+          }
+          .btn-save {
+            padding: 8px 16px;
+            background: #34a853;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+          }
+          .btn-save:hover {
+            background: #2d8a47;
+          }
+          .btn-save:disabled {
+            background: #a8dab5;
+            cursor: not-allowed;
           }
           .empty-state {
             text-align: center;
@@ -7457,20 +8269,240 @@ function displayActivityLogForJob(jobNumber) {
             <h2>📜 Activity Log</h2>
             <div class="count">${jobNumber} • ${activities.length} ${activities.length === 1 ? 'entry' : 'entries'}</div>
           </div>
-          <div class="activity-list">
+          <div id="activityList" class="activity-list">
             ${activitiesHtml}
           </div>
-          <button class="btn-close" onclick="google.script.host.close()">Close</button>
+          <div id="noteInputArea" class="note-input-area">
+            <textarea id="noteText" class="note-textarea" placeholder="Enter your note here..."></textarea>
+            <div class="note-buttons">
+              <button class="btn-cancel" onclick="hideNoteInput()">Cancel</button>
+              <button id="saveBtn" class="btn-save" onclick="saveNote()">Save Note</button>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="btn-add-note" onclick="showNoteInput()">📝 Add Note</button>
+            <button class="btn-close" onclick="google.script.host.close()">Close</button>
+          </div>
         </div>
+        <script>
+          const jobNumber = '${escapeHtml(jobNumber)}';
+
+          function showNoteInput() {
+            document.getElementById('noteInputArea').classList.add('show');
+            document.getElementById('noteText').focus();
+          }
+
+          function hideNoteInput() {
+            document.getElementById('noteInputArea').classList.remove('show');
+            document.getElementById('noteText').value = '';
+          }
+
+          function saveNote() {
+            const noteText = document.getElementById('noteText').value.trim();
+
+            if (!noteText) {
+              alert('Please enter a note.');
+              return;
+            }
+
+            // Disable button while saving
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            google.script.run
+              .withSuccessHandler(function(result) {
+                if (result && result.success) {
+                  // Refresh the dialog to show the new note
+                  google.script.run
+                    .withSuccessHandler(function(newHtml) {
+                      if (newHtml) {
+                        document.getElementById('activityList').innerHTML = newHtml;
+                        // Update count in header
+                        const countEl = document.querySelector('.count');
+                        if (countEl && result.newCount) {
+                          countEl.textContent = jobNumber + ' • ' + result.newCount + (result.newCount === 1 ? ' entry' : ' entries');
+                        }
+                      }
+                      hideNoteInput();
+                      saveBtn.disabled = false;
+                      saveBtn.textContent = 'Save Note';
+                    })
+                    .withFailureHandler(function() {
+                      // Even if refresh fails, note was saved - just close and reopen
+                      alert('Note saved! Please reopen the Activity Log to see it.');
+                      google.script.host.close();
+                    })
+                    .getActivityListHtml(jobNumber);
+                } else {
+                  alert('Error saving note: ' + (result ? result.error : 'Unknown error'));
+                  saveBtn.disabled = false;
+                  saveBtn.textContent = 'Save Note';
+                }
+              })
+              .withFailureHandler(function(error) {
+                alert('Error: ' + error.message);
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Note';
+              })
+              .addActivityNoteFromDialog(jobNumber, noteText);
+          }
+        </script>
       </body>
     </html>
   `;
 
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
     .setWidth(500)
-    .setHeight(500);
+    .setHeight(550);
 
   ui.showModalDialog(htmlOutput, 'Activity Log - ' + jobNumber);
+}
+
+/**
+ * Add an activity note from the Activity Log dialog
+ * Called via google.script.run from the dialog
+ * @param {string} jobNumber - The job number
+ * @param {string} noteText - The note content
+ * @returns {Object} Result object with success boolean and newCount
+ */
+function addActivityNoteFromDialog(jobNumber, noteText) {
+  try {
+    if (!jobNumber || !noteText) {
+      return { success: false, error: 'Job number and note text are required' };
+    }
+
+    // Use existing logJobActivity function
+    const result = logJobActivity(jobNumber, 'Manual Note', noteText, '', '', 'Manual');
+
+    if (result) {
+      // Get the new count of activities
+      const ss = getSpreadsheet();
+      const activitySheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+      let newCount = 0;
+
+      if (activitySheet && activitySheet.getLastRow() > 1) {
+        const data = activitySheet.getDataRange().getValues();
+        const jobNumColIndex = getColIndex('ACTIVITY_LOG', 'Job #') - 1;
+
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][jobNumColIndex]).trim().toUpperCase() === jobNumber.toUpperCase()) {
+            newCount++;
+          }
+        }
+      }
+
+      return { success: true, newCount: newCount };
+    } else {
+      return { success: false, error: 'Failed to log activity' };
+    }
+  } catch (error) {
+    Logger.log('Error adding note from dialog: ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get the activity list HTML for refreshing the dialog
+ * Called via google.script.run from the Activity Log dialog
+ * @param {string} jobNumber - The job number
+ * @returns {string} HTML content for the activity list
+ */
+function getActivityListHtml(jobNumber) {
+  try {
+    const ss = getSpreadsheet();
+    const activitySheet = ss.getSheetByName(SHEETS.ACTIVITY_LOG);
+
+    if (!activitySheet || activitySheet.getLastRow() <= 1) {
+      return '<div class="empty-state">No activities found.</div>';
+    }
+
+    // Find all activities for this job
+    const data = activitySheet.getDataRange().getValues();
+    const jobNumColIndex = getColIndex('ACTIVITY_LOG', 'Job #') - 1;
+    const timestampColIndex = getColIndex('ACTIVITY_LOG', 'Timestamp') - 1;
+    const typeColIndex = getColIndex('ACTIVITY_LOG', 'Activity Type') - 1;
+    const summaryColIndex = getColIndex('ACTIVITY_LOG', 'Subject/Summary') - 1;
+    const detailsColIndex = getColIndex('ACTIVITY_LOG', 'Details') - 1;
+    const fromToColIndex = getColIndex('ACTIVITY_LOG', 'From/To') - 1;
+    const loggedByColIndex = getColIndex('ACTIVITY_LOG', 'Logged By') - 1;
+    const activities = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][jobNumColIndex]).trim().toUpperCase() === jobNumber.toUpperCase()) {
+        activities.push({
+          timestamp: timestampColIndex >= 0 ? data[i][timestampColIndex] : '',
+          type: typeColIndex >= 0 ? data[i][typeColIndex] : '',
+          summary: summaryColIndex >= 0 ? data[i][summaryColIndex] : '',
+          details: detailsColIndex >= 0 ? data[i][detailsColIndex] : '',
+          fromTo: fromToColIndex >= 0 ? data[i][fromToColIndex] : '',
+          loggedBy: loggedByColIndex >= 0 ? data[i][loggedByColIndex] : ''
+        });
+      }
+    }
+
+    if (activities.length === 0) {
+      return '<div class="empty-state">No activities found for this job.</div>';
+    }
+
+    // Sort by timestamp descending (newest first)
+    activities.sort((a, b) => {
+      const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+      const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+      return dateB - dateA;
+    });
+
+    // Build HTML for each activity
+    let activitiesHtml = '';
+    activities.forEach((activity) => {
+      const timestamp = activity.timestamp instanceof Date
+        ? formatNZDateTime(activity.timestamp)
+        : activity.timestamp;
+
+      // Determine icon and color based on activity type
+      let icon = '📝';
+      let color = '#666';
+      const type = (activity.type || '').toLowerCase();
+      if (type.includes('email')) {
+        icon = '📧';
+        color = '#1a73e8';
+      } else if (type.includes('status')) {
+        icon = '🔄';
+        color = '#ea8600';
+      } else if (type.includes('payment') || type.includes('invoice')) {
+        icon = '💰';
+        color = '#34a853';
+      } else if (type.includes('note')) {
+        icon = '📝';
+        color = '#9334e6';
+      } else if (type.includes('quote')) {
+        icon = '📋';
+        color = '#ff6d01';
+      }
+
+      const details = activity.details ? '<div class="details">' + escapeHtml(activity.details) + '</div>' : '';
+      const fromTo = activity.fromTo ? '<div class="from-to">' + escapeHtml(activity.fromTo) + '</div>' : '';
+      const loggedBy = activity.loggedBy ? '<span class="logged-by">by ' + escapeHtml(activity.loggedBy) + '</span>' : '';
+
+      activitiesHtml += `
+        <div class="activity-item">
+          <div class="activity-header">
+            <span class="activity-icon">${icon}</span>
+            <span class="activity-type" style="color: ${color};">${escapeHtml(activity.type || 'Activity')}</span>
+            <span class="activity-time">${escapeHtml(timestamp)} ${loggedBy}</span>
+          </div>
+          <div class="activity-summary">${escapeHtml(activity.summary || '')}</div>
+          ${fromTo}
+          ${details}
+        </div>
+      `;
+    });
+
+    return activitiesHtml;
+  } catch (error) {
+    Logger.log('Error getting activity list HTML: ' + error.message);
+    return '<div class="empty-state">Error loading activities.</div>';
+  }
 }
 
 /**
