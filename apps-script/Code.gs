@@ -948,8 +948,7 @@ Use CartCure > Jobs > Start Work when you begin.`;
         MailApp.sendEmail({
           to: CONFIG.ADMIN_EMAIL,
           subject: adminSubject,
-          body: adminBody,
-          inlineImages: { signature: signatureBlob }
+          body: adminBody
         });
       } catch (emailError) {
         Logger.log('Failed to send admin notification: ' + emailError.message);
@@ -1017,8 +1016,7 @@ https://cartcure.co.nz`;
           subject: 'Quote Accepted - ' + jobNumber,
           body: plainBody,
           htmlBody: htmlBody,
-          name: businessName,
-          inlineImages: { signature: signatureBlob }
+          name: businessName
         });
 
         Logger.log('Client confirmation email sent to: ' + clientEmail);
@@ -1052,18 +1050,27 @@ https://cartcure.co.nz`;
 
 /**
  * Get or create the Signatures folder in Google Drive
+ * Uses caching to avoid repeated Drive searches
  * @returns {Folder} The Signatures folder
  */
+let _signaturesFolderCache = null;
 function getOrCreateSignaturesFolder() {
+  // Return cached folder if available
+  if (_signaturesFolderCache) {
+    return _signaturesFolderCache;
+  }
+
   const folderName = 'CartCure Signatures';
   const folders = DriveApp.getFoldersByName(folderName);
 
   if (folders.hasNext()) {
-    return folders.next();
+    _signaturesFolderCache = folders.next();
+    return _signaturesFolderCache;
   }
 
   // Create folder if it doesn't exist
-  return DriveApp.createFolder(folderName);
+  _signaturesFolderCache = DriveApp.createFolder(folderName);
+  return _signaturesFolderCache;
 }
 
 /**
