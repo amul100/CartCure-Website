@@ -854,38 +854,13 @@ function handleQuoteAcceptance(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Convert signature to blob (used for both Drive storage and email attachment)
-    const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
-    const signatureBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature.png');
-
-    // Save signature to Google Drive
-    let signatureFileUrl = '';
-    try {
-      const signatureFolder = getOrCreateSignaturesFolder();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = 'Signature_' + jobNumber + '_' + timestamp + '.png';
-
-      // Create a copy of the blob with the proper filename for Drive
-      const driveBlob = signatureBlob.copyBlob();
-      driveBlob.setName(fileName);
-
-      // Save to Drive
-      const file = signatureFolder.createFile(driveBlob);
-      signatureFileUrl = file.getUrl();
-
-      Logger.log('Signature saved: ' + signatureFileUrl);
-    } catch (sigError) {
-      Logger.log('Error saving signature: ' + sigError.message);
-      // Continue without signature URL - still process acceptance
-    }
-
     // Calculate due date
     const now = new Date();
     const turnaround = parseInt(job['Estimated Turnaround']) || JOB_CONFIG.DEFAULT_SLA_DAYS;
     const dueDate = new Date(now);
     dueDate.setDate(dueDate.getDate() + turnaround);
 
-    // Update job fields
+    // CRITICAL: Update job status immediately (this is what the user is waiting for)
     updateJobFields(jobNumber, {
       'Status': JOB_STATUS.ACCEPTED,
       'Quote Accepted Date': formatNZDate(now),
@@ -895,144 +870,37 @@ function handleQuoteAcceptance(data) {
       'Due Date': formatNZDate(dueDate)
     });
 
-    // Log acceptance to Activity Log
-    const acceptanceDetails = [
-      'Accepted by: ' + escapeHtml(fullName),
-      acceptanceDate ? 'Date: ' + acceptanceDate : '',
-      signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
-      comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
-    ].filter(Boolean).join(', ');
-    logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via web form', acceptanceDetails, '', 'Auto');
+    // Queue background tasks (signature save, emails, invoice) for async processing
+    const taskData = {
+      type: 'quoteAcceptance',
+      jobNumber: jobNumber,
+      fullName: fullName,
+      acceptanceDate: acceptanceDate || formatNZDate(now),
+      signatureData: signatureData,
+      comments: comments,
+      clientName: job['Client Name'],
+      clientEmail: job['Client Email'],
+      total: parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0,
+      dueDate: formatNZDate(dueDate),
+      turnaround: turnaround,
+      timestamp: now.toISOString()
+    };
 
-    // Check if deposit is required and generate invoice
-    const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
+    queueBackgroundTask(taskData);
+
+    Logger.log('Quote accepted for ' + jobNumber + ' - background tasks queued');
+
+    // Return success immediately - background tasks will process async
+    const total = taskData.total;
     const requiresDeposit = total >= 200;
-    let depositInfo = '';
+    const depositInfo = requiresDeposit
+      ? ' A deposit invoice will be sent to your email shortly.'
+      : '';
 
-    if (requiresDeposit) {
-      const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
-      if (invoiceResult.success) {
-        depositInfo = 'A 50% deposit invoice (' + formatCurrency(invoiceResult.amount) + ') has been sent to your email.';
-        Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
-      } else {
-        Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
-        // Still continue - admin can manually send invoice
-      }
-    }
-
-    // Send admin notification
-    if (CONFIG.ADMIN_EMAIL) {
-      const adminSubject = 'Quote Accepted - ' + jobNumber + ' - ' + fullName;
-      const adminBody = `A quote has been accepted via the web form.
-
-Job Number: ${jobNumber}
-Client: ${job['Client Name']} (${job['Client Email']})
-Accepted By: ${fullName}
-Acceptance Date: ${acceptanceDate || formatNZDate(now)}
-Terms Accepted: Yes
-${signatureFileUrl ? 'Signature: ' + signatureFileUrl : ''}
-
-Quote Amount: ${formatCurrency(total)}
-${requiresDeposit ? 'Deposit Required: Yes (50% = ' + formatCurrency(total * 0.5) + ')' : 'Deposit Required: No (under $200)'}
-
-${comments ? 'Client Comments:\n' + comments : ''}
-
-SLA:
-- Due Date: ${formatNZDate(dueDate)}
-- Days Remaining: ${turnaround}
-
----
-Use CartCure > Jobs > Start Work when you begin.`;
-
-      try {
-        MailApp.sendEmail({
-          to: CONFIG.ADMIN_EMAIL,
-          subject: adminSubject,
-          body: adminBody
-        });
-      } catch (emailError) {
-        Logger.log('Failed to send admin notification: ' + emailError.message);
-      }
-    }
-
-    // Send confirmation email to client
-    const clientEmail = job['Client Email'];
-    if (clientEmail) {
-      try {
-        const businessName = getSetting('Business Name') || 'CartCure';
-        const isGSTRegistered = getSetting('GST Registered') === 'Yes';
-        const gstNumber = getSetting('GST Number') || '';
-        const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
-
-        // Determine deposit message
-        const depositMessage = requiresDeposit
-          ? 'You\'ll receive a deposit invoice shortly. Payment of 50% (' + formatCurrency(total * 0.5) + ') is required to begin work.'
-          : 'No deposit is required. We\'ll begin work and invoice you upon completion.';
-
-        // Render the confirmation email template
-        const bodyContent = renderEmailTemplate('email-quote-accepted', {
-          jobNumber: jobNumber,
-          clientName: job['Client Name'] || fullName,
-          acceptedBy: fullName,
-          acceptanceDate: acceptanceDate || formatNZDate(now),
-          quoteAmount: formatCurrency(total),
-          depositInfo: depositMessage,
-          dueDate: formatNZDate(dueDate),
-          businessName: businessName,
-          gstFooterLine: gstFooterLine
-        });
-
-        const htmlBody = wrapEmailHtml(bodyContent);
-
-        // Plain text version
-        const plainBody = `Hi ${job['Client Name'] || fullName},
-
-Thank you for accepting the quote for job ${jobNumber}!
-
-ACCEPTANCE DETAILS
-------------------
-Accepted By: ${fullName}
-Date: ${acceptanceDate || formatNZDate(now)}
-Quote Amount: ${formatCurrency(total)}
-
-WHAT HAPPENS NEXT
------------------
-${depositMessage}
-
-We'll begin work on your project and keep you updated on progress.
-Estimated completion: ${formatNZDate(dueDate)}
-
-By accepting this quote, you agreed to our Terms of Service and Privacy Policy.
-
-Thanks for choosing CartCure!
-
---
-${businessName}
-Quick Shopify Fixes for NZ Businesses
-https://cartcure.co.nz`;
-
-        MailApp.sendEmail({
-          to: clientEmail,
-          subject: 'Quote Accepted - ' + jobNumber,
-          body: plainBody,
-          htmlBody: htmlBody,
-          name: businessName
-        });
-
-        Logger.log('Client confirmation email sent to: ' + clientEmail);
-      } catch (clientEmailError) {
-        Logger.log('Failed to send client confirmation email: ' + clientEmailError.message);
-        // Continue - not critical
-      }
-    }
-
-    Logger.log('Quote accepted via web form for ' + jobNumber + ' by ' + fullName);
-
-    // Return success response
     return ContentService
       .createTextOutput(JSON.stringify({
         success: true,
-        message: 'Quote accepted successfully!' + (depositInfo ? ' ' + depositInfo : ''),
+        message: 'Quote accepted successfully!' + depositInfo,
         jobNumber: jobNumber
       }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1046,6 +914,271 @@ https://cartcure.co.nz`;
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ============================================================================
+// BACKGROUND TASK QUEUE SYSTEM
+// ============================================================================
+
+/**
+ * Add a task to the background processing queue
+ * Tasks are stored in ScriptProperties and processed by a time trigger
+ */
+function queueBackgroundTask(taskData) {
+  const props = PropertiesService.getScriptProperties();
+  const queueKey = 'BACKGROUND_TASK_QUEUE';
+
+  // Get existing queue
+  let queue = [];
+  try {
+    const existingQueue = props.getProperty(queueKey);
+    if (existingQueue) {
+      queue = JSON.parse(existingQueue);
+    }
+  } catch (e) {
+    queue = [];
+  }
+
+  // Add new task
+  queue.push(taskData);
+
+  // Save queue (limit to 50 tasks to avoid property size limits)
+  if (queue.length > 50) {
+    queue = queue.slice(-50);
+  }
+  props.setProperty(queueKey, JSON.stringify(queue));
+
+  Logger.log('Task queued: ' + taskData.type + ' for ' + (taskData.jobNumber || 'unknown'));
+}
+
+/**
+ * Process all pending background tasks
+ * This should be called by a time-based trigger (every 1 minute)
+ * Run setupBackgroundTaskTrigger() once to create the trigger
+ */
+function processBackgroundTasks() {
+  const props = PropertiesService.getScriptProperties();
+  const queueKey = 'BACKGROUND_TASK_QUEUE';
+
+  // Get and clear queue atomically
+  const existingQueue = props.getProperty(queueKey);
+  if (!existingQueue) return;
+
+  let queue = [];
+  try {
+    queue = JSON.parse(existingQueue);
+  } catch (e) {
+    Logger.log('Error parsing task queue: ' + e.message);
+    props.deleteProperty(queueKey);
+    return;
+  }
+
+  if (queue.length === 0) return;
+
+  // Clear queue before processing (to avoid reprocessing on failure)
+  props.deleteProperty(queueKey);
+
+  Logger.log('Processing ' + queue.length + ' background tasks');
+
+  // Process each task
+  for (const task of queue) {
+    try {
+      if (task.type === 'quoteAcceptance') {
+        processQuoteAcceptanceTask(task);
+      }
+      // Add other task types here as needed
+    } catch (taskError) {
+      Logger.log('Error processing task ' + task.type + ': ' + taskError.message);
+    }
+  }
+}
+
+/**
+ * Process a quote acceptance background task
+ * Handles: signature save, activity log, deposit invoice, admin email, client email
+ */
+function processQuoteAcceptanceTask(task) {
+  const jobNumber = task.jobNumber;
+  const fullName = task.fullName;
+  const acceptanceDate = task.acceptanceDate;
+  const signatureData = task.signatureData;
+  const comments = task.comments;
+  const clientName = task.clientName;
+  const clientEmail = task.clientEmail;
+  const total = task.total;
+  const dueDate = task.dueDate;
+  const turnaround = task.turnaround;
+
+  Logger.log('Processing quote acceptance task for ' + jobNumber);
+
+  // 1. Save signature to Google Drive
+  let signatureFileUrl = '';
+  if (signatureData) {
+    try {
+      const base64Data = signatureData.replace(/^data:image\/png;base64,/, '');
+      const signatureBlob = Utilities.newBlob(Utilities.base64Decode(base64Data), 'image/png', 'signature.png');
+      const signatureFolder = getOrCreateSignaturesFolder();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = 'Signature_' + jobNumber + '_' + timestamp + '.png';
+      const driveBlob = signatureBlob.copyBlob();
+      driveBlob.setName(fileName);
+      const file = signatureFolder.createFile(driveBlob);
+      signatureFileUrl = file.getUrl();
+      Logger.log('Signature saved: ' + signatureFileUrl);
+    } catch (sigError) {
+      Logger.log('Error saving signature: ' + sigError.message);
+    }
+  }
+
+  // 2. Log acceptance to Activity Log
+  const acceptanceDetails = [
+    'Accepted by: ' + escapeHtml(fullName),
+    acceptanceDate ? 'Date: ' + acceptanceDate : '',
+    signatureFileUrl ? 'Signature: ' + signatureFileUrl : '',
+    comments ? 'Client Comments: ' + escapeHtml(comments.substring(0, 500)) : ''
+  ].filter(Boolean).join(', ');
+  logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via web form', acceptanceDetails, '', 'Auto');
+
+  // 3. Generate and send deposit invoice if required
+  const requiresDeposit = total >= 200;
+  if (requiresDeposit) {
+    const job = getJobByNumber(jobNumber);
+    if (job) {
+      const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
+      if (invoiceResult.success) {
+        Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
+      } else {
+        Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
+      }
+    }
+  }
+
+  // 4. Send admin notification
+  if (CONFIG.ADMIN_EMAIL) {
+    const adminSubject = 'Quote Accepted - ' + jobNumber + ' - ' + fullName;
+    const adminBody = `A quote has been accepted via the web form.
+
+Job Number: ${jobNumber}
+Client: ${clientName} (${clientEmail})
+Accepted By: ${fullName}
+Acceptance Date: ${acceptanceDate}
+Terms Accepted: Yes
+${signatureFileUrl ? 'Signature: ' + signatureFileUrl : ''}
+
+Quote Amount: ${formatCurrency(total)}
+${requiresDeposit ? 'Deposit Required: Yes (50% = ' + formatCurrency(total * 0.5) + ')' : 'Deposit Required: No (under $200)'}
+
+${comments ? 'Client Comments:\n' + comments : ''}
+
+SLA:
+- Due Date: ${dueDate}
+- Days Remaining: ${turnaround}
+
+---
+Use CartCure > Jobs > Start Work when you begin.`;
+
+    try {
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: adminSubject,
+        body: adminBody
+      });
+      Logger.log('Admin notification sent for ' + jobNumber);
+    } catch (emailError) {
+      Logger.log('Failed to send admin notification: ' + emailError.message);
+    }
+  }
+
+  // 5. Send confirmation email to client
+  if (clientEmail) {
+    try {
+      const businessName = getSetting('Business Name') || 'CartCure';
+      const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+      const gstNumber = getSetting('GST Number') || '';
+      const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+      const depositMessage = requiresDeposit
+        ? 'You\'ll receive a deposit invoice shortly. Payment of 50% (' + formatCurrency(total * 0.5) + ') is required to begin work.'
+        : 'No deposit is required. We\'ll begin work and invoice you upon completion.';
+
+      const bodyContent = renderEmailTemplate('email-quote-accepted', {
+        jobNumber: jobNumber,
+        clientName: clientName || fullName,
+        acceptedBy: fullName,
+        acceptanceDate: acceptanceDate,
+        quoteAmount: formatCurrency(total),
+        depositInfo: depositMessage,
+        dueDate: dueDate,
+        businessName: businessName,
+        gstFooterLine: gstFooterLine
+      });
+
+      const htmlBody = wrapEmailHtml(bodyContent);
+
+      const plainBody = `Hi ${clientName || fullName},
+
+Thank you for accepting the quote for job ${jobNumber}!
+
+ACCEPTANCE DETAILS
+------------------
+Accepted By: ${fullName}
+Date: ${acceptanceDate}
+Quote Amount: ${formatCurrency(total)}
+
+WHAT HAPPENS NEXT
+-----------------
+${depositMessage}
+
+We'll begin work on your project and keep you updated on progress.
+Estimated completion: ${dueDate}
+
+By accepting this quote, you agreed to our Terms of Service and Privacy Policy.
+
+Thanks for choosing CartCure!
+
+--
+${businessName}
+Quick Shopify Fixes for NZ Businesses
+https://cartcure.co.nz`;
+
+      MailApp.sendEmail({
+        to: clientEmail,
+        subject: 'Quote Accepted - ' + jobNumber,
+        body: plainBody,
+        htmlBody: htmlBody,
+        name: businessName
+      });
+
+      Logger.log('Client confirmation email sent to: ' + clientEmail);
+    } catch (clientEmailError) {
+      Logger.log('Failed to send client confirmation email: ' + clientEmailError.message);
+    }
+  }
+
+  Logger.log('Quote acceptance task completed for ' + jobNumber);
+}
+
+/**
+ * Set up the background task processing trigger
+ * Run this once from the CartCure menu or script editor
+ */
+function setupBackgroundTaskTrigger() {
+  // Delete any existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'processBackgroundTasks') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  }
+
+  // Create new trigger to run every minute
+  ScriptApp.newTrigger('processBackgroundTasks')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+
+  Logger.log('Background task trigger created (runs every 1 minute)');
+  SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every minute.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 /**
@@ -3623,6 +3756,7 @@ function buildMenu() {
         .addItem('🧹 Clean Up Testimonials', 'cleanupTestimonialsSheet')
         .addItem('🔄 Extend Validation Ranges', 'extendValidationRanges')
         .addSeparator()
+        .addItem('⏱️ Setup Background Tasks', 'setupBackgroundTaskTrigger')
         .addItem('📊 View Archive Stats', 'showArchiveStats'))
       .addSeparator()
       .addItem(emailLoggingLabel, 'toggleEmailLogging')
