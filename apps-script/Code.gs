@@ -3127,7 +3127,6 @@ const COLUMN_CONFIG = {
   // JOBS SHEET (32 columns)
   // -------------------------------------------------------------------------
   JOBS: [
-    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 120,
@@ -3212,7 +3211,6 @@ const COLUMN_CONFIG = {
   // INVOICE LOG SHEET (20 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
-    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -3254,7 +3252,6 @@ const COLUMN_CONFIG = {
   // CLIENTS SHEET (14 columns)
   // -------------------------------------------------------------------------
   CLIENTS: [
-    { name: '⚡', width: 50, defaultValue: '☰' },
     { name: 'Client Email', width: 220 },  // PRIMARY KEY - unique identifier
     { name: 'Client Name', width: 160 },
     { name: 'Client Phone', width: 130 },
@@ -3286,7 +3283,6 @@ const COLUMN_CONFIG = {
   // SUBMISSIONS SHEET (11 columns)
   // -------------------------------------------------------------------------
   SUBMISSIONS: [
-    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -4050,6 +4046,8 @@ function buildMenu() {
   const headerProtectionLabel = headerProtectionEnabled ? '🔒 Disable Header Protection' : '🔓 Enable Header Protection';
 
   ui.createMenu('🛒 CartCure')
+    .addItem('⚡ Actions', 'showActionsForSelectedRow')
+    .addSeparator()
     .addSubMenu(ui.createMenu('📊 Dashboard')
       .addItem('🔄 Refresh Dashboard', 'refreshDashboard')
       .addItem('📈 Refresh Analytics', 'refreshAnalytics')
@@ -4157,17 +4155,32 @@ function onEdit(e) {
     }
   }
 
-  // Handle Actions column (column 1) on Jobs, Submissions, or Invoices sheets
+}
+
+/**
+ * Show actions dialog for the currently selected row
+ * Called from the CartCure menu
+ */
+function showActionsForSelectedRow() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
   const sheetName = sheet.getName();
-  if (range.getColumn() === 1 && range.getRow() > 1) {
-    if (sheetName === SHEETS.JOBS || sheetName === SHEETS.SUBMISSIONS || sheetName === SHEETS.INVOICES) {
-      // Reset the cell immediately to prevent confusion
-      range.setValue('☰');
-      SpreadsheetApp.flush();
-      // Show the actions dialog for this row
-      showActionsDialogForRow(sheet, sheetName, range.getRow());
-    }
+  const row = SpreadsheetApp.getActiveRange().getRow();
+
+  // Check if on a supported sheet
+  const supportedSheets = [SHEETS.JOBS, SHEETS.SUBMISSIONS, SHEETS.INVOICES, SHEETS.CLIENTS];
+  if (!supportedSheets.includes(sheetName)) {
+    ui.alert('Unsupported Sheet', 'Actions are only available on Jobs, Submissions, Invoices, or Clients sheets.', ui.ButtonSet.OK);
+    return;
   }
+
+  // Check if on header row
+  if (row < 2) {
+    ui.alert('Select a Row', 'Please select a row (not the header) to see available actions.', ui.ButtonSet.OK);
+    return;
+  }
+
+  showActionsDialogForRow(sheet, sheetName, row);
 }
 
 // ============================================================================
@@ -11794,7 +11807,6 @@ function addNewClient(clientData) {
   const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
   const rowData = buildRowFromConfig('CLIENTS', {
-    '⚡': '☰',
     'Client Email': (clientData.email || '').toLowerCase().trim(),
     'Client Name': clientData.name || '',
     'Client Phone': clientData.phone || '',
@@ -12093,7 +12105,6 @@ function populateClientsFromExistingJobs() {
       : '';
 
     const rowData = buildRowFromConfig('CLIENTS', {
-      '⚡': '☰',
       'Client Email': client.email,
       'Client Name': client.name,
       'Client Phone': client.phone,
@@ -16579,7 +16590,6 @@ function createTestSubmissions() {
     if (!sheet) {
       sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
       sheet.appendRow([
-        '⚡',
         'Status',
         'Submission #',
         'Timestamp',
@@ -16649,7 +16659,6 @@ function createTestSubmissions() {
 
       // Create row data (must match COLUMN_CONFIG.SUBMISSIONS order)
       const rowData = [
-        '☰',              // ⚡
         statuses[i],      // Status
         submissionNumber, // Submission #
         timestamp,        // Timestamp
