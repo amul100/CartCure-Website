@@ -1212,13 +1212,79 @@ Use CartCure > Jobs > Start Work when you begin.`;
   if (pendingSubtasks.includes('clientEmail') && clientEmail) {
     try {
       const businessName = getSetting('Business Name') || 'CartCure';
+      const bankName = getSetting('Bank Name') || '';
+      const bankAccount = getSetting('Bank Account') || '';
       const isGSTRegistered = getSetting('GST Registered') === 'Yes';
       const gstNumber = getSetting('GST Number') || '';
       const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+      const depositAmount = formatCurrency(total * 0.5);
       const depositMessage = requiresDeposit
-        ? 'You\'ll receive a deposit invoice shortly. Payment of 50% (' + formatCurrency(total * 0.5) + ') is required to begin work.'
+        ? 'You\'ll receive a deposit invoice shortly. Payment of 50% (' + depositAmount + ') is required to begin work.'
         : 'No deposit is required. We\'ll begin work and invoice you upon completion.';
+
+      // Build payment details HTML for deposit payments
+      let paymentDetailsHtml = '';
+      if (requiresDeposit && (bankName || bankAccount)) {
+        paymentDetailsHtml = `
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <h2 style="margin: 0 0 15px 0; color: ${EMAIL_COLORS.inkBlack}; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid ${EMAIL_COLORS.paperBorder}; padding-bottom: 10px;">
+              Payment Details
+            </h2>
+            <div style="background-color: ${EMAIL_COLORS.alertBg}; border: 2px solid ${EMAIL_COLORS.alertBorder}; padding: 20px;">
+              <p style="margin: 0 0 15px 0; color: ${EMAIL_COLORS.inkBlack}; font-weight: bold; font-size: 16px;">
+                Deposit Amount: <span style="color: ${EMAIL_COLORS.brandGreen};">${depositAmount}</span>
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="100" style="color: ${EMAIL_COLORS.inkGray}; font-size: 13px;">Bank:</td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; color: ${EMAIL_COLORS.inkBlack};">${bankName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="100" style="color: ${EMAIL_COLORS.inkGray}; font-size: 13px;">Account:</td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; color: ${EMAIL_COLORS.inkBlack};">${bankAccount}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid ${EMAIL_COLORS.paperBorder};">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="100" style="color: ${EMAIL_COLORS.inkGray}; font-size: 13px;">Payee:</td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; color: ${EMAIL_COLORS.inkBlack};">${businessName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td width="100" style="color: ${EMAIL_COLORS.inkGray}; font-size: 13px;">Reference:</td>
+                        <td style="font-family: 'Courier New', monospace; font-size: 15px; font-weight: bold; color: ${EMAIL_COLORS.brandGreen};">${jobNumber}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 15px 0 0 0; color: ${EMAIL_COLORS.inkGray}; font-size: 12px; font-style: italic;">
+                Tip: Select and copy each value, or wait for the deposit invoice email with full details.
+              </p>
+            </div>
+          </td>
+        </tr>`;
+      }
 
       const bodyContent = renderEmailTemplate('email-quote-accepted', {
         jobNumber: jobNumber,
@@ -1229,10 +1295,25 @@ Use CartCure > Jobs > Start Work when you begin.`;
         depositInfo: depositMessage,
         dueDate: dueDate,
         businessName: businessName,
-        gstFooterLine: gstFooterLine
+        gstFooterLine: gstFooterLine,
+        paymentDetailsHtml: paymentDetailsHtml
       });
 
       const htmlBody = wrapEmailHtml(bodyContent);
+
+      // Build plain text payment details for deposit payments
+      let plainPaymentDetails = '';
+      if (requiresDeposit && (bankName || bankAccount)) {
+        plainPaymentDetails = `
+
+PAYMENT DETAILS
+---------------
+Deposit Amount: ${depositAmount}
+Bank: ${bankName}
+Account: ${bankAccount}
+Payee: ${businessName}
+Reference: ${jobNumber}`;
+      }
 
       const plainBody = `Hi ${clientName || fullName},
 
@@ -1249,7 +1330,7 @@ WHAT HAPPENS NEXT
 ${depositMessage}
 
 We'll begin work on your project and keep you updated on progress.
-Estimated completion: ${dueDate}
+Estimated completion: ${dueDate}${plainPaymentDetails}
 
 By accepting this quote, you agreed to our Terms of Service and Privacy Policy.
 
