@@ -460,6 +460,241 @@
             color: var(--ink-gray);
             font-style: italic;
         }
+
+        /* Demo Mode Banner */
+        .demo-banner {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            text-align: center;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            border: 2px solid #cc5500;
+            box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Tablet Styles */
+        @media (max-width: 768px) {
+            .acceptance-container {
+                padding: 6rem 1.5rem 3rem;
+            }
+
+            .acceptance-content h1 {
+                font-size: 1.75rem;
+                text-align: center;
+            }
+
+            .acceptance-subtitle {
+                text-align: center;
+            }
+
+            .back-link {
+                display: block;
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+                width: fit-content;
+            }
+
+            .acceptance-form {
+                padding: 1.5rem;
+            }
+
+            .info-box,
+            .success-message,
+            .error-message {
+                text-align: center;
+            }
+
+            .quote-summary {
+                padding: 1.25rem;
+            }
+
+            .quote-detail {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 0.25rem;
+            }
+
+            .terms-section,
+            .signature-section,
+            .deposit-section {
+                padding: 1.25rem;
+            }
+
+            .terms-links {
+                text-align: center;
+            }
+
+            .terms-links a {
+                display: block;
+                margin-right: 0;
+                margin-bottom: 0.75rem;
+            }
+
+            .checkbox-group {
+                justify-content: center;
+                text-align: left;
+            }
+
+            .payment-details {
+                padding: 1rem;
+            }
+
+            .payment-row {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 0.25rem;
+                padding: 0.75rem 0;
+            }
+
+            .deposit-amount {
+                text-align: center;
+            }
+
+            .deposit-explanation {
+                text-align: center;
+            }
+
+            .deposit-note {
+                text-align: center;
+            }
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            .acceptance-container {
+                padding: 5.5rem 1rem 2rem;
+            }
+
+            .acceptance-content h1 {
+                font-size: 1.5rem;
+            }
+
+            .acceptance-subtitle {
+                font-size: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .back-link {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.875rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .acceptance-form {
+                padding: 1.25rem;
+                box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.04);
+            }
+
+            .form-group label {
+                font-size: 0.85rem;
+            }
+
+            .form-group input,
+            .form-group textarea {
+                padding: 0.875rem;
+                font-size: 1rem;
+            }
+
+            .quote-summary {
+                padding: 1rem;
+            }
+
+            .quote-summary h3 {
+                font-size: 1rem;
+                text-align: center;
+            }
+
+            .terms-section h3,
+            .signature-section h3,
+            .deposit-section h3 {
+                text-align: center;
+            }
+
+            .checkbox-group label {
+                font-size: 0.9rem;
+            }
+
+            #signatureCanvas {
+                height: 120px;
+            }
+
+            .signature-buttons {
+                justify-content: center;
+            }
+
+            .clear-button {
+                width: 100%;
+            }
+
+            .submit-button {
+                font-size: 1rem;
+                padding: 0.875rem 1.5rem;
+            }
+
+            .success-message {
+                padding: 1.5rem;
+            }
+
+            .success-message h2 {
+                font-size: 1.25rem;
+            }
+
+            .info-box {
+                font-size: 0.9rem;
+                padding: 0.875rem;
+            }
+        }
+
+        /* Small Mobile Styles */
+        @media (max-width: 375px) {
+            .acceptance-container {
+                padding: 5rem 0.75rem 1.5rem;
+            }
+
+            .acceptance-content h1 {
+                font-size: 1.35rem;
+            }
+
+            .acceptance-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .acceptance-form {
+                padding: 1rem;
+            }
+
+            .form-group input,
+            .form-group textarea {
+                padding: 0.75rem;
+            }
+
+            .quote-summary,
+            .terms-section,
+            .deposit-section {
+                padding: 0.875rem;
+            }
+
+            .payment-details {
+                padding: 0.75rem;
+            }
+
+            .deposit-amount {
+                font-size: 1.1rem;
+            }
+
+            .submit-button {
+                font-size: 0.95rem;
+                padding: 0.75rem 1.25rem;
+                box-shadow: 3px 3px 0px rgba(43, 43, 43, 0.25);
+            }
+        }
     </style>
 </head>
 
@@ -473,6 +708,11 @@
     </header>
 
     <div class="acceptance-container">
+        <!-- Demo Mode Banner -->
+        <div class="demo-banner" id="demoBanner" style="display: none;">
+            DEMO MODE - Layout Preview Only
+        </div>
+
         <a href="index.html" class="back-link">&larr; Back to Home</a>
 
         <div class="acceptance-content">
@@ -613,18 +853,37 @@
 
             // Get URL parameters
             const urlParams = new URLSearchParams(window.location.search);
-            const jobNumber = urlParams.get('job');
-            const clientName = urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '';
-            const description = urlParams.get('desc') ? decodeURIComponent(urlParams.get('desc')) : '';
-            const amount = urlParams.get('amount') ? decodeURIComponent(urlParams.get('amount')) : '';
-            const turnaround = urlParams.get('turnaround') ? decodeURIComponent(urlParams.get('turnaround')) : '';
-            const bankName = urlParams.get('bank') ? decodeURIComponent(urlParams.get('bank')) : '';
-            const bankAccount = urlParams.get('account') ? decodeURIComponent(urlParams.get('account')) : '';
-            const payeeName = urlParams.get('payee') ? decodeURIComponent(urlParams.get('payee')) : 'CartCure';
+            const isDemo = urlParams.get('demo') === 'true';
+
+            // Demo data for layout testing
+            const demoData = {
+                jobNumber: 'CC-DEMO-001',
+                clientName: 'Sarah Mitchell',
+                description: 'Add product filtering, fix mobile menu, update checkout styling',
+                amount: '$450',
+                turnaround: '3-5 business days',
+                bankName: 'ANZ Bank',
+                bankAccount: '01-1234-5678901-00',
+                payeeName: 'CartCure NZ'
+            };
+
+            const jobNumber = isDemo ? demoData.jobNumber : urlParams.get('job');
+            const clientName = isDemo ? demoData.clientName : (urlParams.get('name') ? decodeURIComponent(urlParams.get('name')) : '');
+            const description = isDemo ? demoData.description : (urlParams.get('desc') ? decodeURIComponent(urlParams.get('desc')) : '');
+            const amount = isDemo ? demoData.amount : (urlParams.get('amount') ? decodeURIComponent(urlParams.get('amount')) : '');
+            const turnaround = isDemo ? demoData.turnaround : (urlParams.get('turnaround') ? decodeURIComponent(urlParams.get('turnaround')) : '');
+            const bankName = isDemo ? demoData.bankName : (urlParams.get('bank') ? decodeURIComponent(urlParams.get('bank')) : '');
+            const bankAccount = isDemo ? demoData.bankAccount : (urlParams.get('account') ? decodeURIComponent(urlParams.get('account')) : '');
+            const payeeName = isDemo ? demoData.payeeName : (urlParams.get('payee') ? decodeURIComponent(urlParams.get('payee')) : 'CartCure');
 
             // Initialize page
             function initPage() {
-                if (!jobNumber) {
+                // Show demo banner if in demo mode
+                if (isDemo) {
+                    document.getElementById('demoBanner').style.display = 'block';
+                }
+
+                if (!jobNumber && !isDemo) {
                     loadingInfo.innerHTML = '<strong>Error:</strong> No job number provided. Please use the link from your quote email.';
                     loadingInfo.style.background = '#fce8e6';
                     loadingInfo.style.borderColor = '#c53929';
@@ -782,6 +1041,15 @@
                     errorMessage.textContent = 'Please accept the Terms of Service and Privacy Policy to proceed.';
                     errorMessage.style.display = 'block';
                     document.querySelector('.terms-section').scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
+                // Demo mode - show success without submitting
+                if (isDemo) {
+                    form.style.display = 'none';
+                    document.getElementById('demoBanner').style.display = 'none';
+                    successMessage.style.display = 'block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
 

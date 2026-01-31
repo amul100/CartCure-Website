@@ -130,25 +130,103 @@
 
         .testimonial-grid-full {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
             gap: 2rem;
             max-width: 1200px;
             margin: 0 auto;
         }
 
+        /* Large Tablet (2-column layout) */
+        @media (max-width: 900px) {
+            .testimonial-grid-full {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+        }
+
+        /* Tablet Styles */
         @media (max-width: 768px) {
+            .testimonials-page {
+                padding-top: 80px;
+            }
+
             .testimonials-page .container {
                 padding: 1.5rem 1.5rem 3rem;
             }
 
             .testimonials-page .section-header {
                 text-align: center;
+                margin-bottom: 2rem;
+            }
+
+            .back-link {
+                display: block;
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+                width: fit-content;
+                margin-bottom: 1.5rem;
+            }
+
+            .testimonial-grid-full {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
             }
         }
 
+        /* Mobile Styles */
         @media (max-width: 480px) {
+            .testimonials-page {
+                padding-top: 70px;
+            }
+
             .testimonials-page .container {
                 padding: 1rem 1rem 2rem;
+            }
+
+            .testimonials-page .section-header {
+                margin-bottom: 1.5rem;
+            }
+
+            .testimonials-page .section-title {
+                font-size: 1.75rem;
+            }
+
+            .testimonials-page .section-subtitle {
+                font-size: 1rem;
+            }
+
+            .back-link {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.875rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .testimonial-grid-full {
+                gap: 1rem;
+            }
+        }
+
+        /* Small Mobile Styles */
+        @media (max-width: 375px) {
+            .testimonials-page {
+                padding-top: 65px;
+            }
+
+            .testimonials-page .container {
+                padding: 0.75rem 0.75rem 1.5rem;
+            }
+
+            .testimonials-page .section-title {
+                font-size: 1.5rem;
+            }
+
+            .testimonials-page .section-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .testimonial-grid-full {
+                gap: 0.875rem;
             }
         }
     </style>

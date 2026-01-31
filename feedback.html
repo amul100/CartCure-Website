@@ -280,6 +280,161 @@
             color: #2c5aa0;
             font-size: 0.9rem;
         }
+
+        /* Demo Mode Banner */
+        .demo-banner {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            text-align: center;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            border: 2px solid #cc5500;
+            box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Tablet Styles */
+        @media (max-width: 768px) {
+            .feedback-container {
+                padding: 6rem 1.5rem 3rem;
+            }
+
+            .feedback-content h1 {
+                font-size: 1.75rem;
+                text-align: center;
+            }
+
+            .feedback-subtitle {
+                text-align: center;
+            }
+
+            .back-link {
+                display: block;
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+                width: fit-content;
+            }
+
+            .feedback-form {
+                padding: 1.5rem;
+            }
+
+            .info-box {
+                text-align: center;
+            }
+
+            .success-message,
+            .error-message {
+                text-align: center;
+            }
+
+            .rating-group {
+                justify-content: center;
+            }
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            .feedback-container {
+                padding: 5.5rem 1rem 2rem;
+            }
+
+            .feedback-content h1 {
+                font-size: 1.5rem;
+            }
+
+            .feedback-subtitle {
+                font-size: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .back-link {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.875rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .feedback-form {
+                padding: 1.25rem;
+                box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.04);
+            }
+
+            .form-group label {
+                font-size: 0.9rem;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 0.875rem;
+                font-size: 1rem;
+            }
+
+            .rating-group label {
+                font-size: 1.75rem;
+            }
+
+            .submit-button {
+                font-size: 1rem;
+                padding: 0.875rem 1.5rem;
+            }
+
+            .success-message {
+                padding: 1.5rem;
+            }
+
+            .success-message h2 {
+                font-size: 1.25rem;
+            }
+
+            .info-box {
+                font-size: 0.85rem;
+                padding: 0.875rem;
+            }
+
+            .form-note {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Small Mobile Styles */
+        @media (max-width: 375px) {
+            .feedback-container {
+                padding: 5rem 0.75rem 1.5rem;
+            }
+
+            .feedback-content h1 {
+                font-size: 1.35rem;
+            }
+
+            .feedback-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .feedback-form {
+                padding: 1rem;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 0.75rem;
+            }
+
+            .rating-group label {
+                font-size: 1.5rem;
+            }
+
+            .submit-button {
+                font-size: 0.95rem;
+                padding: 0.75rem 1.25rem;
+                box-shadow: 3px 3px 0px rgba(43, 43, 43, 0.25);
+            }
+        }
     </style>
 </head>
 
@@ -293,6 +448,11 @@
     </header>
 
     <div class="feedback-container">
+        <!-- Demo Mode Banner -->
+        <div class="demo-banner" id="demoBanner" style="display: none;">
+            DEMO MODE - Layout Preview Only
+        </div>
+
         <a href="index.html" class="back-link">&larr; Back to Home</a>
 
         <div class="feedback-content">
@@ -400,16 +560,45 @@
             const errorMessage = document.getElementById('errorMessage');
             const jobInput = document.getElementById('feedbackJob');
 
+            // Check for demo mode
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDemo = urlParams.get('demo') === 'true';
+
+            // Demo data for layout testing
+            const demoData = {
+                jobNumber: 'CC-DEMO-001',
+                name: 'Sarah Mitchell',
+                business: 'Kiwi Crafts Co',
+                location: 'Auckland',
+                email: 'sarah@kiwicrafts.co.nz',
+                rating: '5',
+                testimonial: 'CartCure fixed our checkout issue within hours! Our conversion rate improved immediately. Highly recommend for any Shopify store owner in NZ.'
+            };
+
+            // Initialize demo mode
+            if (isDemo) {
+                document.getElementById('demoBanner').style.display = 'block';
+                // Pre-fill form with demo data
+                jobInput.value = demoData.jobNumber;
+                document.getElementById('feedbackName').value = demoData.name;
+                document.getElementById('feedbackBusiness').value = demoData.business;
+                document.getElementById('feedbackLocation').value = demoData.location;
+                document.getElementById('feedbackEmail').value = demoData.email;
+                document.getElementById('feedbackText').value = demoData.testimonial;
+                document.getElementById('star' + demoData.rating).checked = true;
+            }
+
             // Auto-uppercase job reference
             jobInput.addEventListener('input', function() {
                 this.value = this.value.toUpperCase();
             });
 
-            // Pre-fill job number from URL parameter if present
-            const urlParams = new URLSearchParams(window.location.search);
-            const jobFromUrl = urlParams.get('job');
-            if (jobFromUrl) {
-                jobInput.value = jobFromUrl.toUpperCase();
+            // Pre-fill job number from URL parameter if present (only if not demo mode)
+            if (!isDemo) {
+                const jobFromUrl = urlParams.get('job');
+                if (jobFromUrl) {
+                    jobInput.value = jobFromUrl.toUpperCase();
+                }
             }
 
             form.addEventListener('submit', async function(e) {
@@ -420,6 +609,15 @@
                     errorMessage.textContent = 'Please enter your job reference number.';
                     errorMessage.style.display = 'block';
                     jobInput.focus();
+                    return;
+                }
+
+                // Demo mode - show success without submitting
+                if (isDemo) {
+                    form.style.display = 'none';
+                    document.getElementById('demoBanner').style.display = 'none';
+                    successMessage.style.display = 'block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
 

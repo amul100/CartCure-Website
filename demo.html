@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Mode | CartCure NZ</title>
+
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Demo Mode | CartCure NZ">
+    <meta name="description" content="Preview CartCure page layouts in demo mode.">
+    <meta name="author" content="CartCure NZ">
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .demo-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 8rem 2rem 4rem;
+            background: var(--paper-white);
+        }
+
+        .demo-content {
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            color: var(--ink-black);
+        }
+
+        .demo-content h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--ink-black);
+        }
+
+        .demo-subtitle {
+            color: var(--ink-gray);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--accent-green);
+            color: #ffffff;
+            text-decoration: none;
+            border: 2px solid var(--ink-black);
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 3px 3px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .demo-notice {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 1rem 1.25rem;
+            margin-bottom: 2rem;
+            border: 2px solid #cc5500;
+            box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
+        }
+
+        .demo-notice h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .demo-notice p {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.95;
+        }
+
+        .demo-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .demo-link-card {
+            background: var(--paper-cream);
+            border: 2px solid var(--paper-border);
+            padding: 1.25rem 1.5rem;
+            text-decoration: none;
+            color: var(--ink-black);
+            transition: all 0.2s;
+            box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.05);
+        }
+
+        .demo-link-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.08);
+            border-color: var(--accent-green);
+        }
+
+        .demo-link-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: var(--accent-green);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .demo-link-card p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--ink-gray);
+        }
+
+        .demo-link-card .arrow {
+            float: right;
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            margin-top: -1.5rem;
+        }
+
+        /* Tablet Styles */
+        @media (max-width: 768px) {
+            .demo-container {
+                padding: 6rem 1.5rem 3rem;
+            }
+
+            .demo-content h1 {
+                font-size: 1.75rem;
+                text-align: center;
+            }
+
+            .demo-subtitle {
+                text-align: center;
+            }
+
+            .back-link {
+                display: block;
+                text-align: center;
+                margin-left: auto;
+                margin-right: auto;
+                width: fit-content;
+            }
+
+            .demo-notice {
+                text-align: center;
+            }
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            .demo-container {
+                padding: 5.5rem 1rem 2rem;
+            }
+
+            .demo-content h1 {
+                font-size: 1.5rem;
+            }
+
+            .demo-subtitle {
+                font-size: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .back-link {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.875rem;
+                margin-bottom: 1.25rem;
+            }
+
+            .demo-link-card {
+                padding: 1rem 1.25rem;
+            }
+
+            .demo-link-card h3 {
+                font-size: 1rem;
+            }
+
+            .demo-link-card p {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Small Mobile Styles */
+        @media (max-width: 375px) {
+            .demo-container {
+                padding: 5rem 0.75rem 1.5rem;
+            }
+
+            .demo-content h1 {
+                font-size: 1.35rem;
+            }
+
+            .demo-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .demo-link-card {
+                padding: 0.875rem 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <nav>
+            <a href="index.html" class="logo">
+                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+            </a>
+        </nav>
+    </header>
+
+    <div class="demo-container">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="demo-content">
+            <h1>Demo Mode</h1>
+            <p class="demo-subtitle">Preview page layouts with sample data</p>
+
+            <div class="demo-notice">
+                <h3>Admin Preview Only</h3>
+                <p>These demo pages show sample data for layout testing. No data is submitted when using demo mode.</p>
+            </div>
+
+            <div class="demo-links">
+                <a href="quote-acceptance.html?demo=true" class="demo-link-card">
+                    <h3>Quote Acceptance</h3>
+                    <p>Preview the page where clients accept quotes and sign agreements</p>
+                    <span class="arrow">&rarr;</span>
+                </a>
+
+                <a href="testimonials.html?demo=true" class="demo-link-card">
+                    <h3>Testimonials</h3>
+                    <p>Preview the testimonials page with sample customer reviews</p>
+                    <span class="arrow">&rarr;</span>
+                </a>
+
+                <a href="feedback.html?demo=true" class="demo-link-card">
+                    <h3>Feedback Submission</h3>
+                    <p>Preview the form where clients submit their testimonials</p>
+                    <span class="arrow">&rarr;</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="index.html#services">Services</a>
+                <a href="index.html#how-it-works">How It Works</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
+        </div>
+    </footer>
+</body>
+
+</html>

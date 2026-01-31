@@ -3,6 +3,90 @@
 
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
 
+    // Check for demo mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDemo = urlParams.get('demo') === 'true';
+
+    // Demo testimonials for layout testing
+    const demoTestimonials = [
+        {
+            name: 'Sarah Mitchell',
+            business: 'Kiwi Crafts Co',
+            location: 'Auckland',
+            rating: 5,
+            testimonial: 'CartCure fixed our checkout issue within hours! Our conversion rate improved immediately. Highly recommend for any Shopify store owner in NZ.'
+        },
+        {
+            name: 'James Thompson',
+            business: 'Thompson Outdoors',
+            location: 'Wellington',
+            rating: 5,
+            testimonial: 'Professional, quick, and affordable. They sorted out our mobile menu and product filtering. Will definitely use again for future Shopify work.'
+        },
+        {
+            name: 'Emma Wilson',
+            business: 'Coastal Beauty NZ',
+            location: 'Christchurch',
+            rating: 4,
+            testimonial: 'Great communication throughout the process. Fixed several bugs on our site and even suggested improvements we hadn\'t thought of.'
+        },
+        {
+            name: 'Mike Chen',
+            business: 'Tech Gadgets Store',
+            location: 'Hamilton',
+            rating: 5,
+            testimonial: 'Fast turnaround and excellent quality work. Our site speed improved dramatically after their optimizations. A+ service!'
+        },
+        {
+            name: 'Lisa Brown',
+            business: 'Organic Foods NZ',
+            location: 'Tauranga',
+            rating: 5,
+            testimonial: 'Helped us integrate a complex shipping calculator. The support was outstanding and they explained everything clearly.'
+        },
+        {
+            name: 'David Patel',
+            business: 'Fashion Forward',
+            location: 'Dunedin',
+            rating: 4,
+            testimonial: 'Very responsive team. They customized our product pages exactly how we wanted. Fair pricing for quality work.'
+        }
+    ];
+
+    // Show demo banner
+    function showDemoBanner() {
+        const container = document.querySelector('.testimonials-page .container');
+        if (!container) return;
+
+        // Check if banner already exists
+        if (document.getElementById('demoBanner')) return;
+
+        const banner = document.createElement('div');
+        banner.id = 'demoBanner';
+        banner.style.cssText = `
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            text-align: center;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            border: 2px solid #cc5500;
+            box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
+        `;
+        banner.textContent = 'DEMO MODE - Layout Preview Only';
+
+        // Insert after the back link
+        const backLink = container.querySelector('.back-link');
+        if (backLink) {
+            backLink.insertAdjacentElement('afterend', banner);
+        } else {
+            container.insertBefore(banner, container.firstChild);
+        }
+    }
+
     // Mobile menu toggle
     const menuToggle = document.getElementById('menuToggle');
     const navLinks = document.getElementById('navLinks');
@@ -55,6 +139,13 @@
     function loadAllTestimonials() {
         const testimonialGrid = document.getElementById('testimonialGrid');
         if (!testimonialGrid) return;
+
+        // Demo mode - show sample testimonials and banner
+        if (isDemo) {
+            showDemoBanner();
+            renderTestimonials(demoTestimonials);
+            return;
+        }
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
