@@ -12758,6 +12758,10 @@ function navigateToClientsSheet() {
   if (sheet) {
     ss.setActiveSheet(sheet);
     sheet.getRange('A1').activate();
+    SpreadsheetApp.flush();
+    ss.toast('Navigated to Clients sheet', '📊 Clients', 3);
+  } else {
+    SpreadsheetApp.getUi().alert('Clients sheet not found. Please run Setup first.');
   }
 }
 
