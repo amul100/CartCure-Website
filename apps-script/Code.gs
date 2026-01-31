@@ -4437,8 +4437,8 @@ function showActionsDialogForRow(sheet, sheetName, row) {
   // Height: 70px header + 60px footer + (actions * 58px each) + 20px padding
   const dialogHeight = 70 + 60 + (actions.length * 58) + 20;
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
-    .setWidth(380)
-    .setHeight(Math.min(500, dialogHeight));
+    .setWidth(320)
+    .setHeight(Math.min(650, dialogHeight));
 
   ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
 }
