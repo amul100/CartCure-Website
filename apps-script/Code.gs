@@ -4641,8 +4641,8 @@ function executeActionFromDialog(entityType, entityId, actionId) {
 function executeJobAction(jobNumber, actionId) {
   switch (actionId) {
     case 'sendQuote':
-      sendQuoteEmail(jobNumber);
-      return { success: true };
+      showSendQuoteWithAmountDialog(jobNumber);
+      return { keepOpen: true };
 
     case 'sendQuoteReminder':
       sendQuoteReminder(jobNumber);
@@ -12647,6 +12647,135 @@ function getStatusColor(status) {
 // ============================================================================
 // QUOTE FUNCTIONS
 // ============================================================================
+
+/**
+ * Show dialog to send quote with quote amount input
+ * Called from the Actions menu for a specific job
+ */
+function showSendQuoteWithAmountDialog(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Get current quote amount if any
+  const currentAmount = parseFloat(job['Quote Amount (excl GST)']) || '';
+  const clientName = job['Client Name'] || '';
+  const jobDescription = job['Job Description'] || '';
+
+  // Build dialog HTML
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <base target="_top">
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+        .header { margin-bottom: 20px; }
+        .header h2 { margin: 0 0 5px 0; color: #333; }
+        .header .subtitle { color: #666; font-size: 14px; }
+        .info-box { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .info-row { margin-bottom: 10px; }
+        .info-label { font-weight: bold; color: #555; font-size: 12px; }
+        .info-value { color: #333; margin-top: 3px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #333; }
+        .form-group input { width: 100%; padding: 12px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .form-group input:focus { border-color: #4CAF50; outline: none; }
+        .form-group .hint { font-size: 12px; color: #666; margin-top: 5px; }
+        .buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .error { color: #d32f2f; font-size: 12px; margin-top: 5px; display: none; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>📤 Send Quote</h2>
+        <div class="subtitle">${jobNumber}</div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-row">
+          <div class="info-label">Client</div>
+          <div class="info-value">${clientName || 'Not specified'}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Job Description</div>
+          <div class="info-value">${jobDescription || 'Not specified'}</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="quoteAmount">Quote Amount (excl GST) *</label>
+        <input type="number" id="quoteAmount" step="0.01" min="0" placeholder="Enter amount..." value="${currentAmount}">
+        <div class="hint">GST will be calculated automatically if registered</div>
+        <div class="error" id="error">Please enter a valid quote amount</div>
+      </div>
+
+      <div class="buttons">
+        <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="sendQuote()">Send Quote</button>
+      </div>
+
+      <script>
+        function sendQuote() {
+          const amount = document.getElementById('quoteAmount').value;
+          const errorEl = document.getElementById('error');
+
+          if (!amount || parseFloat(amount) <= 0) {
+            errorEl.style.display = 'block';
+            return;
+          }
+
+          errorEl.style.display = 'none';
+          google.script.run
+            .withSuccessHandler(function() {
+              google.script.host.close();
+            })
+            .withFailureHandler(function(error) {
+              alert('Error: ' + error.message);
+            })
+            .sendQuoteWithAmount('${jobNumber}', parseFloat(amount));
+        }
+
+        // Focus on input
+        document.getElementById('quoteAmount').focus();
+
+        // Allow Enter key to submit
+        document.getElementById('quoteAmount').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') sendQuote();
+        });
+      </script>
+    </body>
+    </html>
+  `;
+
+  const htmlOutput = HtmlService.createHtmlOutput(html)
+    .setWidth(420)
+    .setHeight(400);
+
+  ui.showModalDialog(htmlOutput, 'Send Quote - ' + jobNumber);
+}
+
+/**
+ * Send quote with a specific amount (called from dialog)
+ */
+function sendQuoteWithAmount(jobNumber, amount) {
+  // Update the quote amount in the sheet first
+  updateJobFields(jobNumber, {
+    'Quote Amount (excl GST)': amount.toFixed(2)
+  });
+
+  // Now send the quote email
+  sendQuoteEmail(jobNumber);
+}
 
 /**
  * Show dialog to send quote
