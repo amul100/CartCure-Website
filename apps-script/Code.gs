@@ -1976,9 +1976,12 @@ function validateAudioData(audioData) {
  * HTML entity escape to prevent XSS
  */
 function escapeHtml(text) {
-  if (!text) return '';
+  if (text === null || text === undefined) return '';
 
-  return text
+  // Convert to string (handles numbers, dates, etc.)
+  const str = String(text);
+
+  return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
