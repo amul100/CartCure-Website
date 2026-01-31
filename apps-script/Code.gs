@@ -4130,7 +4130,7 @@ function buildMenu() {
     .addItem('⚡ Actions', 'showActionsForSelectedRow')
     .addSeparator()
     .addSubMenu(ui.createMenu('📊 Dashboard')
-      .addItem('🔄 Refresh Dashboard', 'refreshDashboard')
+      .addItem('🔄 Refresh Dashboard', 'refreshDashboardForce')
       .addItem('📈 Refresh Analytics', 'refreshAnalytics')
       .addSeparator()
       .addItem(autoRefreshLabel, 'toggleAutoRefresh'))
@@ -5029,7 +5029,7 @@ function disableAutoRefreshSilent() {
  */
 function autoRefreshDashboard() {
   try {
-    refreshDashboard();
+    refreshDashboard(true); // Force refresh when called from trigger
     Logger.log('Auto-refresh completed at ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   } catch (error) {
     Logger.log('Auto-refresh error: ' + error);
