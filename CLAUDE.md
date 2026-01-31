@@ -247,6 +247,64 @@ puppeteer_evaluate({
   })();`
 })
 
+## Google Apps Script Dialog Styling
+**IMPORTANT**: When creating modal dialogs with `HtmlService.createHtmlOutput()`, follow these rules to ensure consistent sizing:
+
+### Dialog Width Issues
+1. **Long titles expand dialogs** - Google Apps Script dialogs automatically expand width to fit the title. Keep dialog titles SHORT (under ~40 characters). Avoid including emails or long IDs in titles.
+   ```javascript
+   // BAD - title too long, dialog expands
+   ui.showModalDialog(html, 'Actions - John Smith (john.smith@example.com)');
+
+   // GOOD - short title, dialog stays at setWidth() size
+   ui.showModalDialog(html, 'Actions - John Smith');
+   ```
+
+2. **Use CSS Grid for full-width layouts** - Flexbox with `flex-direction: column` can shrink-wrap to content width. CSS Grid with `1fr` forces full width:
+   ```css
+   /* BAD - can shrink to content width */
+   .actions-list {
+     display: flex;
+     flex-direction: column;
+   }
+
+   /* GOOD - always fills container width */
+   .actions-list {
+     display: grid;
+     grid-template-columns: 1fr;
+     gap: 10px;
+     width: 100%;
+   }
+   ```
+
+3. **Ensure body and container fill the dialog**:
+   ```css
+   html, body {
+     margin: 0;
+     padding: 0;
+     min-width: 100%;
+   }
+   .container {
+     width: 100%;
+     box-sizing: border-box;
+     padding: 16px;
+   }
+   ```
+
+4. **Make buttons explicitly stretch**:
+   ```css
+   .action-btn {
+     width: 100%;
+     min-width: 100%;
+     justify-self: stretch;  /* For grid items */
+   }
+   ```
+
+### Why Content-Based Shrinking Happens
+- Short button labels (e.g., "Set VIP") cause flex containers to shrink
+- Longer labels (e.g., "Send Quote Reminder") naturally fill more width
+- CSS Grid with `1fr` prevents this by forcing full-width regardless of content
+
 ## Git Commands
 ```bash
 # Stage, commit, and push in one command:
