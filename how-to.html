@@ -38,6 +38,33 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://cartcure.co.nz/how-to.html">
 
+    <!-- Google Analytics 4 - Replace G-QCCZDEN8NX with your Measurement ID -->
+    <!-- Get your ID at: https://analytics.google.com > Admin > Data Streams > Web -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QCCZDEN8NX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QCCZDEN8NX'); // Replace with your GA4 Measurement ID
+    </script>
+
+    <!-- Meta Pixel (Facebook) - Replace YOUR_PIXEL_ID with your Pixel ID -->
+    <!-- Get your ID at: https://business.facebook.com > Events Manager > Data Sources -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', 'YOUR_PIXEL_ID'); // Replace with your Meta Pixel ID
+        fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
+
     <link rel="icon" type="image/png" href="CartCure_Favicon.png">
     <link rel="stylesheet" href="styles.css">
 
@@ -728,6 +755,10 @@
             <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
         </div>
     </footer>
+
+    <!-- Tidio Chat Widget - Replace YOUR_TIDIO_PUBLIC_KEY with your key -->
+    <!-- Get your key at: https://www.tidio.com > Settings > Developer > Public Key -->
+    <script src="//code.tidio.co/YOUR_TIDIO_PUBLIC_KEY.js" async></script>
 </body>
 
 </html>

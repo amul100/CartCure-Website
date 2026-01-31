@@ -231,7 +231,7 @@
         Complete workflow management with SLA tracking,<br>
         professional quotes, and payment management
     </p>
-    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.0</p>
+    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.1</p>
 </div>
 
 <div class="toc">
@@ -372,6 +372,27 @@
     <li>Better visual hierarchy and readability</li>
 </ul>
 
+<hr>
+
+<div class="info">
+    <strong>Version 2.1 Updates (January 2025)</strong>
+</div>
+
+<h2>Documentation Updates</h2>
+
+<p>This guide has been updated to accurately reflect the current codebase:</p>
+
+<ul>
+    <li><strong>9 Sheets:</strong> Updated to reflect all sheets (Dashboard, Submissions, Jobs, Invoice Log, Testimonials, Analytics, Activity Log, Clients, Settings)</li>
+    <li><strong>Complete Settings Table:</strong> Documented all 13 configurable settings including Archive, Confirm Selection, and Header Protection options</li>
+    <li><strong>Full Menu Reference:</strong> Complete menu structure with all items organized by category (Dashboard, Jobs, Quotes, Invoices, Clients, Setup, Maintenance)</li>
+    <li><strong>Accurate Invoice Log:</strong> Updated to show all 20 columns including Actions column</li>
+    <li><strong>Submissions Sheet:</strong> Updated to show 11 columns with Actions column</li>
+    <li><strong>Payment Status Flow:</strong> Added Overdue and Refunded states</li>
+    <li><strong>Job Status Flow:</strong> Improved diagram showing all state transitions</li>
+    <li><strong>Corrected Menu Paths:</strong> Updated all Setup menu references to reflect nested menu structure</li>
+</ul>
+
 <div class="page-break"></div>
 
 <h1 id="part1">Part 1: Deployment Instructions</h1>
@@ -399,21 +420,23 @@
     <li>Open your CartCure Google Sheet</li>
     <li>Refresh the page (F5 or Ctrl+R)</li>
     <li>Wait for the custom menu to appear (may take a few seconds)</li>
-    <li>Click: <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong></li>
+    <li>Click: <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Setup/Repair Sheets</strong></li>
     <li>Authorize the script when prompted</li>
     <li>Wait for "Setup Complete" confirmation</li>
 </ol>
 
 <div class="success">
-    <strong>This creates/updates seven sheets:</strong>
+    <strong>This creates/updates nine sheets:</strong>
     <ul>
-        <li><strong>Dashboard</strong> - Your daily workflow view</li>
+        <li><strong>Dashboard</strong> - Your daily workflow view with summary metrics</li>
+        <li><strong>Submissions</strong> - Form submissions with status tracking</li>
         <li><strong>Jobs</strong> - All job tracking data</li>
-        <li><strong>Invoice Log</strong> - Invoice records</li>
+        <li><strong>Invoice Log</strong> - Invoice records and payment tracking</li>
+        <li><strong>Testimonials</strong> - Customer feedback awaiting approval</li>
+        <li><strong>Analytics</strong> - Business analytics with visual charts</li>
+        <li><strong>Activity Log</strong> - Audit trail of all job communications</li>
         <li><strong>Clients</strong> - Client directory with job history and statistics</li>
         <li><strong>Settings</strong> - Your business configuration</li>
-        <li><strong>Submissions</strong> - Form submissions with status tracking</li>
-        <li><strong>Testimonials</strong> - Customer feedback awaiting approval</li>
     </ul>
 </div>
 
@@ -425,38 +448,78 @@
     <thead>
         <tr>
             <th>Setting</th>
+            <th>Default</th>
             <th>What to Enter</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td>Business Name</td>
-            <td>CartCure (or your business name)</td>
+            <td>CartCure</td>
+            <td>Your business name for invoices</td>
         </tr>
         <tr>
             <td>GST Registered</td>
-            <td>Yes or No</td>
+            <td>No</td>
+            <td>Yes or No - controls GST display on quotes/invoices</td>
         </tr>
         <tr>
             <td>GST Number</td>
+            <td>(empty)</td>
             <td>Your GST number (if registered)</td>
         </tr>
         <tr>
             <td>Bank Account</td>
-            <td>Your bank account number</td>
+            <td>(empty)</td>
+            <td>Bank account number (XX-XXXX-XXXXXXX-XX)</td>
         </tr>
         <tr>
             <td>Bank Name</td>
-            <td>Your bank name (ANZ, ASB, etc.)</td>
+            <td>(empty)</td>
+            <td>Your bank name (ANZ, ASB, Westpac, etc.)</td>
+        </tr>
+        <tr>
+            <td>Default Quote Validity</td>
+            <td>14</td>
+            <td>Days quote is valid for</td>
+        </tr>
+        <tr>
+            <td>Default Payment Terms</td>
+            <td>7</td>
+            <td>Days to pay after invoice</td>
+        </tr>
+        <tr>
+            <td>Default SLA Days</td>
+            <td>7</td>
+            <td>Your turnaround promise in days</td>
         </tr>
         <tr>
             <td>Admin Email</td>
-            <td>Your email for notifications</td>
+            <td>(from config)</td>
+            <td>Email for admin notifications</td>
+        </tr>
+        <tr>
+            <td>Confirm Selection Dialog</td>
+            <td>No</td>
+            <td>Show confirmation when job/invoice auto-detected</td>
+        </tr>
+        <tr>
+            <td>Header Row Protection</td>
+            <td>No</td>
+            <td>Show warning when editing header rows</td>
+        </tr>
+        <tr>
+            <td>Archive Jobs After Days</td>
+            <td>90</td>
+            <td>Days after completion before archiving (0 = never)</td>
+        </tr>
+        <tr>
+            <td>Archive Activity After Days</td>
+            <td>365</td>
+            <td>Days to keep in Activity Log before archiving (0 = never)</td>
         </tr>
     </tbody>
 </table>
-
-<p>Leave the other settings at their defaults unless you want to change them.</p>
 
 <h2>Step 4: Verify Deployment</h2>
 
@@ -631,7 +694,7 @@
 <h3>Step 2: Prepare the Quote</h3>
 <ol>
     <li>Go to the <strong>Jobs</strong> sheet</li>
-    <li>Find your new job (JOB-001, JOB-002, etc.)</li>
+    <li>Find your new job (e.g., J-MAPLE-001, J-RIVER-523)</li>
     <li>Fill in:
         <ul>
             <li><strong>Category</strong>: Design, Content, Bug Fix, Improvement, Product/Image, Creative, Integration, Theme/Code, Automation, or Other</li>
@@ -840,17 +903,17 @@
         <tr>
             <td>Small</td>
             <td>Under $200</td>
-            <td>Full payment upfront</td>
+            <td>Full payment on completion</td>
         </tr>
         <tr>
             <td>Medium</td>
             <td>$200 - $500</td>
-            <td>50% deposit, balance on completion</td>
+            <td>50% deposit upfront, balance on completion</td>
         </tr>
         <tr>
             <td>Large</td>
             <td>Over $500</td>
-            <td>Case-by-case schedule (usually 50% deposit)</td>
+            <td>50% deposit upfront, balance on completion</td>
         </tr>
     </tbody>
 </table>
@@ -1019,12 +1082,22 @@
 </div>
 
 <div class="info">
-    <strong>Invoice Log Columns:</strong> The Invoice Log sheet now includes:
+    <strong>Invoice Log Columns (20 columns):</strong> The Invoice Log sheet includes:
     <ul>
+        <li><strong>Actions</strong> - Click ☰ for quick actions</li>
+        <li><strong>Status</strong> - Draft, Sent, Paid, Overdue, or Cancelled</li>
+        <li><strong>Invoice #</strong> - Unique invoice identifier (INV-WORD-XXX)</li>
+        <li><strong>Job #</strong> - Linked job number</li>
+        <li><strong>Client Name, Email, Phone</strong> - Client contact info</li>
+        <li><strong>Invoice Date, Due Date</strong> - Billing dates</li>
+        <li><strong>Amount (excl GST), GST, Total</strong> - Financial breakdown</li>
+        <li><strong>Sent Date, Paid Date</strong> - Transaction dates</li>
+        <li><strong>Payment Reference</strong> - Bank reference number</li>
         <li><strong>Days Overdue</strong> - Number of days past due date</li>
         <li><strong>Late Fee</strong> - Calculated late fee amount</li>
         <li><strong>Total With Fees</strong> - Original amount plus late fees</li>
         <li><strong>Invoice Type</strong> - Full, Deposit, Balance, or Additional</li>
+        <li><strong>Notes</strong> - Internal notes</li>
     </ul>
 </div>
 
@@ -1438,6 +1511,7 @@
 
 <h2>Menu Locations</h2>
 
+<h3>Dashboard Menu</h3>
 <table>
     <thead>
         <tr>
@@ -1450,6 +1524,26 @@
             <td>Refresh Dashboard</td>
             <td>CartCure &gt; Dashboard &gt; Refresh Dashboard</td>
         </tr>
+        <tr>
+            <td>Refresh Analytics</td>
+            <td>CartCure &gt; Dashboard &gt; Refresh Analytics</td>
+        </tr>
+        <tr>
+            <td>Toggle Auto-Refresh</td>
+            <td>CartCure &gt; Dashboard &gt; Enable/Disable Auto-Refresh</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Jobs Menu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
         <tr>
             <td>Create Job</td>
             <td>CartCure &gt; Jobs &gt; Create Job from Submission</td>
@@ -1467,25 +1561,109 @@
             <td>CartCure &gt; Jobs &gt; Mark Job Complete</td>
         </tr>
         <tr>
+            <td>Put On Hold</td>
+            <td>CartCure &gt; Jobs &gt; Put Job On Hold</td>
+        </tr>
+        <tr>
+            <td>Cancel Job</td>
+            <td>CartCure &gt; Jobs &gt; Cancel Job</td>
+        </tr>
+        <tr>
+            <td>View Activity Log</td>
+            <td>CartCure &gt; Jobs &gt; View Activity Log</td>
+        </tr>
+        <tr>
+            <td>Add Activity Note</td>
+            <td>CartCure &gt; Jobs &gt; Add Activity Note</td>
+        </tr>
+        <tr>
+            <td>Request Testimonial</td>
+            <td>CartCure &gt; Jobs &gt; Request Testimonial</td>
+        </tr>
+        <tr>
+            <td>Sort Newest First</td>
+            <td>CartCure &gt; Jobs &gt; Sort Newest First</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Quotes Menu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
             <td>Send Quote</td>
             <td>CartCure &gt; Quotes &gt; Send Quote</td>
         </tr>
         <tr>
-            <td>Send Reminder</td>
+            <td>Send Quote Reminder</td>
             <td>CartCure &gt; Quotes &gt; Send Quote Reminder</td>
         </tr>
         <tr>
+            <td>Mark Quote Declined</td>
+            <td>CartCure &gt; Quotes &gt; Mark Quote Declined</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Invoices Menu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
             <td>Generate Invoice</td>
             <td>CartCure &gt; Invoices &gt; Generate Invoice</td>
+        </tr>
+        <tr>
+            <td>View Invoice</td>
+            <td>CartCure &gt; Invoices &gt; View Invoice</td>
         </tr>
         <tr>
             <td>Send Invoice</td>
             <td>CartCure &gt; Invoices &gt; Send Invoice</td>
         </tr>
         <tr>
+            <td>Send Invoice Reminder</td>
+            <td>CartCure &gt; Invoices &gt; Send Invoice Reminder</td>
+        </tr>
+        <tr>
             <td>Mark Paid</td>
             <td>CartCure &gt; Invoices &gt; Mark as Paid</td>
         </tr>
+        <tr>
+            <td>Send Overdue Invoice</td>
+            <td>CartCure &gt; Invoices &gt; Send Overdue Invoice</td>
+        </tr>
+        <tr>
+            <td>Update Late Fees</td>
+            <td>CartCure &gt; Invoices &gt; Update Late Fees</td>
+        </tr>
+        <tr>
+            <td>View Overdue Invoices</td>
+            <td>CartCure &gt; Invoices &gt; View Overdue Invoices</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Clients Menu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
         <tr>
             <td>View Client History</td>
             <td>CartCure &gt; Clients &gt; View Client History</td>
@@ -1495,16 +1673,96 @@
             <td>CartCure &gt; Clients &gt; View All Clients</td>
         </tr>
         <tr>
-            <td>Recalculate Client Stats</td>
+            <td>Recalculate All Stats</td>
             <td>CartCure &gt; Clients &gt; Recalculate All Stats</td>
         </tr>
+    </tbody>
+</table>
+
+<h3>Setup Menu</h3>
+<table>
+    <thead>
         <tr>
-            <td>Setup Sheets</td>
-            <td>CartCure &gt; ⚙️ Setup Sheets</td>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Settings Dialog</td>
+            <td>CartCure &gt; Setup &gt; Settings</td>
+        </tr>
+        <tr>
+            <td>Apply Dark Mode</td>
+            <td>CartCure &gt; Setup &gt; Apply Dark Mode to Settings</td>
+        </tr>
+        <tr>
+            <td>Setup/Repair Sheets</td>
+            <td>CartCure &gt; Setup &gt; Setup/Repair Sheets</td>
+        </tr>
+        <tr>
+            <td>Reset Column Widths</td>
+            <td>CartCure &gt; Setup &gt; Reset Column Widths</td>
         </tr>
         <tr>
             <td>Hard Reset</td>
-            <td>CartCure &gt; ⚠️ Hard Reset (Delete All Data)</td>
+            <td>CartCure &gt; Setup &gt; Hard Reset (Delete All Data)</td>
+        </tr>
+        <tr>
+            <td>Toggle Email Logging</td>
+            <td>CartCure &gt; Setup &gt; Enable/Disable Email Logging</td>
+        </tr>
+        <tr>
+            <td>Scan Emails Now</td>
+            <td>CartCure &gt; Setup &gt; Scan Emails Now</td>
+        </tr>
+        <tr>
+            <td>Toggle Auto Emails</td>
+            <td>CartCure &gt; Setup &gt; Enable/Disable Auto Emails</td>
+        </tr>
+        <tr>
+            <td>Toggle Confirm Selection</td>
+            <td>CartCure &gt; Setup &gt; Enable/Disable Confirm Selection</td>
+        </tr>
+        <tr>
+            <td>Toggle Header Protection</td>
+            <td>CartCure &gt; Setup &gt; Enable/Disable Header Protection</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Maintenance Submenu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Archive Old Jobs</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Jobs</td>
+        </tr>
+        <tr>
+            <td>Archive Old Activity</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Activity</td>
+        </tr>
+        <tr>
+            <td>Clean Up Testimonials</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; Clean Up Testimonials</td>
+        </tr>
+        <tr>
+            <td>Extend Validation Ranges</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; Extend Validation Ranges</td>
+        </tr>
+        <tr>
+            <td>Setup Background Tasks</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; Setup Background Tasks</td>
+        </tr>
+        <tr>
+            <td>View Archive Stats</td>
+            <td>CartCure &gt; Setup &gt; Maintenance &gt; View Archive Stats</td>
         </tr>
     </tbody>
 </table>
@@ -1512,18 +1770,28 @@
 <h2>Job Status Flow</h2>
 
 <div class="workflow-diagram">
-Pending Quote → Quoted → Accepted → In Progress → Completed
-                  ↓          ↓              ↓
-            Quote Reminded  Declined     On Hold
-                  ↓
-               Accepted
+                                                    ┌────────────┐
+                                                    ↓            │
+Pending Quote → Quoted → Accepted → In Progress ←→ On Hold   Completed
+                  │          │              │                    ↑
+                  ↓          ↓              └────────────────────┘
+            Quote Reminded   │
+                  │          ↓
+                  └───→ Declined ←── (can also come from Quoted/Pending Quote)
+
+                              ↓
+                          Cancelled (any status)
 </div>
-<p><em>Note: Jobs in "Quoted" status automatically receive a reminder email after 7 days, changing to "Quote Reminded" status.</em></p>
+<p><em>Note: Jobs in "Quoted" status automatically receive a reminder email after 7 days, changing to "Quote Reminded" status. From any status, jobs can be cancelled.</em></p>
 
 <h2>Payment Status Flow</h2>
 
 <div class="workflow-diagram">
-Unpaid → Invoiced → Paid
+                          ┌─→ Paid
+                          │
+Unpaid → Invoiced ─────────┼─→ Overdue → Paid
+                          │
+                          └─→ Refunded
 </div>
 
 <div class="page-break"></div>
@@ -1539,8 +1807,8 @@ Unpaid → Invoiced → Paid
 
 <h2>"Sheet Not Found" Error</h2>
 <ul>
-    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong> again</li>
-    <li>Check that all sheets exist (Dashboard, Jobs, Invoice Log, Settings)</li>
+    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Setup/Repair Sheets</strong> again</li>
+    <li>Check that all 9 sheets exist: Dashboard, Submissions, Jobs, Invoice Log, Testimonials, Analytics, Activity Log, Clients, Settings</li>
 </ul>
 
 <h2>Quote Email Not Sending</h2>
@@ -1591,7 +1859,7 @@ Unpaid → Invoiced → Paid
     <li><strong>All Invoices</strong> - Complete invoice history will be deleted</li>
     <li><strong>All Submissions</strong> - All enquiry/submission records will be cleared</li>
     <li><strong>Dashboard Data</strong> - All displayed data will be reset</li>
-    <li><strong>Job & Invoice Counters</strong> - Reset back to 1 (next job will be JOB-001)</li>
+    <li><strong>Job & Invoice Counters</strong> - Reset back to 1 (next job will be J-WORD-001)</li>
 </ul>
 
 <h2>What Gets Preserved</h2>
@@ -1611,7 +1879,7 @@ Unpaid → Invoiced → Paid
 <ol>
     <li><strong>Navigate to the Menu</strong>
         <ul>
-            <li>Click <strong>🛒 CartCure &gt; ⚠️ Hard Reset (Delete All Data)</strong></li>
+            <li>Click <strong>🛒 CartCure &gt; ⚙️ Setup &gt; ⚠️ Hard Reset (Delete All Data)</strong></li>
         </ul>
     </li>
     <li><strong>First Confirmation Dialog</strong>
@@ -1716,8 +1984,16 @@ Unpaid → Invoiced → Paid
     </thead>
     <tbody>
         <tr>
+            <td><strong>Actions</strong></td>
+            <td>Click ☰ to access quick actions for this submission</td>
+        </tr>
+        <tr>
+            <td><strong>Status</strong></td>
+            <td><strong>Current submission status (see below)</strong></td>
+        </tr>
+        <tr>
             <td>Submission #</td>
-            <td>Unique ID (CC-YYYYMMDD-XXXXX)</td>
+            <td>Human-readable ID (CC-WORD-XXX, e.g., CC-MAPLE-427)</td>
         </tr>
         <tr>
             <td>Timestamp</td>
@@ -1751,10 +2027,6 @@ Unpaid → Invoiced → Paid
             <td>Voice Note Link</td>
             <td>Link to audio file in Google Drive</td>
         </tr>
-        <tr>
-            <td><strong>Status</strong></td>
-            <td><strong>Current submission status (see below)</strong></td>
-        </tr>
     </tbody>
 </table>
 
@@ -1773,12 +2045,12 @@ Unpaid → Invoiced → Paid
     <tbody>
         <tr>
             <td><strong>New</strong></td>
-            <td>Blue</td>
+            <td>(default)</td>
             <td>Automatically set when form is submitted. Needs review.</td>
         </tr>
         <tr>
             <td><strong>In Review</strong></td>
-            <td>Yellow</td>
+            <td>Blue</td>
             <td>You're evaluating the request or preparing a quote.</td>
         </tr>
         <tr>
@@ -1793,7 +2065,7 @@ Unpaid → Invoiced → Paid
         </tr>
         <tr>
             <td><strong>Spam</strong></td>
-            <td>Red</td>
+            <td>Gray</td>
             <td>Invalid or spam submission.</td>
         </tr>
     </tbody>
@@ -1944,7 +2216,7 @@ Unpaid → Invoiced → Paid
 
 <h3>Status Column Missing</h3>
 <ul>
-    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong></li>
+    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Setup/Repair Sheets</strong></li>
     <li>The Status column will be added automatically</li>
     <li>Existing submissions will be set to "New"</li>
 </ul>
@@ -2273,7 +2545,7 @@ Unpaid → Invoiced → Paid
 <p>Log entries look like this:</p>
 
 <code>
-2025-01-22 14:35:12 | updateJobFields | {"jobNumber":"JOB-0042","fieldsUpdated":6,"executionTime":"245ms"}
+2025-01-22 14:35:12 | updateJobFields | {"jobNumber":"J-MAPLE-042","fieldsUpdated":6,"executionTime":"245ms"}
 </code>
 
 <ul>
@@ -2420,7 +2692,7 @@ Unpaid → Invoiced → Paid
 <h3>If you see fallback warnings in logs:</h3>
 
 <ol>
-    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup Sheets</strong></li>
+    <li>Run <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Setup/Repair Sheets</strong></li>
     <li>This ensures all columns exist with correct names</li>
     <li>Optimizations should work normally after setup</li>
 </ol>
@@ -2879,7 +3151,7 @@ Unpaid → Invoiced → Paid
 <hr>
 
 <div style="text-align: center; margin-top: 60px; color: #8a8a8a;">
-    <p><strong>CartCure Job Management System v2.0</strong></p>
+    <p><strong>CartCure Job Management System v2.1</strong></p>
     <p>Built for CartCure - Quick Shopify Fixes for NZ Businesses</p>
     <p style="margin-top: 20px;">For support, review the troubleshooting section or contact your developer.</p>
 </div>

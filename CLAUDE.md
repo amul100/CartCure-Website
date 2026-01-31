@@ -166,6 +166,87 @@ This ensures you get a debug file even if the function fails immediately.
 
 **DO NOT say "redeploy"** - this is incorrect terminology. The correct process is to deploy a new version which updates the existing deployment.
 
+## Puppeteer Testing Configuration
+**IMPORTANT**: When using Puppeteer to test Google Sheets with the CartCure system, Google blocks automated browser logins by default. Use these launch options to allow manual login:
+
+```javascript
+// Launch Puppeteer with these options to bypass automation detection:
+puppeteer_navigate({
+  url: "https://docs.google.com/spreadsheets/d/1Yy77rtMl8wJ2n-w9MF5qDUOKAK6iXM1Ym2Oiqbd7r_0/edit",
+  launchOptions: {
+    headless: false,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"]
+  },
+  allowDangerous: true
+})
+```
+
+**Key points:**
+- `headless: false` - Required to see the browser and manually log in
+- `--disable-blink-features=AutomationControlled` - Prevents Google from detecting automation
+- `allowDangerous: true` - Required to use --no-sandbox args
+- User must manually log in once after browser launches (Google still requires human authentication)
+- After login, Puppeteer can automate clicking menus, taking screenshots, etc.
+
+### Google Sheets Interaction Patterns
+**Clicking sheet tabs** - Standard CSS selectors don't work. Use this pattern:
+```javascript
+puppeteer_evaluate({
+  script: `(function() {
+    const tabs = Array.from(document.querySelectorAll('*')).filter(el =>
+      el.textContent === 'SHEET_NAME' &&
+      el.offsetParent !== null &&
+      el.getBoundingClientRect().bottom > 800
+    );
+    if (tabs.length > 0) {
+      const tab = tabs[0];
+      const rect = tab.getBoundingClientRect();
+      ['mousedown', 'mouseup', 'click'].forEach(eventType => {
+        tab.dispatchEvent(new MouseEvent(eventType, {
+          bubbles: true, cancelable: true, view: window,
+          clientX: rect.left + rect.width/2,
+          clientY: rect.top + rect.height/2
+        }));
+      });
+      return 'Clicked';
+    }
+    return 'Not found';
+  })();`
+})
+```
+
+**Clicking cells** - Click by cell address (e.g., A10):
+```javascript
+puppeteer_evaluate({
+  script: `(function() {
+    // Use the name box to navigate to cell
+    const nameBox = document.querySelector('input.jfk-textinput');
+    if (nameBox) {
+      nameBox.focus();
+      nameBox.value = 'A10';
+      nameBox.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', keyCode: 13, bubbles: true}));
+      return 'Navigated to cell';
+    }
+    return 'Name box not found';
+  })();`
+})
+```
+
+**Opening menus** - Click menu items by text:
+```javascript
+puppeteer_evaluate({
+  script: `(function() {
+    const menuItems = document.querySelectorAll('.menu-button, [role="menuitem"]');
+    for (const item of menuItems) {
+      if (item.textContent.includes('CartCure')) {
+        item.click();
+        return 'Clicked menu';
+      }
+    }
+    return 'Menu not found';
+  })();`
+})
+
 ## Git Commands
 ```bash
 # Stage, commit, and push in one command:

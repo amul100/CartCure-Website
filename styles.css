@@ -887,63 +887,6 @@ section {
     background: var(--accent-green-light);
 }
 
-.footer-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 3rem;
-    max-width: 1400px;
-    margin: 0 auto 3rem;
-    text-align: left;
-}
-
-.footer-section h3 {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-}
-
-.footer-section p,
-.footer-section a {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    line-height: 1.8;
-    display: block;
-}
-
-.footer-section a {
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.footer-section a:hover {
-    color: var(--accent-green);
-}
-
-.social-links {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.social-link {
-    width: 40px;
-    height: 40px;
-    background: var(--dark-bg);
-    border: 1px solid var(--dark-border);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    transition: all 0.2s;
-}
-
-.social-link:hover {
-    background: var(--accent-green);
-    border-color: var(--accent-green);
-    transform: translateY(-2px);
-}
-
 .service-card {
     background: var(--paper-cream);
     padding: 2rem;

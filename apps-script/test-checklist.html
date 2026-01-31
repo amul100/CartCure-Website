@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CartCure Test Checklist</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #2b2b2b;
+      background-color: #f9f7f3;
+      margin: 0;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #2d5d3f;
+      border-bottom: 3px solid #2d5d3f;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      color: #2d5d3f;
+      margin-top: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2::before {
+      content: '\25BC';
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    h2.collapsed::before {
+      transform: rotate(-90deg);
+    }
+
+    .controls {
+      background: white;
+      border: 1px solid #d4cfc3;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .progress-container {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .progress-bar {
+      background: #e0e0e0;
+      border-radius: 10px;
+      height: 20px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #2d5d3f, #4a7c59);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: 14px;
+      color: #5a5a5a;
+    }
+
+    button {
+      background: #2d5d3f;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #3a7a52;
+    }
+
+    button.danger {
+      background: #c62828;
+    }
+
+    button.danger:hover {
+      background: #d32f2f;
+    }
+
+    button.secondary {
+      background: #5a5a5a;
+    }
+
+    button.secondary:hover {
+      background: #6a6a6a;
+    }
+
+    .test-category {
+      background: white;
+      border: 1px solid #d4cfc3;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .category-header {
+      background: #faf8f4;
+      padding: 15px 20px;
+      border-bottom: 1px solid #d4cfc3;
+    }
+
+    .category-content {
+      padding: 10px 20px;
+    }
+
+    .category-content.hidden {
+      display: none;
+    }
+
+    .test-item {
+      display: grid;
+      grid-template-columns: auto 80px 1fr 200px auto;
+      gap: 15px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #ece8df;
+    }
+
+    .test-item:last-child {
+      border-bottom: none;
+    }
+
+    .test-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #2d5d3f;
+    }
+
+    .test-id {
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      color: #2d5d3f;
+      font-size: 13px;
+    }
+
+    .test-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .test-description {
+      font-weight: 500;
+    }
+
+    .test-expected {
+      font-size: 13px;
+      color: #5a5a5a;
+    }
+
+    .notes-input {
+      padding: 8px;
+      border: 1px solid #d4cfc3;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .notes-input:focus {
+      outline: none;
+      border-color: #2d5d3f;
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: #8a8a8a;
+      white-space: nowrap;
+    }
+
+    .status-icon {
+      font-size: 18px;
+    }
+
+    .status-icon.passed {
+      color: #2d5d3f;
+    }
+
+    .status-icon.pending {
+      color: #c62828;
+    }
+
+    .category-stats {
+      font-size: 14px;
+      color: #5a5a5a;
+      margin-left: auto;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 10px;
+      }
+
+      .controls button:not(.print-visible) {
+        display: none;
+      }
+
+      .test-category {
+        break-inside: avoid;
+      }
+
+      .notes-input {
+        border: 1px solid #ccc;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .test-item {
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+      }
+
+      .test-id {
+        grid-column: 2;
+      }
+
+      .test-info {
+        grid-column: 1 / -1;
+      }
+
+      .notes-input {
+        grid-column: 1 / -1;
+      }
+
+      .timestamp {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>CartCure Manual Test Checklist</h1>
+
+  <div class="controls">
+    <div class="progress-container">
+      <div class="progress-text">
+        <span id="progress-count">0 / 0</span> tests completed (<span id="progress-percent">0</span>%)
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <button onclick="exportResults()">Export JSON</button>
+    <button onclick="collapseAll()" class="secondary">Collapse All</button>
+    <button onclick="expandAll()" class="secondary">Expand All</button>
+    <button onclick="clearAll()" class="danger">Clear All</button>
+  </div>
+
+  <!-- Section 5: Job Workflow Tests -->
+  <section class="test-category" data-category="job-workflow">
+    <div class="category-header">
+      <h2 onclick="toggleSection(this)">5. Job Workflow Tests <span class="category-stats" id="stats-job-workflow"></span></h2>
+    </div>
+    <div class="category-content">
+      <!-- 5.1 createJobFromSubmission -->
+      <div class="test-item" data-test-id="JOB-01">
+        <input type="checkbox" id="JOB-01" onchange="saveState()">
+        <span class="test-id">JOB-01</span>
+        <div class="test-info">
+          <span class="test-description">Creates job from submission</span>
+          <span class="test-expected">Expected: New job in Jobs sheet</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-02">
+        <input type="checkbox" id="JOB-02" onchange="saveState()">
+        <span class="test-id">JOB-02</span>
+        <div class="test-info">
+          <span class="test-description">Job number generated from submission</span>
+          <span class="test-expected">Expected: CC-APPLE-123 becomes J-APPLE-123</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-03">
+        <input type="checkbox" id="JOB-03" onchange="saveState()">
+        <span class="test-id">JOB-03</span>
+        <div class="test-info">
+          <span class="test-description">Client info copied</span>
+          <span class="test-expected">Expected: Job has same client data as submission</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-04">
+        <input type="checkbox" id="JOB-04" onchange="saveState()">
+        <span class="test-id">JOB-04</span>
+        <div class="test-info">
+          <span class="test-description">Initial status is Pending Quote</span>
+          <span class="test-expected">Expected: Status = "Pending Quote"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-05">
+        <input type="checkbox" id="JOB-05" onchange="saveState()">
+        <span class="test-id">JOB-05</span>
+        <div class="test-info">
+          <span class="test-description">Submission status updated</span>
+          <span class="test-expected">Expected: Submission status = "Job Created"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-06">
+        <input type="checkbox" id="JOB-06" onchange="saveState()">
+        <span class="test-id">JOB-06</span>
+        <div class="test-info">
+          <span class="test-description">Activity log entry created</span>
+          <span class="test-expected">Expected: Entry in Activity Log sheet</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-07">
+        <input type="checkbox" id="JOB-07" onchange="saveState()">
+        <span class="test-id">JOB-07</span>
+        <div class="test-info">
+          <span class="test-description">Duplicate job warning</span>
+          <span class="test-expected">Expected: Warning dialog, option to create J-XXX-2</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-08">
+        <input type="checkbox" id="JOB-08" onchange="saveState()">
+        <span class="test-id">JOB-08</span>
+        <div class="test-info">
+          <span class="test-description">No submission selected error</span>
+          <span class="test-expected">Expected: Error dialog shown</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.2 sendQuoteEmail -->
+      <div class="test-item" data-test-id="JOB-10">
+        <input type="checkbox" id="JOB-10" onchange="saveState()">
+        <span class="test-id">JOB-10</span>
+        <div class="test-info">
+          <span class="test-description">Sends quote email</span>
+          <span class="test-expected">Expected: Email sent with quote details</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-11">
+        <input type="checkbox" id="JOB-11" onchange="saveState()">
+        <span class="test-id">JOB-11</span>
+        <div class="test-info">
+          <span class="test-description">Status updated to Quoted</span>
+          <span class="test-expected">Expected: Status = "Quoted"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-12">
+        <input type="checkbox" id="JOB-12" onchange="saveState()">
+        <span class="test-id">JOB-12</span>
+        <div class="test-info">
+          <span class="test-description">Quote Sent Date set</span>
+          <span class="test-expected">Expected: Current date in Quote Sent Date</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-13">
+        <input type="checkbox" id="JOB-13" onchange="saveState()">
+        <span class="test-id">JOB-13</span>
+        <div class="test-info">
+          <span class="test-description">GST calculated correctly</span>
+          <span class="test-expected">Expected: Quote $100 -> GST $15, Total $115</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-14">
+        <input type="checkbox" id="JOB-14" onchange="saveState()">
+        <span class="test-id">JOB-14</span>
+        <div class="test-info">
+          <span class="test-description">Deposit mentioned for jobs >= $200</span>
+          <span class="test-expected">Expected: Email mentions 50% deposit</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-15">
+        <input type="checkbox" id="JOB-15" onchange="saveState()">
+        <span class="test-id">JOB-15</span>
+        <div class="test-info">
+          <span class="test-description">No deposit for jobs < $200</span>
+          <span class="test-expected">Expected: No deposit mentioned in email</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-16">
+        <input type="checkbox" id="JOB-16" onchange="saveState()">
+        <span class="test-id">JOB-16</span>
+        <div class="test-info">
+          <span class="test-description">Accept Quote link in email</span>
+          <span class="test-expected">Expected: Valid link with job number</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-17">
+        <input type="checkbox" id="JOB-17" onchange="saveState()">
+        <span class="test-id">JOB-17</span>
+        <div class="test-info">
+          <span class="test-description">Missing Quote Amount error</span>
+          <span class="test-expected">Expected: Error dialog shown</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.3 sendQuoteReminder -->
+      <div class="test-item" data-test-id="JOB-20">
+        <input type="checkbox" id="JOB-20" onchange="saveState()">
+        <span class="test-id">JOB-20</span>
+        <div class="test-info">
+          <span class="test-description">Sends quote reminder</span>
+          <span class="test-expected">Expected: Reminder email sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-21">
+        <input type="checkbox" id="JOB-21" onchange="saveState()">
+        <span class="test-id">JOB-21</span>
+        <div class="test-info">
+          <span class="test-description">Status updated to Quote Reminded</span>
+          <span class="test-expected">Expected: Status = "Quote Reminded"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-22">
+        <input type="checkbox" id="JOB-22" onchange="saveState()">
+        <span class="test-id">JOB-22</span>
+        <div class="test-info">
+          <span class="test-description">Accept button in reminder email</span>
+          <span class="test-expected">Expected: Valid Accept Quote link</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.4 markQuoteDeclined -->
+      <div class="test-item" data-test-id="JOB-25">
+        <input type="checkbox" id="JOB-25" onchange="saveState()">
+        <span class="test-id">JOB-25</span>
+        <div class="test-info">
+          <span class="test-description">Mark quote declined</span>
+          <span class="test-expected">Expected: Status = "Declined"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.5 startWorkOnJob -->
+      <div class="test-item" data-test-id="JOB-30">
+        <input type="checkbox" id="JOB-30" onchange="saveState()">
+        <span class="test-id">JOB-30</span>
+        <div class="test-info">
+          <span class="test-description">Starts work on job</span>
+          <span class="test-expected">Expected: Status = "In Progress"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-31">
+        <input type="checkbox" id="JOB-31" onchange="saveState()">
+        <span class="test-id">JOB-31</span>
+        <div class="test-info">
+          <span class="test-description">Backup reminder shown</span>
+          <span class="test-expected">Expected: Reminder dialog on fresh start</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-32">
+        <input type="checkbox" id="JOB-32" onchange="saveState()">
+        <span class="test-id">JOB-32</span>
+        <div class="test-info">
+          <span class="test-description">No backup reminder from On Hold</span>
+          <span class="test-expected">Expected: No reminder when resuming</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-33">
+        <input type="checkbox" id="JOB-33" onchange="saveState()">
+        <span class="test-id">JOB-33</span>
+        <div class="test-info">
+          <span class="test-description">Blocked if deposit unpaid</span>
+          <span class="test-expected">Expected: Error - deposit must be paid</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-34">
+        <input type="checkbox" id="JOB-34" onchange="saveState()">
+        <span class="test-id">JOB-34</span>
+        <div class="test-info">
+          <span class="test-description">Actual Start Date set</span>
+          <span class="test-expected">Expected: Current date recorded</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-35">
+        <input type="checkbox" id="JOB-35" onchange="saveState()">
+        <span class="test-id">JOB-35</span>
+        <div class="test-info">
+          <span class="test-description">Status email sent to client</span>
+          <span class="test-expected">Expected: "In Progress" email sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.6 putJobOnHold -->
+      <div class="test-item" data-test-id="JOB-40">
+        <input type="checkbox" id="JOB-40" onchange="saveState()">
+        <span class="test-id">JOB-40</span>
+        <div class="test-info">
+          <span class="test-description">Put job on hold</span>
+          <span class="test-expected">Expected: Status = "On Hold"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-41">
+        <input type="checkbox" id="JOB-41" onchange="saveState()">
+        <span class="test-id">JOB-41</span>
+        <div class="test-info">
+          <span class="test-description">Requires explanation</span>
+          <span class="test-expected">Expected: Prompt for explanation</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-42">
+        <input type="checkbox" id="JOB-42" onchange="saveState()">
+        <span class="test-id">JOB-42</span>
+        <div class="test-info">
+          <span class="test-description">Email includes reason</span>
+          <span class="test-expected">Expected: Explanation in email</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 5.7 markJobComplete -->
+      <div class="test-item" data-test-id="JOB-50">
+        <input type="checkbox" id="JOB-50" onchange="saveState()">
+        <span class="test-id">JOB-50</span>
+        <div class="test-info">
+          <span class="test-description">Completes job</span>
+          <span class="test-expected">Expected: Status = "Completed"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-51">
+        <input type="checkbox" id="JOB-51" onchange="saveState()">
+        <span class="test-id">JOB-51</span>
+        <div class="test-info">
+          <span class="test-description">Credential cleanup reminder</span>
+          <span class="test-expected">Expected: Reminder dialog shown</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-52">
+        <input type="checkbox" id="JOB-52" onchange="saveState()">
+        <span class="test-id">JOB-52</span>
+        <div class="test-info">
+          <span class="test-description">Completion email sent</span>
+          <span class="test-expected">Expected: Email to client</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-53">
+        <input type="checkbox" id="JOB-53" onchange="saveState()">
+        <span class="test-id">JOB-53</span>
+        <div class="test-info">
+          <span class="test-description">Actual Completion Date set</span>
+          <span class="test-expected">Expected: Current date recorded</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="JOB-54">
+        <input type="checkbox" id="JOB-54" onchange="saveState()">
+        <span class="test-id">JOB-54</span>
+        <div class="test-info">
+          <span class="test-description">Prompt for invoice</span>
+          <span class="test-expected">Expected: "Generate Invoice?" dialog</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 6: Invoice Workflow Tests -->
+  <section class="test-category" data-category="invoice-workflow">
+    <div class="category-header">
+      <h2 onclick="toggleSection(this)">6. Invoice Workflow Tests <span class="category-stats" id="stats-invoice-workflow"></span></h2>
+    </div>
+    <div class="category-content">
+      <!-- 6.1 generateAndSendDepositInvoice -->
+      <div class="test-item" data-test-id="INV-01">
+        <input type="checkbox" id="INV-01" onchange="saveState()">
+        <span class="test-id">INV-01</span>
+        <div class="test-info">
+          <span class="test-description">Creates deposit invoice for jobs >= $200</span>
+          <span class="test-expected">Expected: Invoice with 50% of total</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-02">
+        <input type="checkbox" id="INV-02" onchange="saveState()">
+        <span class="test-id">INV-02</span>
+        <div class="test-info">
+          <span class="test-description">Invoice type = Deposit</span>
+          <span class="test-expected">Expected: Type field = "Deposit"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-03">
+        <input type="checkbox" id="INV-03" onchange="saveState()">
+        <span class="test-id">INV-03</span>
+        <div class="test-info">
+          <span class="test-description">Deposit due date = TODAY</span>
+          <span class="test-expected">Expected: Due immediately</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-04">
+        <input type="checkbox" id="INV-04" onchange="saveState()">
+        <span class="test-id">INV-04</span>
+        <div class="test-info">
+          <span class="test-description">Invoice number generated</span>
+          <span class="test-expected">Expected: INV-XXX format</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-05">
+        <input type="checkbox" id="INV-05" onchange="saveState()">
+        <span class="test-id">INV-05</span>
+        <div class="test-info">
+          <span class="test-description">Email sent automatically</span>
+          <span class="test-expected">Expected: Invoice email to client</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-06">
+        <input type="checkbox" id="INV-06" onchange="saveState()">
+        <span class="test-id">INV-06</span>
+        <div class="test-info">
+          <span class="test-description">Invoice linked to job</span>
+          <span class="test-expected">Expected: Job # in invoice record</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 6.2 generateInvoiceForJob -->
+      <div class="test-item" data-test-id="INV-10">
+        <input type="checkbox" id="INV-10" onchange="saveState()">
+        <span class="test-id">INV-10</span>
+        <div class="test-info">
+          <span class="test-description">Creates balance invoice</span>
+          <span class="test-expected">Expected: 50% of total when deposit paid</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-11">
+        <input type="checkbox" id="INV-11" onchange="saveState()">
+        <span class="test-id">INV-11</span>
+        <div class="test-info">
+          <span class="test-description">Creates final invoice (no deposit)</span>
+          <span class="test-expected">Expected: 100% of total</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-12">
+        <input type="checkbox" id="INV-12" onchange="saveState()">
+        <span class="test-id">INV-12</span>
+        <div class="test-info">
+          <span class="test-description">Invoice type correct</span>
+          <span class="test-expected">Expected: "Balance" or "Final"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-13">
+        <input type="checkbox" id="INV-13" onchange="saveState()">
+        <span class="test-id">INV-13</span>
+        <div class="test-info">
+          <span class="test-description">Job Payment Status updated</span>
+          <span class="test-expected">Expected: "Invoiced"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 6.3 sendInvoiceEmail -->
+      <div class="test-item" data-test-id="INV-20">
+        <input type="checkbox" id="INV-20" onchange="saveState()">
+        <span class="test-id">INV-20</span>
+        <div class="test-info">
+          <span class="test-description">Sends invoice email</span>
+          <span class="test-expected">Expected: Email with invoice details</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-21">
+        <input type="checkbox" id="INV-21" onchange="saveState()">
+        <span class="test-id">INV-21</span>
+        <div class="test-info">
+          <span class="test-description">Bank details included</span>
+          <span class="test-expected">Expected: Bank name, account number</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-22">
+        <input type="checkbox" id="INV-22" onchange="saveState()">
+        <span class="test-id">INV-22</span>
+        <div class="test-info">
+          <span class="test-description">GST shown if registered</span>
+          <span class="test-expected">Expected: GST number in email</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-23">
+        <input type="checkbox" id="INV-23" onchange="saveState()">
+        <span class="test-id">INV-23</span>
+        <div class="test-info">
+          <span class="test-description">Due date shown</span>
+          <span class="test-expected">Expected: Clear due date</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 6.4 sendInvoiceReminder -->
+      <div class="test-item" data-test-id="INV-30">
+        <input type="checkbox" id="INV-30" onchange="saveState()">
+        <span class="test-id">INV-30</span>
+        <div class="test-info">
+          <span class="test-description">Sends friendly reminder</span>
+          <span class="test-expected">Expected: Reminder email</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-31">
+        <input type="checkbox" id="INV-31" onchange="saveState()">
+        <span class="test-id">INV-31</span>
+        <div class="test-info">
+          <span class="test-description">No late fee in pre-due reminder</span>
+          <span class="test-expected">Expected: Friendly tone, no fees</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 6.5 sendOverdueInvoice -->
+      <div class="test-item" data-test-id="INV-40">
+        <input type="checkbox" id="INV-40" onchange="saveState()">
+        <span class="test-id">INV-40</span>
+        <div class="test-info">
+          <span class="test-description">Sends overdue notice</span>
+          <span class="test-expected">Expected: Overdue email</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-41">
+        <input type="checkbox" id="INV-41" onchange="saveState()">
+        <span class="test-id">INV-41</span>
+        <div class="test-info">
+          <span class="test-description">Late fee calculated</span>
+          <span class="test-expected">Expected: Fee added to total</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-42">
+        <input type="checkbox" id="INV-42" onchange="saveState()">
+        <span class="test-id">INV-42</span>
+        <div class="test-info">
+          <span class="test-description">New total with fees shown</span>
+          <span class="test-expected">Expected: Original + late fee</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 6.6 markInvoicePaid -->
+      <div class="test-item" data-test-id="INV-50">
+        <input type="checkbox" id="INV-50" onchange="saveState()">
+        <span class="test-id">INV-50</span>
+        <div class="test-info">
+          <span class="test-description">Updates invoice status to Paid</span>
+          <span class="test-expected">Expected: Status = "Paid"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-51">
+        <input type="checkbox" id="INV-51" onchange="saveState()">
+        <span class="test-id">INV-51</span>
+        <div class="test-info">
+          <span class="test-description">Payment date recorded</span>
+          <span class="test-expected">Expected: Current date</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-52">
+        <input type="checkbox" id="INV-52" onchange="saveState()">
+        <span class="test-id">INV-52</span>
+        <div class="test-info">
+          <span class="test-description">Payment method saved</span>
+          <span class="test-expected">Expected: Method field updated</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-53">
+        <input type="checkbox" id="INV-53" onchange="saveState()">
+        <span class="test-id">INV-53</span>
+        <div class="test-info">
+          <span class="test-description">Payment reference saved</span>
+          <span class="test-expected">Expected: Reference field updated</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-54">
+        <input type="checkbox" id="INV-54" onchange="saveState()">
+        <span class="test-id">INV-54</span>
+        <div class="test-info">
+          <span class="test-description">Receipt email sent</span>
+          <span class="test-expected">Expected: Receipt to client</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="INV-55">
+        <input type="checkbox" id="INV-55" onchange="saveState()">
+        <span class="test-id">INV-55</span>
+        <div class="test-info">
+          <span class="test-description">Job Payment Status updated</span>
+          <span class="test-expected">Expected: Job status = "Paid"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7: Email Template Tests -->
+  <section class="test-category" data-category="email-templates">
+    <div class="category-header">
+      <h2 onclick="toggleSection(this)">7. Email Template Tests <span class="category-stats" id="stats-email-templates"></span></h2>
+    </div>
+    <div class="category-content">
+      <!-- 7.1 Template Rendering -->
+      <div class="test-item" data-test-id="EMAIL-01">
+        <input type="checkbox" id="EMAIL-01" onchange="saveState()">
+        <span class="test-id">EMAIL-01</span>
+        <div class="test-info">
+          <span class="test-description">email-admin-notification renders</span>
+          <span class="test-expected">Expected: Submission details correct</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-02">
+        <input type="checkbox" id="EMAIL-02" onchange="saveState()">
+        <span class="test-id">EMAIL-02</span>
+        <div class="test-info">
+          <span class="test-description">email-user-confirmation renders</span>
+          <span class="test-expected">Expected: Submission number, message shown</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-03">
+        <input type="checkbox" id="EMAIL-03" onchange="saveState()">
+        <span class="test-id">EMAIL-03</span>
+        <div class="test-info">
+          <span class="test-description">email-quote renders</span>
+          <span class="test-expected">Expected: Amounts correct, Accept button works</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-04">
+        <input type="checkbox" id="EMAIL-04" onchange="saveState()">
+        <span class="test-id">EMAIL-04</span>
+        <div class="test-info">
+          <span class="test-description">email-invoice renders</span>
+          <span class="test-expected">Expected: Bank details, amounts correct</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-05">
+        <input type="checkbox" id="EMAIL-05" onchange="saveState()">
+        <span class="test-id">EMAIL-05</span>
+        <div class="test-info">
+          <span class="test-description">email-balance-invoice renders</span>
+          <span class="test-expected">Expected: Shows 50%, "Balance Due"</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-06">
+        <input type="checkbox" id="EMAIL-06" onchange="saveState()">
+        <span class="test-id">EMAIL-06</span>
+        <div class="test-info">
+          <span class="test-description">email-status-update renders</span>
+          <span class="test-expected">Expected: Status shown, appropriate message</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-07">
+        <input type="checkbox" id="EMAIL-07" onchange="saveState()">
+        <span class="test-id">EMAIL-07</span>
+        <div class="test-info">
+          <span class="test-description">email-payment-receipt renders</span>
+          <span class="test-expected">Expected: Payment method, reference shown</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-08">
+        <input type="checkbox" id="EMAIL-08" onchange="saveState()">
+        <span class="test-id">EMAIL-08</span>
+        <div class="test-info">
+          <span class="test-description">email-invoice-reminder renders</span>
+          <span class="test-expected">Expected: Friendly tone, due date</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-09">
+        <input type="checkbox" id="EMAIL-09" onchange="saveState()">
+        <span class="test-id">EMAIL-09</span>
+        <div class="test-info">
+          <span class="test-description">email-overdue-invoice renders</span>
+          <span class="test-expected">Expected: Late fees shown correctly</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-10">
+        <input type="checkbox" id="EMAIL-10" onchange="saveState()">
+        <span class="test-id">EMAIL-10</span>
+        <div class="test-info">
+          <span class="test-description">email-quote-accepted renders</span>
+          <span class="test-expected">Expected: Job details, next steps</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-11">
+        <input type="checkbox" id="EMAIL-11" onchange="saveState()">
+        <span class="test-id">EMAIL-11</span>
+        <div class="test-info">
+          <span class="test-description">email-quote-reminder renders</span>
+          <span class="test-expected">Expected: Accept button works</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 7.2 Email Styling -->
+      <div class="test-item" data-test-id="EMAIL-20">
+        <input type="checkbox" id="EMAIL-20" onchange="saveState()">
+        <span class="test-id">EMAIL-20</span>
+        <div class="test-info">
+          <span class="test-description">Colors from EMAIL_COLORS</span>
+          <span class="test-expected">Expected: Brand green, ink gray used</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-21">
+        <input type="checkbox" id="EMAIL-21" onchange="saveState()">
+        <span class="test-id">EMAIL-21</span>
+        <div class="test-info">
+          <span class="test-description">Mobile responsive</span>
+          <span class="test-expected">Expected: Readable on mobile</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-22">
+        <input type="checkbox" id="EMAIL-22" onchange="saveState()">
+        <span class="test-id">EMAIL-22</span>
+        <div class="test-info">
+          <span class="test-description">No broken images</span>
+          <span class="test-expected">Expected: All images load</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EMAIL-23">
+        <input type="checkbox" id="EMAIL-23" onchange="saveState()">
+        <span class="test-id">EMAIL-23</span>
+        <div class="test-info">
+          <span class="test-description">Links work</span>
+          <span class="test-expected">Expected: All buttons/links functional</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 8: Automated Trigger Tests -->
+  <section class="test-category" data-category="automated-triggers">
+    <div class="category-header">
+      <h2 onclick="toggleSection(this)">8. Automated Trigger Tests <span class="category-stats" id="stats-automated-triggers"></span></h2>
+    </div>
+    <div class="category-content">
+      <!-- 8.1 autoSendQuoteReminders -->
+      <div class="test-item" data-test-id="AUTO-01">
+        <input type="checkbox" id="AUTO-01" onchange="saveState()">
+        <span class="test-id">AUTO-01</span>
+        <div class="test-info">
+          <span class="test-description">Sends reminder for quotes > 7 days old</span>
+          <span class="test-expected">Expected: Reminder sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="AUTO-02">
+        <input type="checkbox" id="AUTO-02" onchange="saveState()">
+        <span class="test-id">AUTO-02</span>
+        <div class="test-info">
+          <span class="test-description">Doesn't send early</span>
+          <span class="test-expected">Expected: No reminder < 7 days</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="AUTO-03">
+        <input type="checkbox" id="AUTO-03" onchange="saveState()">
+        <span class="test-id">AUTO-03</span>
+        <div class="test-info">
+          <span class="test-description">Doesn't resend</span>
+          <span class="test-expected">Expected: No duplicate if already reminded</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 8.2 autoSendInvoiceReminders -->
+      <div class="test-item" data-test-id="AUTO-10">
+        <input type="checkbox" id="AUTO-10" onchange="saveState()">
+        <span class="test-id">AUTO-10</span>
+        <div class="test-info">
+          <span class="test-description">Sends reminder due in 3 days</span>
+          <span class="test-expected">Expected: Reminder sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="AUTO-11">
+        <input type="checkbox" id="AUTO-11" onchange="saveState()">
+        <span class="test-id">AUTO-11</span>
+        <div class="test-info">
+          <span class="test-description">Doesn't send for paid invoices</span>
+          <span class="test-expected">Expected: No reminder</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 8.3 autoSendOverdueInvoices -->
+      <div class="test-item" data-test-id="AUTO-20">
+        <input type="checkbox" id="AUTO-20" onchange="saveState()">
+        <span class="test-id">AUTO-20</span>
+        <div class="test-info">
+          <span class="test-description">Sends overdue notice</span>
+          <span class="test-expected">Expected: Overdue notice sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="AUTO-21">
+        <input type="checkbox" id="AUTO-21" onchange="saveState()">
+        <span class="test-id">AUTO-21</span>
+        <div class="test-info">
+          <span class="test-description">Late fee applied</span>
+          <span class="test-expected">Expected: Fee calculated</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 8.4 updateAllLateFees -->
+      <div class="test-item" data-test-id="AUTO-30">
+        <input type="checkbox" id="AUTO-30" onchange="saveState()">
+        <span class="test-id">AUTO-30</span>
+        <div class="test-info">
+          <span class="test-description">Updates all overdue invoices</span>
+          <span class="test-expected">Expected: Late fees recalculated</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 9: Edge Cases & Error Handling -->
+  <section class="test-category" data-category="edge-cases">
+    <div class="category-header">
+      <h2 onclick="toggleSection(this)">9. Edge Cases & Error Handling <span class="category-stats" id="stats-edge-cases"></span></h2>
+    </div>
+    <div class="category-content">
+      <!-- 9.1 Concurrent Operations -->
+      <div class="test-item" data-test-id="EDGE-01">
+        <input type="checkbox" id="EDGE-01" onchange="saveState()">
+        <span class="test-id">EDGE-01</span>
+        <div class="test-info">
+          <span class="test-description">Two users edit same job</span>
+          <span class="test-expected">Expected: No data corruption</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-02">
+        <input type="checkbox" id="EDGE-02" onchange="saveState()">
+        <span class="test-id">EDGE-02</span>
+        <div class="test-info">
+          <span class="test-description">Invoice generated twice</span>
+          <span class="test-expected">Expected: Warning or prevention</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 9.2 Missing Data -->
+      <div class="test-item" data-test-id="EDGE-10">
+        <input type="checkbox" id="EDGE-10" onchange="saveState()">
+        <span class="test-id">EDGE-10</span>
+        <div class="test-info">
+          <span class="test-description">Job without email</span>
+          <span class="test-expected">Expected: Graceful handling, no email sent</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-11">
+        <input type="checkbox" id="EDGE-11" onchange="saveState()">
+        <span class="test-id">EDGE-11</span>
+        <div class="test-info">
+          <span class="test-description">Settings sheet missing</span>
+          <span class="test-expected">Expected: Error message, prompt setup</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-12">
+        <input type="checkbox" id="EDGE-12" onchange="saveState()">
+        <span class="test-id">EDGE-12</span>
+        <div class="test-info">
+          <span class="test-description">Jobs sheet missing</span>
+          <span class="test-expected">Expected: Error message, prompt setup</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 9.3 Invalid States -->
+      <div class="test-item" data-test-id="EDGE-20">
+        <input type="checkbox" id="EDGE-20" onchange="saveState()">
+        <span class="test-id">EDGE-20</span>
+        <div class="test-info">
+          <span class="test-description">Start work on Pending Quote</span>
+          <span class="test-expected">Expected: Error - must be accepted first</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-21">
+        <input type="checkbox" id="EDGE-21" onchange="saveState()">
+        <span class="test-id">EDGE-21</span>
+        <div class="test-info">
+          <span class="test-description">Complete already completed job</span>
+          <span class="test-expected">Expected: Warning or prevention</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-22">
+        <input type="checkbox" id="EDGE-22" onchange="saveState()">
+        <span class="test-id">EDGE-22</span>
+        <div class="test-info">
+          <span class="test-description">Accept already accepted quote</span>
+          <span class="test-expected">Expected: Warning</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+
+      <!-- 9.4 Data Integrity -->
+      <div class="test-item" data-test-id="EDGE-30">
+        <input type="checkbox" id="EDGE-30" onchange="saveState()">
+        <span class="test-id">EDGE-30</span>
+        <div class="test-info">
+          <span class="test-description">Delete job with invoices</span>
+          <span class="test-expected">Expected: Warning about linked data</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+      <div class="test-item" data-test-id="EDGE-31">
+        <input type="checkbox" id="EDGE-31" onchange="saveState()">
+        <span class="test-id">EDGE-31</span>
+        <div class="test-info">
+          <span class="test-description">Invoice total != job total</span>
+          <span class="test-expected">Expected: Warning or auto-correct</span>
+        </div>
+        <input type="text" class="notes-input" placeholder="Notes..." onchange="saveState()">
+        <span class="timestamp"></span>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const STORAGE_KEY = 'cartcure-test-checklist';
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadState();
+      updateProgress();
+      updateCategoryStats();
+    });
+
+    // Save state to localStorage
+    function saveState() {
+      const state = {
+        timestamp: new Date().toISOString(),
+        tests: {}
+      };
+
+      document.querySelectorAll('.test-item').forEach(item => {
+        const testId = item.dataset.testId;
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const notes = item.querySelector('.notes-input');
+        const timestampEl = item.querySelector('.timestamp');
+
+        state.tests[testId] = {
+          checked: checkbox.checked,
+          notes: notes.value,
+          checkedAt: checkbox.checked ? (state.tests[testId]?.checkedAt || new Date().toISOString()) : null
+        };
+
+        // Update timestamp display
+        if (checkbox.checked && state.tests[testId].checkedAt) {
+          timestampEl.textContent = formatTimestamp(state.tests[testId].checkedAt);
+        } else {
+          timestampEl.textContent = '';
+        }
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      updateProgress();
+      updateCategoryStats();
+    }
+
+    // Load state from localStorage
+    function loadState() {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (!savedState) return;
+
+      try {
+        const state = JSON.parse(savedState);
+
+        document.querySelectorAll('.test-item').forEach(item => {
+          const testId = item.dataset.testId;
+          const testData = state.tests[testId];
+          if (!testData) return;
+
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          const notes = item.querySelector('.notes-input');
+          const timestampEl = item.querySelector('.timestamp');
+
+          checkbox.checked = testData.checked;
+          notes.value = testData.notes || '';
+
+          if (testData.checked && testData.checkedAt) {
+            timestampEl.textContent = formatTimestamp(testData.checkedAt);
+          }
+        });
+      } catch (e) {
+        console.error('Failed to load state:', e);
+      }
+    }
+
+    // Format timestamp for display
+    function formatTimestamp(isoString) {
+      const date = new Date(isoString);
+      return date.toLocaleDateString('en-NZ', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    // Update progress bar
+    function updateProgress() {
+      const checkboxes = document.querySelectorAll('.test-item input[type="checkbox"]');
+      const total = checkboxes.length;
+      const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+      const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+      document.getElementById('progress-count').textContent = checked + ' / ' + total;
+      document.getElementById('progress-percent').textContent = percent;
+      document.getElementById('progress-fill').style.width = percent + '%';
+    }
+
+    // Update category stats
+    function updateCategoryStats() {
+      document.querySelectorAll('.test-category').forEach(category => {
+        const categoryName = category.dataset.category;
+        const checkboxes = category.querySelectorAll('.test-item input[type="checkbox"]');
+        const total = checkboxes.length;
+        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+        const statsEl = document.getElementById('stats-' + categoryName);
+        if (statsEl) {
+          statsEl.textContent = '(' + checked + '/' + total + ')';
+        }
+      });
+    }
+
+    // Toggle section visibility
+    function toggleSection(header) {
+      header.classList.toggle('collapsed');
+      const content = header.closest('.category-header').nextElementSibling;
+      content.classList.toggle('hidden');
+    }
+
+    // Collapse all sections
+    function collapseAll() {
+      document.querySelectorAll('.category-content').forEach(content => {
+        content.classList.add('hidden');
+        content.previousElementSibling.querySelector('h2').classList.add('collapsed');
+      });
+    }
+
+    // Expand all sections
+    function expandAll() {
+      document.querySelectorAll('.category-content').forEach(content => {
+        content.classList.remove('hidden');
+        content.previousElementSibling.querySelector('h2').classList.remove('collapsed');
+      });
+    }
+
+    // Clear all tests
+    function clearAll() {
+      if (!confirm('Are you sure you want to clear all test results? This cannot be undone.')) {
+        return;
+      }
+
+      document.querySelectorAll('.test-item').forEach(item => {
+        item.querySelector('input[type="checkbox"]').checked = false;
+        item.querySelector('.notes-input').value = '';
+        item.querySelector('.timestamp').textContent = '';
+      });
+
+      localStorage.removeItem(STORAGE_KEY);
+      updateProgress();
+      updateCategoryStats();
+    }
+
+    // Export results as JSON
+    function exportResults() {
+      const results = {
+        exportDate: new Date().toISOString(),
+        summary: {},
+        tests: []
+      };
+
+      // Calculate summary
+      const categories = {};
+      document.querySelectorAll('.test-category').forEach(category => {
+        const categoryName = category.dataset.category;
+        const checkboxes = category.querySelectorAll('.test-item input[type="checkbox"]');
+        const total = checkboxes.length;
+        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+        categories[categoryName] = { passed: checked, total: total };
+      });
+      results.summary = categories;
+
+      // Gather test details
+      document.querySelectorAll('.test-item').forEach(item => {
+        const testId = item.dataset.testId;
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const notes = item.querySelector('.notes-input');
+        const description = item.querySelector('.test-description').textContent;
+        const expected = item.querySelector('.test-expected').textContent;
+        const timestamp = item.querySelector('.timestamp').textContent;
+
+        results.tests.push({
+          id: testId,
+          description: description,
+          expected: expected,
+          passed: checkbox.checked,
+          notes: notes.value,
+          timestamp: timestamp
+        });
+      });
+
+      // Calculate overall stats
+      const totalTests = results.tests.length;
+      const passedTests = results.tests.filter(t => t.passed).length;
+      results.summary.overall = {
+        passed: passedTests,
+        total: totalTests,
+        percentage: Math.round((passedTests / totalTests) * 100)
+      };
+
+      // Download as JSON
+      const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'cartcure-test-results-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

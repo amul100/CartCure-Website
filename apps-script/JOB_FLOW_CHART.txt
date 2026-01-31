@@ -1,0 +1,573 @@
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        CARTCURE JOB MANAGEMENT FLOWCHART                        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌──────────────────┐
+                              │   WEB FORM       │
+                              │   SUBMISSION     │
+                              │   (doPost)       │
+                              └────────┬─────────┘
+                                       │
+                                       ▼
+                              ┌──────────────────┐
+                              │ Check "action"   │
+                              │ parameter        │
+                              └────────┬─────────┘
+                                       │
+                    ┌──────────────────┼──────────────────┐
+                    │                  │                  │
+                    ▼                  ▼                  ▼
+           ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+           │ action =       │ │ action =       │ │ No action      │
+           │ "acceptQuote"  │ │ "submitTesti-  │ │ (Contact Form) │
+           │                │ │ monial"        │ │                │
+           │ (See QUOTE     │ │ (See end of    │ └───────┬────────┘
+           │ ACCEPTANCE     │ │ flowchart)     │         │
+           │ section below) │ └────────────────┘         │
+           └────────────────┘                            │
+                                                         ▼
+                                              ┌──────────────────┐
+                                              │ Rate Limit Check │
+                                              │ (5/hr per email) │
+                                              └────────┬─────────┘
+                                                       │
+                                                  ┌────┴────┐
+                                                  │         │
+                                                  ▼         ▼
+                                              [PASS]    [FAIL]
+                                                  │         │
+                                                  │         ▼
+                                                  │   ┌────────────┐
+                                                  │   │ 429 Error  │
+                                                  │   │ Response   │
+                                                  │   └────────────┘
+                                                  ▼
+                                          ┌──────────────────┐
+                                          │ Validate &       │
+                                          │ Sanitize Input   │
+                                          └────────┬─────────┘
+                                                   │
+                                                   ▼
+                                          ┌──────────────────┐
+                                          │ Save to          │
+                                          │ SUBMISSIONS      │
+                                          │ Sheet            │
+                                          │ Status: "New"    │
+                                          └────────┬─────────┘
+                                                   │
+                                              ┌────┴────┐
+                                              │         │
+                                              ▼         ▼
+                                        ┌───────────┐ ┌───────────┐
+                                        │ Admin     │ │ User      │
+                                        │ Email     │ │ Confirm   │
+                                        │ Notif     │ │ Email     │
+                                        └───────────┘ └───────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+                           ADMIN CREATES JOB (Manual Action)
+═══════════════════════════════════════════════════════════════════════════════════
+                                                   │
+                                                   ▼
+                                        ┌──────────────────────┐
+                                        │ createJobFromSubmis- │
+                                        │ sion()               │
+                                        │ (Menu: CartCure >    │
+                                        │  Submissions > ...)  │
+                                        └──────────┬───────────┘
+                                                   │
+                                                   ▼
+                                          ┌────────────────┐
+                                          │ Jobs exist for │
+                                          │ this sub #?    │
+                                          └───────┬────────┘
+                                                  │
+                                 ┌────────────────┼────────────────┐
+                                 │ NO             │                │ YES
+                                 ▼                │                ▼
+                        Job # = J-XXX             │       ┌────────────────┐
+                        (from CC-XXX)             │       │ Warn user,     │
+                                 │                │       │ allow creating │
+                                 │                │       │ additional job │
+                                 │                │       │ J-XXX-2, etc.  │
+                                 │                │       └───────┬────────┘
+                                 │                │               │
+                                 └────────────────┴───────────────┘
+                                                  │
+                                                  ▼
+                                        ┌──────────────────┐
+                                        │ Create Job in    │
+                                        │ JOBS Sheet       │
+                                        │                  │
+                                        │ Status:          │
+                                        │ "Pending Quote"  │
+                                        │                  │
+                                        │ Submission       │
+                                        │ Status →         │
+                                        │ "Job Created"    │
+                                        └────────┬─────────┘
+                                                 │
+═══════════════════════════════════════════════════════════════════════════════════
+                              QUOTING PHASE
+═══════════════════════════════════════════════════════════════════════════════════
+                                                 │
+                                                 ▼
+                                      ┌────────────────────┐
+                                      │ Admin fills in:    │
+                                      │ • Category         │
+                                      │ • Quote Amount     │
+                                      │ • Turnaround       │
+                                      └────────┬───────────┘
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ sendQuoteEmail()   │
+                                      │ (Menu: CartCure >  │
+                                      │  Quotes > Send)    │
+                                      └────────┬───────────┘
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ Calculate GST,     │
+                                      │ Total, Validity    │
+                                      └────────┬───────────┘
+                                               │
+                                           ┌───┴───┐
+                                           │       │
+                                  Total ≥$200?   Total <$200
+                                           │       │
+                                           ▼       │
+                              ┌──────────────────┐ │
+                              │ Show deposit     │ │
+                              │ requirement      │ │
+                              │ (50%) in email   │ │
+                              └────────┬─────────┘ │
+                                       │           │
+                                       └─────┬─────┘
+                                             │
+                                             ▼
+                                   ┌──────────────────┐
+                                   │ Email sent with: │
+                                   │ • Quote details  │
+                                   │ • "Accept Quote" │
+                                   │   button/link    │
+                                   │                  │
+                                   │ Status →         │
+                                   │ "Quoted"         │
+                                   └────────┬─────────┘
+                                            │
+═══════════════════════════════════════════════════════════════════════════════════
+                         CLIENT RESPONSE PHASE
+═══════════════════════════════════════════════════════════════════════════════════
+                                            │
+               ┌────────────────────────────┼────────────────┬─────────────────┐
+               │                            │                │                 │
+               ▼                            ▼                ▼                 ▼
+      ┌────────────────┐           ┌────────────┐   ┌────────────────┐ ┌────────────────┐
+      │ CLIENT ACCEPTS │           │ NO         │   │ Quote Expired  │ │ CLIENT         │
+      │ QUOTE (Web)    │           │ RESPONSE   │   │ (Admin sends   │ │ DECLINES       │
+      │                │           │            │   │ reminder)      │ │ (Manual)       │
+      └───────┬────────┘           └─────┬──────┘   └───────┬────────┘ └───────┬────────┘
+              │                          │                  │                  │
+              │                          │                  ▼                  ▼
+              │                          │        ┌─────────────────┐  ┌────────────────┐
+              │                          │        │sendQuoteReminder│  │ Status →       │
+              │                          │        │()               │  │ "Declined"     │
+              │                          │        │                 │  │                │
+              │                          │        │ Status →        │  │ [END]          │
+              │                          │        │ "Quote Reminded"│  └────────────────┘
+              │                          │        └─────────────────┘
+              │                          │                │
+              │                          │                │ (loops back)
+              ▼                          │                │
+     ┌────────────────────┐              │                │
+     │ handleQuoteAccept- │◄─────────────┴────────────────┘
+     │ ance() (via web)   │
+     │                    │
+     │ Validates:         │
+     │ • Job #            │
+     │ • Full Name        │
+     │ • Signature        │
+     │ • Terms Accepted   │
+     └────────┬───────────┘
+              │
+              ▼
+     ┌────────────────────┐
+     │ Save signature to  │
+     │ Google Drive       │
+     └────────┬───────────┘
+              │
+              ▼
+     ┌────────────────────┐
+     │ Update Job:        │
+     │ Status → "Accepted"│
+     │ Quote Accepted Date│
+     │ Due Date calc'd    │
+     └────────┬───────────┘
+              │
+              ▼
+     ┌────────────────────┐
+     │ Total ≥ $200?      │
+     └────────┬───────────┘
+              │
+         ┌────┴────┐
+         │YES      │NO
+         ▼         │
+┌─────────────────────┐  │
+│ generateAndSend-    │  │
+│ DepositInvoice()    │  │
+│                     │  │
+│ • 50% deposit       │  │
+│ • Type: "Deposit"   │  │
+│ • Due: TODAY        │  │
+│ • Sends email       │  │
+└──────────┬──────────┘  │
+           │             │
+           └──────┬──────┘
+                  │
+                  ▼
+         ┌────────────────────┐
+         │ Send Emails:       │
+         │ • Client confirm   │
+         │ • Admin notif      │
+         └────────┬───────────┘
+                  │
+═══════════════════════════════════════════════════════════════════════════════════
+                    PAYMENT PHASE (If Deposit Required)
+═══════════════════════════════════════════════════════════════════════════════════
+                  │
+                  ▼
+         ┌────────────────────┐
+         │ Deposit Invoice    │
+         │ exists?            │
+         └────────┬───────────┘
+                  │
+             ┌────┴────┐
+             │YES      │NO (job <$200)
+             ▼         │
+    ┌────────────────┐ │
+    │ WAITING FOR    │ │
+    │ DEPOSIT        │ │
+    │ PAYMENT        │ │
+    └───────┬────────┘ │
+            │          │
+       ┌────┴────┐     │
+       │         │     │
+       ▼         ▼     │
+    [PAID]   [OVERDUE] │
+       │         │     │
+       │         ▼     │
+       │  ┌──────────────┐
+       │  │ sendOverdue- │
+       │  │ Invoice()    │
+       │  │ + Late fees  │
+       │  └──────┬───────┘
+       │         │
+       └────┬────┘
+            │
+═══════════════════════════════════════════════════════════════════════════════════
+                              WORK PHASE
+═══════════════════════════════════════════════════════════════════════════════════
+            │
+            ▼
+   ┌────────────────────┐
+   │ startWorkOnJob()   │
+   │ (Menu: CartCure >  │
+   │  Jobs > Start Work)│
+   └────────┬───────────┘
+            │
+            ▼
+   ┌────────────────────┐
+   │ Deposit unpaid?    │
+   └────────┬───────────┘
+            │
+       ┌────┴────┐
+       │YES      │NO
+       ▼         │
+  ┌──────────────┐
+  │ ⚠️ BLOCKED   │
+  │ "Deposit     │
+  │ must be paid │
+  │ first"       │
+  └──────────────┘
+            │
+            ▼
+   ┌────────────────────┐
+   │ Fresh start?       │
+   │ (not from On Hold) │
+   └────────┬───────────┘
+            │
+       ┌────┴────┐
+       │YES      │NO
+       ▼         │
+  ┌──────────────────┐  │
+  │ ⚠️ Backup        │  │
+  │ Reminder         │  │
+  │ "Has client      │  │
+  │ backed up?"      │  │
+  └────────┬─────────┘  │
+           │            │
+      ┌────┴────┐       │
+      │YES      │NO     │
+      │         ▼       │
+      │   [BLOCKED]     │
+      │                 │
+      └────────┬────────┘
+               │
+               ▼
+      ┌────────────────────┐
+      │ Status →           │
+      │ "In Progress"      │
+      │                    │
+      │ Send status email  │
+      └────────┬───────────┘
+               │
+═══════════════════════════════════════════════════════════════════════════════════
+                         IN PROGRESS - BRANCHING PATHS
+═══════════════════════════════════════════════════════════════════════════════════
+               │
+     ┌─────────┼─────────┬─────────────────┐
+     │         │         │                 │
+     ▼         ▼         ▼                 ▼
+┌─────────┐ ┌─────────┐ ┌─────────────┐ ┌─────────────┐
+│ WORK    │ │ PUT ON  │ │ CANCEL JOB  │ │ COMPLETE    │
+│ CONTIN- │ │ HOLD    │ │ (Manual)    │ │ JOB         │
+│ UES     │ │         │ │             │ │             │
+└────┬────┘ └────┬────┘ └──────┬──────┘ └──────┬──────┘
+     │           │             │               │
+     │           ▼             ▼               │
+     │  ┌────────────────┐ ┌────────────┐      │
+     │  │ putJobOnHold() │ │ Status →   │      │
+     │  │                │ │ "Cancelled"│      │
+     │  │ Requires       │ │            │      │
+     │  │ explanation    │ │ [END]      │      │
+     │  │                │ └────────────┘      │
+     │  │ Status →       │                     │
+     │  │ "On Hold"      │                     │
+     │  │                │                     │
+     │  │ Email w/reason │                     │
+     │  └───────┬────────┘                     │
+     │          │                              │
+     │          ▼                              │
+     │  ┌────────────────┐                     │
+     │  │ Can resume via │                     │
+     │  │ "Start Work"   │                     │
+     │  │ → In Progress  │                     │
+     │  └────────────────┘                     │
+     │                                         │
+     │ (loops while working)                   │
+     │                                         │
+═══════════════════════════════════════════════════════════════════════════════════
+                            COMPLETION PHASE
+═══════════════════════════════════════════════════════════════════════════════════
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ markJobComplete()  │
+                                      └────────┬───────────┘
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ Status →           │
+                                      │ "Completed"        │
+                                      │                    │
+                                      │ Send completion    │
+                                      │ email to client    │
+                                      └────────┬───────────┘
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ 🔐 CREDENTIAL      │
+                                      │ CLEANUP REMINDER   │
+                                      │                    │
+                                      │ • Delete access    │
+                                      │ • Log out          │
+                                      │ • Remind client    │
+                                      │   to change pwd    │
+                                      └────────┬───────────┘
+                                               │
+                                               ▼
+                                      ┌────────────────────┐
+                                      │ "Generate Invoice?"│
+                                      └────────┬───────────┘
+                                               │
+                                          ┌────┴────┐
+                                          │YES      │NO
+                                          ▼         │
+                                 ┌─────────────────────┐
+                                 │ generateInvoice-    │
+                                 │ ForJob()            │
+                                 │                     │
+                                 │ If deposit paid:    │
+                                 │   "Balance" (50%)   │
+                                 │                     │
+                                 │ If no deposit:      │
+                                 │   "Final" (100%)    │
+                                 └──────────┬──────────┘
+                                            │
+                                            └─────────┬───────────┘
+                                                      │
+═══════════════════════════════════════════════════════════════════════════════════
+                         FINAL PAYMENT
+═══════════════════════════════════════════════════════════════════════════════════
+                                                      │
+                                                      ▼
+                                             ┌────────────────┐
+                                             │ Send Invoice   │
+                                             └───────┬────────┘
+                                                     │
+                                                     ▼
+                                             ┌────────────────┐
+                                             │ WAITING FOR    │
+                                             │ PAYMENT        │
+                                             └───────┬────────┘
+                                                     │
+                                                ┌────┴────┐
+                                                │         │
+                                                ▼         ▼
+                                            [PAID]    [OVERDUE]
+                                                │         │
+                                                │         ▼
+                                                │   ┌──────────────┐
+                                                │   │ Late fee     │
+                                                │   │ reminders    │
+                                                │   └──────┬───────┘
+                                                │          │
+                                                └────┬─────┘
+                                                     │
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ Payment recorded   │
+                                            │ Payment Status →   │
+                                            │   "Paid"           │
+                                            │                    │
+                                            │ sendPaymentReceipt │
+                                            │ Email()            │
+                                            └────────┬───────────┘
+                                                     │
+═══════════════════════════════════════════════════════════════════════════════════
+                         TESTIMONIAL (Optional - After Completion)
+═══════════════════════════════════════════════════════════════════════════════════
+                                                     │
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ ✅ JOB FULLY       │
+                                            │ COMPLETED & PAID   │
+                                            └────────┬───────────┘
+                                                     │
+                                                     │ (Client may optionally
+                                                     │  submit testimonial)
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ Client visits      │
+                                            │ testimonial form   │
+                                            │ on website         │
+                                            └────────┬───────────┘
+                                                     │
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ doPost() with      │
+                                            │ action =           │
+                                            │ "submitTestimonial"│
+                                            └────────┬───────────┘
+                                                     │
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ handleTestimonial- │
+                                            │ Submission()       │
+                                            │                    │
+                                            │ Save to            │
+                                            │ TESTIMONIALS sheet │
+                                            │                    │
+                                            │ Status: "Pending   │
+                                            │ Review"            │
+                                            └────────┬───────────┘
+                                                     │
+                                                     ▼
+                                            ┌────────────────────┐
+                                            │ Admin reviews &    │
+                                            │ approves/rejects   │
+                                            │                    │
+                                            │ If approved:       │
+                                            │ displayed on site  │
+                                            └────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+                               STATUS LEGEND
+═══════════════════════════════════════════════════════════════════════════════════
+
+  JOB STATUSES:                         PAYMENT STATUSES:
+  ┌─────────────────┐                   ┌─────────────────┐
+  │ Pending Quote   │ → Initial         │ Unpaid          │
+  │ Quoted          │ → Quote sent      │ Invoiced        │
+  │ Quote Reminded  │ → Reminder sent   │ Paid            │
+  │ Accepted        │ → Client agreed   │ Overdue         │
+  │ In Progress     │ → Work started    │ Refunded        │
+  │ Completed       │ → Work done       └─────────────────┘
+  │ On Hold         │ → Paused
+  │ Cancelled       │ → Terminated      INVOICE TYPES:
+  │ Declined        │ → Client refused  ┌─────────────────┐
+  └─────────────────┘                   │ Deposit (50%)   │
+                                        │ Balance (50%)   │
+                                        │ Final (100%)    │
+                                        └─────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+                            KEY DECISION POINTS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  | Threshold      | Trigger              | Result                              |
+  |----------------|----------------------|-------------------------------------|
+  | Job ≥ $200     | Quote acceptance     | Auto-generates 50% deposit invoice  |
+  | Deposit unpaid | Start Work attempt   | BLOCKED - work cannot begin         |
+  | Fresh start    | Start Work           | Shows backup reminder dialog        |
+  | Job complete   | Completion           | Offers to generate balance/final    |
+
+═══════════════════════════════════════════════════════════════════════════════════
+                            FUNCTION REFERENCE
+═══════════════════════════════════════════════════════════════════════════════════
+
+  SUBMISSION HANDLING:
+    doPost()                    - Web form entry point
+    validateAndSanitizeInput()  - Input validation
+    saveToSheet()               - Save to Submissions sheet
+    sendEmailNotification()     - Admin notification
+    sendUserConfirmationEmail() - User confirmation
+
+  JOB CREATION:
+    createJobFromSubmission()   - Creates job from submission
+
+  QUOTING:
+    sendQuoteEmail()            - Send quote to client
+    sendQuoteReminder()         - Send quote reminder
+    handleQuoteAcceptance()     - Process quote acceptance (web)
+
+  INVOICING:
+    generateAndSendDepositInvoice() - Auto-generate deposit invoice
+    generateInvoiceForJob()         - Generate final/balance invoice
+    sendInvoiceEmail()              - Send invoice
+    sendInvoiceEmailSilent()        - Send invoice (no UI)
+    sendInvoiceReminder()           - Pre-due reminder
+    sendOverdueInvoice()            - Overdue with late fees
+
+  JOB WORKFLOW:
+    startWorkOnJob()            - Start work (In Progress)
+    putJobOnHold()              - Put job on hold
+    markJobComplete()           - Complete job
+
+  STATUS UPDATES:
+    sendStatusUpdateEmail()     - Send status change email
+    updateJobField()            - Update single field
+    updateJobFields()           - Update multiple fields (batch)
+
+  PAYMENTS:
+    sendPaymentReceiptEmail()   - Payment confirmation
+
+  TESTIMONIALS:
+    handleTestimonialSubmission() - Process testimonial submission
+
+═══════════════════════════════════════════════════════════════════════════════════
+Generated: 2025-01-28
+Source: Code.gs analysis
+═══════════════════════════════════════════════════════════════════════════════════

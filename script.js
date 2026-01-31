@@ -251,15 +251,22 @@
     }
 
     /**
-     * Header scroll effect
+     * Header scroll effect (throttled with requestAnimationFrame for performance)
      */
+    let scrollTicking = false;
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            elements.header.classList.add('scrolled');
-        } else {
-            elements.header.classList.remove('scrolled');
+        if (!scrollTicking) {
+            window.requestAnimationFrame(() => {
+                if (window.scrollY > 50) {
+                    elements.header.classList.add('scrolled');
+                } else {
+                    elements.header.classList.remove('scrolled');
+                }
+                scrollTicking = false;
+            });
+            scrollTicking = true;
         }
-    });
+    }, { passive: true });
 
     /**
      * Scroll to services section
@@ -501,14 +508,16 @@
 
             // Wait for the blob to be created (onstop handler)
             await new Promise(resolve => {
+                let timeoutId;
                 const checkBlob = setInterval(() => {
                     if (recordedAudioBlob !== null) {
                         clearInterval(checkBlob);
+                        clearTimeout(timeoutId);
                         resolve();
                     }
-                }, 50);
+                }, 100); // Reduced frequency for better performance
                 // Timeout after 2 seconds to prevent infinite waiting
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     clearInterval(checkBlob);
                     resolve();
                 }, 2000);
@@ -932,6 +941,10 @@
         // Clean up audio object URLs to prevent memory leaks
         if (audioObjectUrl) {
             URL.revokeObjectURL(audioObjectUrl);
+        }
+        // Disconnect IntersectionObserver to prevent memory leaks
+        if (observer) {
+            observer.disconnect();
         }
     });
 
