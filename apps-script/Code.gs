@@ -4621,11 +4621,12 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             margin: 0;
             padding: 0;
             background: #f8f9fa;
-            width: 100%;
-            height: 100%;
+            min-width: 100%;
           }
           .container {
             padding: 16px;
+            width: 100%;
+            box-sizing: border-box;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
@@ -4647,9 +4648,10 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             display: inline-block;
           }
           .actions-list {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr;
             gap: 10px;
+            width: 100%;
           }
           .action-btn {
             display: flex;
