@@ -4656,8 +4656,10 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           .action-btn {
             display: flex;
             align-items: center;
+            justify-self: stretch;
             gap: 14px;
             width: 100%;
+            min-width: 100%;
             padding: 14px 18px;
             background: white;
             border: 1px solid #dadce0;
