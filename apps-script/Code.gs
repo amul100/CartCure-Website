@@ -4434,9 +4434,11 @@ function showActionsDialogForRow(sheet, sheetName, row) {
 
   // Build and show the dialog
   const htmlContent = buildActionsDialogHtml(entityType, entityId, entityLabel, status, actions);
+  // Height: 70px header + 60px footer + (actions * 58px each) + 20px padding
+  const dialogHeight = 70 + 60 + (actions.length * 58) + 20;
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
-    .setWidth(350)
-    .setHeight(Math.min(400, 150 + actions.length * 50));
+    .setWidth(380)
+    .setHeight(Math.min(500, dialogHeight));
 
   ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
 }
@@ -4500,27 +4502,28 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           }
           .content {
             flex: 1;
-            padding: 16px;
-            overflow-y: auto;
+            padding: 12px 16px;
+            overflow: visible;
           }
           .actions-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
           }
           .action-btn {
             display: flex;
             align-items: center;
             gap: 12px;
             width: 100%;
-            padding: 14px 16px;
+            padding: 12px 16px;
             background: white;
             border: 1px solid #dadce0;
             border-radius: 8px;
             cursor: pointer;
             text-align: left;
             font-size: 14px;
-            transition: all 0.2s;
+            transition: all 0.15s;
+            flex-shrink: 0;
           }
           .action-btn:hover {
             background: #f1f3f4;
