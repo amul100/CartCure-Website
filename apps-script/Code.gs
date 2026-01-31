@@ -4468,24 +4468,25 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
       <head>
         <base target="_top">
         <style>
-          * { box-sizing: border-box; }
-          body {
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          html, body {
+            height: 100%;
             font-family: 'Google Sans', Roboto, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             background: #f8f9fa;
           }
           .container {
-            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
-            padding: 15px 20px;
-            margin: -20px -20px 20px -20px;
+            padding: 16px 20px;
+            flex-shrink: 0;
           }
           .header h3 {
-            margin: 0 0 5px 0;
+            margin: 0 0 6px 0;
             font-size: 16px;
             font-weight: 500;
           }
@@ -4493,9 +4494,14 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             font-size: 12px;
             opacity: 0.9;
             background: rgba(255,255,255,0.2);
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 10px;
             display: inline-block;
+          }
+          .content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
           }
           .actions-list {
             display: flex;
@@ -4507,7 +4513,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             align-items: center;
             gap: 12px;
             width: 100%;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: white;
             border: 1px solid #dadce0;
             border-radius: 8px;
@@ -4524,31 +4530,39 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             background: #e8f0eb;
           }
           .action-icon {
-            font-size: 18px;
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
           }
           .action-label {
             color: #202124;
             font-weight: 500;
           }
+          .footer {
+            padding: 12px 16px;
+            border-top: 1px solid #e0e0e0;
+            background: #f8f9fa;
+            flex-shrink: 0;
+          }
           .btn-close {
             display: block;
             width: 100%;
             padding: 10px;
-            margin-top: 15px;
-            background: #f1f3f4;
+            background: #e8eaed;
             color: #5f6368;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
           }
           .btn-close:hover {
-            background: #e8eaed;
+            background: #dadce0;
           }
           .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 40px 20px;
             color: #5f6368;
           }
           .loading.show {
@@ -4562,16 +4576,20 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
       <body>
         <div class="container">
           <div class="header">
-            <h3>☰ Select Action</h3>
+            <h3>⚡ Select Action</h3>
             <span class="status">${escapeHtml(status)}</span>
           </div>
-          <div id="loadingIndicator" class="loading">
-            <div>Executing action...</div>
+          <div class="content">
+            <div id="loadingIndicator" class="loading">
+              <div>Executing action...</div>
+            </div>
+            <div id="actionsList" class="actions-list">
+              ${buttonsHtml}
+            </div>
           </div>
-          <div id="actionsList" class="actions-list">
-            ${buttonsHtml}
+          <div class="footer">
+            <button class="btn-close" onclick="google.script.host.close()">Cancel</button>
           </div>
-          <button class="btn-close" onclick="google.script.host.close()">Cancel</button>
         </div>
         <script>
           function executeAction(entityType, entityId, actionId) {
