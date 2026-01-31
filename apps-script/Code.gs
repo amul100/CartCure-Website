@@ -3205,7 +3205,7 @@ const SHEET_COLORS = {
 
 const COLUMN_CONFIG = {
   // -------------------------------------------------------------------------
-  // JOBS SHEET (32 columns)
+  // JOBS SHEET (33 columns)
   // -------------------------------------------------------------------------
   JOBS: [
     {
@@ -3273,6 +3273,7 @@ const COLUMN_CONFIG = {
       },
       defaultValue: PAYMENT_STATUS.UNPAID
     },
+    { name: 'Refund Amount', width: 130, format: { numberFormat: '$#,##0.00' } },
     { name: 'Payment Date', width: 130 },
     { name: 'Payment Method', width: 150 },
     { name: 'Payment Reference', width: 160 },
@@ -11890,6 +11891,7 @@ function showCancelJobConfirmation(jobNumber) {
 
   // If payment was made, ask about refund
   let refundStatus = null;
+  let refundAmount = null;
   if (paymentStatus === PAYMENT_STATUS.PAID || paymentStatus === PAYMENT_STATUS.INVOICED) {
     const refundResponse = ui.alert(
       'Refund Required?',
@@ -11900,6 +11902,27 @@ function showCancelJobConfirmation(jobNumber) {
 
     if (refundResponse === ui.Button.YES) {
       refundStatus = PAYMENT_STATUS.REFUNDED;
+
+      // Ask for refund amount
+      const refundAmountResponse = ui.prompt(
+        'Refund Amount',
+        'Enter the refund amount (numbers only, e.g., 150.00):\n\n' +
+        (total ? 'Original total: ' + formatCurrency(total) : ''),
+        ui.ButtonSet.OK_CANCEL
+      );
+
+      if (refundAmountResponse.getSelectedButton() === ui.Button.CANCEL) {
+        return;
+      }
+
+      const refundText = refundAmountResponse.getResponseText().trim();
+      if (refundText) {
+        // Parse the amount, removing any currency symbols
+        refundAmount = parseFloat(refundText.replace(/[^0-9.]/g, ''));
+        if (isNaN(refundAmount)) {
+          refundAmount = null;
+        }
+      }
     }
   }
 
@@ -11913,6 +11936,9 @@ function showCancelJobConfirmation(jobNumber) {
 
   if (refundStatus) {
     updates['Payment Status'] = refundStatus;
+    if (refundAmount !== null && refundAmount > 0) {
+      updates['Refund Amount'] = refundAmount;
+    }
   }
 
   updateJobFields(jobNumber, updates);
@@ -11926,8 +11952,14 @@ function showCancelJobConfirmation(jobNumber) {
     }
   }
 
-  // Log to Activity Log
-  logJobActivity(jobNumber, 'Cancelled', 'Job cancelled', reason || 'No reason provided', '', 'Auto');
+  // Log to Activity Log - include refund amount in details
+  let activityDetails = reason || 'No reason provided';
+  if (refundStatus && refundAmount !== null && refundAmount > 0) {
+    activityDetails += ' | Refund issued: ' + formatCurrency(refundAmount);
+  } else if (refundStatus) {
+    activityDetails += ' | Refund issued (amount not specified)';
+  }
+  logJobActivity(jobNumber, 'Cancelled', 'Job cancelled', activityDetails, '', 'Auto');
 
   // Send email notification (without reason - kept internal)
   sendStatusUpdateEmail(jobNumber, JOB_STATUS.CANCELLED);
@@ -11936,6 +11968,9 @@ function showCancelJobConfirmation(jobNumber) {
   let message = 'Job ' + jobNumber + ' has been cancelled.\n\nClient has been notified.';
   if (refundStatus) {
     message += '\n\nPayment status updated to: ' + refundStatus;
+    if (refundAmount !== null && refundAmount > 0) {
+      message += '\nRefund amount: ' + formatCurrency(refundAmount);
+    }
   }
   if (reason) {
     message += '\n\nReason recorded: ' + reason;
