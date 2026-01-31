@@ -4214,9 +4214,10 @@ function onEdit(e) {
   // Check if edit was on Dashboard sheet, cell H1 (refresh checkbox)
   if (sheet.getName() === SHEETS.DASHBOARD && range.getA1Notation() === 'H1') {
     if (e.value === 'TRUE') {
-      // Uncheck the box first, then refresh
+      // Uncheck the box first, then refresh both dashboard and analytics
       range.setValue(false);
-      refreshDashboard(true); // Force refresh to ensure data is populated
+      refreshDashboard(true);
+      refreshAnalytics();
     }
   }
 
@@ -5030,6 +5031,7 @@ function disableAutoRefreshSilent() {
 function autoRefreshDashboard() {
   try {
     refreshDashboard(true); // Force refresh when called from trigger
+    refreshAnalytics();
     Logger.log('Auto-refresh completed at ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   } catch (error) {
     Logger.log('Auto-refresh error: ' + error);
@@ -7135,29 +7137,30 @@ function refreshAnalytics() {
 
   // Get jobs data
   const jobsData = jobsSheet ? jobsSheet.getDataRange().getValues() : [[]];
+  const jobHeaders = jobsData[0] || [];
 
-  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
-  // This ensures column positions always match COLUMN_CONFIG, even if sheet headers differ
+  // Use actual sheet headers for column lookup (handles any column order)
   const cols = {
-    jobNum: getColIndex('JOBS', 'Job #') - 1,
-    status: getColIndex('JOBS', 'Status') - 1,
-    paymentStatus: getColIndex('JOBS', 'Payment Status') - 1,
-    totalInclGst: getColIndex('JOBS', 'Total (incl GST)') - 1,
-    slaStatus: getColIndex('JOBS', 'SLA Status') - 1,
-    category: getColIndex('JOBS', 'Category') - 1,
-    clientName: getColIndex('JOBS', 'Client Name') - 1,
-    daysRemaining: getColIndex('JOBS', 'Days Remaining') - 1,
-    createdDate: getColIndex('JOBS', 'Created Date') - 1,
-    completionDate: getColIndex('JOBS', 'Actual Completion Date') - 1,
-    paymentDate: getColIndex('JOBS', 'Payment Date') - 1
+    jobNum: jobHeaders.indexOf('Job #'),
+    status: jobHeaders.indexOf('Status'),
+    paymentStatus: jobHeaders.indexOf('Payment Status'),
+    totalInclGst: jobHeaders.indexOf('Total (incl GST)'),
+    slaStatus: jobHeaders.indexOf('SLA Status'),
+    category: jobHeaders.indexOf('Category'),
+    clientName: jobHeaders.indexOf('Client Name'),
+    daysRemaining: jobHeaders.indexOf('Days Remaining'),
+    createdDate: jobHeaders.indexOf('Created Date'),
+    completionDate: jobHeaders.indexOf('Actual Completion Date'),
+    paymentDate: jobHeaders.indexOf('Payment Date')
   };
 
   const jobs = jobsData.slice(1).filter(row => row[cols.jobNum >= 0 ? cols.jobNum : 0]); // Filter out empty rows
 
   // Get submissions data
   const subData = submissionsSheet ? submissionsSheet.getDataRange().getValues() : [[]];
-  // Use COLUMN_CONFIG for submissions too
-  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const subHeaders = subData[0] || [];
+  // Use actual sheet headers for submissions too
+  const subNumCol = subHeaders.indexOf('Submission #');
   const submissions = subData.slice(1).filter(row => row[subNumCol >= 0 ? subNumCol : 0]);
 
   // === CALCULATE ALL METRICS IN A SINGLE LOOP ===
@@ -10637,8 +10640,9 @@ function createJobFromSubmission(submissionNumber) {
 
   Logger.log('Job ' + jobNumber + ' created from submission ' + submissionNumber);
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 
   } catch (e) {
     debugLog.push('EXCEPTION: ' + e.toString());
@@ -10992,8 +10996,9 @@ function markQuoteAccepted(jobNumber) {
 
   Logger.log('Quote accepted for ' + jobNumber + (requiresDeposit ? ' (deposit invoice sent)' : ' (work started immediately)'));
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 /**
@@ -11528,8 +11533,9 @@ function startWorkOnJob(jobNumber) {
 
   Logger.log('Work started on ' + jobNumber);
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 /**
@@ -11615,8 +11621,9 @@ function markJobComplete(jobNumber) {
 
   Logger.log('Job ' + jobNumber + ' completed');
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 /**
@@ -11790,8 +11797,9 @@ function putJobOnHold(jobNumber, explanation) {
 
   Logger.log('Job ' + jobNumber + ' put on hold. Reason: ' + explanation);
 
-  // Refresh dashboard
-  refreshDashboard();
+  // Refresh dashboard and analytics
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 /**
@@ -11911,8 +11919,9 @@ function showCancelJobConfirmation(jobNumber) {
 
   Logger.log('Job ' + jobNumber + ' cancelled. Reason: ' + (reason || 'None provided'));
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 // ============================================================================
@@ -13029,8 +13038,9 @@ function sendQuoteEmail(jobNumber) {
 
     Logger.log('Quote sent for ' + jobNumber + ' to ' + clientEmail);
 
-    // Refresh dashboard to show updated data
-    refreshDashboard();
+    // Refresh dashboard and analytics to show updated data
+    refreshDashboard(true);
+    refreshAnalytics();
   } catch (error) {
     Logger.log('Error sending quote: ' + error.message);
     ui.alert('Error', 'Failed to send quote: ' + error.message, ui.ButtonSet.OK);
@@ -13871,8 +13881,9 @@ function markQuoteDeclined(jobNumber) {
   ui.alert('Quote Declined', 'Job ' + jobNumber + ' marked as Declined.', ui.ButtonSet.OK);
   Logger.log('Quote declined for ' + jobNumber);
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 // ============================================================================
@@ -16194,8 +16205,9 @@ function markInvoicePaid(invoiceNumber, method, reference) {
 
   Logger.log('Invoice ' + invoiceNumber + ' marked as paid');
 
-  // Refresh dashboard to show updated data
-  refreshDashboard();
+  // Refresh dashboard and analytics to show updated data
+  refreshDashboard(true);
+  refreshAnalytics();
 }
 
 // ============================================================================
@@ -16415,11 +16427,12 @@ function refreshDashboard(force) {
 }
 
 /**
- * Force refresh dashboard - called from menu
+ * Force refresh dashboard and analytics - called from menu
  * Always refreshes regardless of current sheet
  */
 function refreshDashboardForce() {
   refreshDashboard(true);
+  refreshAnalytics();
 }
 
 /**
