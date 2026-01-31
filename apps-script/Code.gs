@@ -4214,8 +4214,9 @@ function onEdit(e) {
   // Check if edit was on Dashboard sheet, cell H1 (refresh checkbox)
   if (sheet.getName() === SHEETS.DASHBOARD && range.getA1Notation() === 'H1') {
     if (e.value === 'TRUE') {
-      // Uncheck the box first, then refresh both dashboard and analytics
+      // Uncheck the box first, then refresh dashboard, analytics, and invoice late fees
       range.setValue(false);
+      updateAllLateFees();
       refreshDashboard(true);
       refreshAnalytics();
     }
@@ -5030,6 +5031,7 @@ function disableAutoRefreshSilent() {
  */
 function autoRefreshDashboard() {
   try {
+    updateAllLateFees(); // Update invoice late fees first
     refreshDashboard(true); // Force refresh when called from trigger
     refreshAnalytics();
     Logger.log('Auto-refresh completed at ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
@@ -9464,15 +9466,16 @@ function updateAllLateFees() {
   }
 
   const data = invoiceSheet.getDataRange().getValues();
+  const headers = data[0] || [];
 
-  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  // Use actual sheet headers for column lookup (handles any column order)
   const cols = {
-    status: getColIndex('INVOICES', 'Status') - 1,
-    dueDate: getColIndex('INVOICES', 'Due Date') - 1,
-    total: getColIndex('INVOICES', 'Total') - 1,
-    daysOverdue: getColIndex('INVOICES', 'Days Overdue') - 1,
-    lateFee: getColIndex('INVOICES', 'Late Fee') - 1,
-    totalWithFees: getColIndex('INVOICES', 'Total With Fees') - 1
+    status: headers.indexOf('Status'),
+    dueDate: headers.indexOf('Due Date'),
+    total: headers.indexOf('Total'),
+    daysOverdue: headers.indexOf('Days Overdue'),
+    lateFee: headers.indexOf('Late Fee'),
+    totalWithFees: headers.indexOf('Total With Fees')
   };
 
   let updatedCount = 0;
@@ -9534,17 +9537,18 @@ function showOverdueInvoicesWithFees() {
   updateAllLateFees();
 
   const data = invoiceSheet.getDataRange().getValues();
+  const headers = data[0] || [];
 
-  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
+  // Use actual sheet headers for column lookup (handles any column order)
   const cols = {
-    invoiceNum: getColIndex('INVOICES', 'Invoice #') - 1,
-    clientName: getColIndex('INVOICES', 'Client Name') - 1,
-    status: getColIndex('INVOICES', 'Status') - 1,
-    dueDate: getColIndex('INVOICES', 'Due Date') - 1,
-    total: getColIndex('INVOICES', 'Total') - 1,
-    daysOverdue: getColIndex('INVOICES', 'Days Overdue') - 1,
-    lateFee: getColIndex('INVOICES', 'Late Fee') - 1,
-    totalWithFees: getColIndex('INVOICES', 'Total With Fees') - 1
+    invoiceNum: headers.indexOf('Invoice #'),
+    clientName: headers.indexOf('Client Name'),
+    status: headers.indexOf('Status'),
+    dueDate: headers.indexOf('Due Date'),
+    total: headers.indexOf('Total'),
+    daysOverdue: headers.indexOf('Days Overdue'),
+    lateFee: headers.indexOf('Late Fee'),
+    totalWithFees: headers.indexOf('Total With Fees')
   };
 
   let overdueList = [];
@@ -16427,10 +16431,11 @@ function refreshDashboard(force) {
 }
 
 /**
- * Force refresh dashboard and analytics - called from menu
+ * Force refresh dashboard, analytics, and invoice late fees - called from menu
  * Always refreshes regardless of current sheet
  */
 function refreshDashboardForce() {
+  updateAllLateFees();
   refreshDashboard(true);
   refreshAnalytics();
 }
