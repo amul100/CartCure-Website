@@ -3127,10 +3127,9 @@ const COLUMN_CONFIG = {
   // JOBS SHEET (32 columns)
   // -------------------------------------------------------------------------
   JOBS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
-      width: 100,
+      width: 120,
       validation: { type: 'list', values: Object.values(JOB_STATUS), allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3147,24 +3146,25 @@ const COLUMN_CONFIG = {
       },
       defaultValue: JOB_STATUS.PENDING_QUOTE
     },
-    { name: 'Job #', width: 70 },
-    { name: 'Total (incl GST)', width: 115, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Created Date', width: 100 },
-    { name: 'Client Name', width: 120 },
-    { name: 'Client Email', width: 180 },
-    { name: 'Client Phone', width: 120 },
-    { name: 'Store URL', width: 150 },
+    { name: 'Job #', width: 120 },
+    { name: 'Total (incl GST)', width: 130, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Created Date', width: 120 },
+    { name: 'Client Name', width: 140 },
+    { name: 'Client Email', width: 200 },
+    { name: 'Client Phone', width: 130 },
+    { name: 'Store URL', width: 200 },
     { name: 'Job Description', width: 300, format: { wrapText: true } },
-    { name: 'Quote Amount (excl GST)', width: 155, format: { numberFormat: '$#,##0.00' } },
-    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Quote Sent Date', width: 120 },
-    { name: 'Quote Valid Until', width: 120 },
-    { name: 'Quote Accepted Date', width: 145 },
-    { name: 'Days Since Accepted', width: 145 },
-    { name: 'Days Remaining', width: 120 },
+    { name: 'Category', width: 120, validation: { type: 'list', values: JOB_CATEGORIES, allowInvalid: false } },
+    { name: 'Quote Amount (excl GST)', width: 170, format: { numberFormat: '$#,##0.00' } },
+    { name: 'GST', width: 80, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Quote Sent Date', width: 140 },
+    { name: 'Quote Valid Until', width: 140 },
+    { name: 'Quote Accepted Date', width: 160 },
+    { name: 'Days Since Accepted', width: 160 },
+    { name: 'Days Remaining', width: 140 },
     {
       name: 'SLA Status',
-      width: 90,
+      width: 110,
       format: {
         conditionalRules: [
           { when: 'equals', value: 'OVERDUE', background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
@@ -3173,13 +3173,13 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Estimated Turnaround', width: 150, defaultValue: JOB_CONFIG.DEFAULT_SLA_DAYS },
-    { name: 'Due Date', width: 90 },
-    { name: 'Actual Start Date', width: 125 },
-    { name: 'Actual Completion Date', width: 165 },
+    { name: 'Estimated Turnaround', width: 170, defaultValue: JOB_CONFIG.DEFAULT_SLA_DAYS },
+    { name: 'Due Date', width: 110 },
+    { name: 'Actual Start Date', width: 150 },
+    { name: 'Actual Completion Date', width: 180 },
     {
       name: 'Payment Status',
-      width: 115,
+      width: 130,
       validation: { type: 'list', values: Object.values(PAYMENT_STATUS), allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3192,34 +3192,28 @@ const COLUMN_CONFIG = {
       },
       defaultValue: PAYMENT_STATUS.UNPAID
     },
-    { name: 'Payment Date', width: 110 },
-    { name: 'Payment Method', width: 130 },
-    { name: 'Payment Reference', width: 140 },
-    { name: 'Invoice #', width: 80 },
+    { name: 'Payment Date', width: 130 },
+    { name: 'Payment Method', width: 150 },
+    { name: 'Payment Reference', width: 160 },
+    { name: 'Invoice #', width: 100 },
     {
       name: 'Remaining Balance',
-      width: 140,
+      width: 160,
       // Formula uses column name placeholders: {{Total (incl GST)}} and {{Job #}}
       formula: '=IF({{Total (incl GST)}}{{row}}="","",{{Total (incl GST)}}{{row}}-SUMIFS(\'Invoice Log\'!{{INVOICES.Total}}:{{INVOICES.Total}},\'Invoice Log\'!{{INVOICES.Job #}}:{{INVOICES.Job #}},{{Job #}}{{row}},\'Invoice Log\'!{{INVOICES.Status}}:{{INVOICES.Status}},"Paid"))',
       format: { numberFormat: '$#,##0.00' }
     },
-    { name: 'Submission #', width: 100 },
-    { name: 'Last Updated', width: 115 },
-    {
-      name: 'Category',
-      width: 100,
-      validation: { type: 'list', values: JOB_CATEGORIES, allowInvalid: false }
-    }
+    { name: 'Submission #', width: 130 },
+    { name: 'Last Updated', width: 140 }
   ],
 
   // -------------------------------------------------------------------------
   // INVOICE LOG SHEET (20 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
-      width: 80,
+      width: 100,
       validation: { type: 'list', values: ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3230,47 +3224,46 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Invoice #', width: 80 },
-    { name: 'Job #', width: 60 },
-    { name: 'Client Name', width: 120 },
-    { name: 'Client Email', width: 180 },
-    { name: 'Client Phone', width: 120 },
-    { name: 'Invoice Date', width: 100 },
-    { name: 'Due Date', width: 90 },
-    { name: 'Amount (excl GST)', width: 140, format: { numberFormat: '$#,##0.00' } },
-    { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Total', width: 80, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Sent Date', width: 95 },
-    { name: 'Paid Date', width: 95 },
-    { name: 'Payment Reference', width: 145 },
-    { name: 'Days Overdue', width: 110 },
-    { name: 'Late Fee', width: 80, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Total With Fees', width: 115, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Invoice #', width: 100 },
+    { name: 'Job #', width: 120 },
+    { name: 'Client Name', width: 140 },
+    { name: 'Client Email', width: 200 },
+    { name: 'Client Phone', width: 130 },
+    { name: 'Invoice Date', width: 120 },
+    { name: 'Due Date', width: 110 },
+    { name: 'Amount (excl GST)', width: 160, format: { numberFormat: '$#,##0.00' } },
+    { name: 'GST', width: 80, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total', width: 100, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Sent Date', width: 110 },
+    { name: 'Paid Date', width: 110 },
+    { name: 'Payment Reference', width: 160 },
+    { name: 'Days Overdue', width: 130 },
+    { name: 'Late Fee', width: 100, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total With Fees', width: 140, format: { numberFormat: '$#,##0.00' } },
     {
       name: 'Invoice Type',
-      width: 105,
+      width: 120,
       validation: { type: 'list', values: ['Full', 'Deposit', 'Balance', 'Additional'], allowInvalid: false }
     },
-    { name: 'Notes', width: 150 }
+    { name: 'Notes', width: 180 }
   ],
 
   // -------------------------------------------------------------------------
   // CLIENTS SHEET (14 columns)
   // -------------------------------------------------------------------------
   CLIENTS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
-    { name: 'Client Email', width: 200 },  // PRIMARY KEY - unique identifier
-    { name: 'Client Name', width: 150 },
-    { name: 'Client Phone', width: 120 },
-    { name: 'Store URL', width: 180 },
-    { name: 'Total Jobs', width: 80, format: { numberFormat: '0' } },
-    { name: 'Completed Jobs', width: 100, format: { numberFormat: '0' } },
-    { name: 'Total Revenue', width: 120, format: { numberFormat: '$#,##0.00' } },
-    { name: 'First Job Date', width: 100 },
-    { name: 'Last Job Date', width: 100 },
+    { name: 'Client Email', width: 220 },  // PRIMARY KEY - unique identifier
+    { name: 'Client Name', width: 160 },
+    { name: 'Client Phone', width: 130 },
+    { name: 'Store URL', width: 200 },
+    { name: 'Total Jobs', width: 100, format: { numberFormat: '0' } },
+    { name: 'Completed Jobs', width: 130, format: { numberFormat: '0' } },
+    { name: 'Total Revenue', width: 140, format: { numberFormat: '$#,##0.00' } },
+    { name: 'First Job Date', width: 120 },
+    { name: 'Last Job Date', width: 120 },
     {
       name: 'Client Status',
-      width: 100,
+      width: 120,
       validation: { type: 'list', values: Object.values(CLIENT_STATUS), allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3281,19 +3274,18 @@ const COLUMN_CONFIG = {
       },
       defaultValue: CLIENT_STATUS.ACTIVE
     },
-    { name: 'Notes', width: 250, format: { wrapText: true } },
-    { name: 'Created Date', width: 100 },
-    { name: 'Last Updated', width: 110 }
+    { name: 'Notes', width: 280, format: { wrapText: true } },
+    { name: 'Created Date', width: 120 },
+    { name: 'Last Updated', width: 130 }
   ],
 
   // -------------------------------------------------------------------------
   // SUBMISSIONS SHEET (11 columns)
   // -------------------------------------------------------------------------
   SUBMISSIONS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
-      width: 70,
+      width: 100,
       validation: { type: 'list', values: ['New', 'In Review', 'Job Created', 'Declined', 'Spam'], allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3304,43 +3296,43 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Submission #', width: 115 },
-    { name: 'Timestamp', width: 145 },
-    { name: 'Name', width: 120 },
-    { name: 'Email', width: 180 },
-    { name: 'Phone', width: 120 },
-    { name: 'Store URL', width: 180 },
-    { name: 'Message', width: 350, format: { wrapText: true } },
-    { name: 'Has Voice Note', width: 115 },
-    { name: 'Voice Note Link', width: 150 }
+    { name: 'Submission #', width: 140 },
+    { name: 'Timestamp', width: 160 },
+    { name: 'Name', width: 140 },
+    { name: 'Email', width: 200 },
+    { name: 'Phone', width: 130 },
+    { name: 'Store URL', width: 220 },
+    { name: 'Message', width: 250, format: { wrapText: true } },
+    { name: 'Has Voice Note', width: 120 },
+    { name: 'Voice Note Link', width: 160 }
   ],
 
   // -------------------------------------------------------------------------
   // TESTIMONIALS SHEET (9 columns)
   // -------------------------------------------------------------------------
   TESTIMONIALS: [
-    { name: 'Show on Website', width: 130, validation: { type: 'checkbox' } },
-    { name: 'Submitted', width: 140 },
-    { name: 'Name', width: 120 },
-    { name: 'Business', width: 150 },
-    { name: 'Location', width: 100 },
-    { name: 'Rating', width: 60, validation: { type: 'list', values: ['1', '2', '3', '4', '5'], allowInvalid: false } },
-    { name: 'Testimonial', width: 400, format: { wrapText: true } },
-    { name: 'Job Number', width: 100 },
-    { name: 'Email', width: 180 }
+    { name: 'Show on Website', width: 140, validation: { type: 'checkbox' } },
+    { name: 'Submitted', width: 160 },
+    { name: 'Name', width: 140 },
+    { name: 'Business', width: 170 },
+    { name: 'Location', width: 120 },
+    { name: 'Rating', width: 80, validation: { type: 'list', values: ['1', '2', '3', '4', '5'], allowInvalid: false } },
+    { name: 'Testimonial', width: 350, format: { wrapText: true } },
+    { name: 'Job Number', width: 120 },
+    { name: 'Email', width: 200 }
   ],
 
   // -------------------------------------------------------------------------
   // ACTIVITY LOG SHEET (7 columns)
   // -------------------------------------------------------------------------
   ACTIVITY_LOG: [
-    { name: 'Timestamp', width: 150 },
-    { name: 'Job #', width: 80 },
-    { name: 'Activity Type', width: 120 },
-    { name: 'Subject/Summary', width: 250 },
+    { name: 'Timestamp', width: 170 },
+    { name: 'Job #', width: 120 },
+    { name: 'Activity Type', width: 140 },
+    { name: 'Subject/Summary', width: 280 },
     { name: 'Details', width: 350, format: { wrapText: true } },
-    { name: 'From/To', width: 200 },
-    { name: 'Logged By', width: 100 }
+    { name: 'From/To', width: 220 },
+    { name: 'Logged By', width: 120 }
   ]
 };
 
