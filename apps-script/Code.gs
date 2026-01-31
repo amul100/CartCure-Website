@@ -9371,13 +9371,13 @@ function formatNZDate(date) {
 }
 
 /**
- * Format due date for invoices - shows date with "Midday" time
- * e.g., "3 Feb 2026 at Midday"
+ * Format due date for invoices - shows friendly date format
+ * e.g., "3 Feb 2026"
  */
 function formatDueDate(date) {
   if (!date) return '';
   const d = new Date(date);
-  return Utilities.formatDate(d, 'Pacific/Auckland', 'd MMM yyyy') + ' at Midday';
+  return Utilities.formatDate(d, 'Pacific/Auckland', 'd MMM yyyy');
 }
 
 /**
