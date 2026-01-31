@@ -5857,6 +5857,15 @@ function setupJobsSheet(ss, clearData) {
 
   // Migrate existing data if column order has changed
   if (!isNew && sheet.getLastColumn() > 0) {
+    // Clear all data validation before migration to prevent conflicts
+    try {
+      const fullRange = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+      fullRange.clearDataValidations();
+      Logger.log('Cleared data validations before Jobs migration');
+    } catch (e) {
+      Logger.log('Could not clear validations: ' + e.message);
+    }
+
     const migration = migrateSheetColumns(sheet, 'JOBS');
     if (migration.migrated) {
       Logger.log('Jobs migration: ' + migration.message);
@@ -6139,6 +6148,15 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   // Migrate existing data if column order has changed
   if (!isNew && sheet.getLastColumn() > 0) {
+    // Clear all data validation before migration to prevent conflicts
+    try {
+      const fullRange = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+      fullRange.clearDataValidations();
+      Logger.log('Cleared data validations before Invoices migration');
+    } catch (e) {
+      Logger.log('Could not clear validations: ' + e.message);
+    }
+
     const migration = migrateSheetColumns(sheet, 'INVOICES');
     if (migration.migrated) {
       Logger.log('Invoices migration: ' + migration.message);
@@ -6216,6 +6234,15 @@ function setupClientsSheet(ss, clearData) {
 
   // Migrate existing data if column order has changed
   if (!isNew && sheet.getLastColumn() > 0) {
+    // Clear all data validation before migration to prevent conflicts
+    try {
+      const fullRange = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+      fullRange.clearDataValidations();
+      Logger.log('Cleared data validations before Clients migration');
+    } catch (e) {
+      Logger.log('Could not clear validations: ' + e.message);
+    }
+
     const migration = migrateSheetColumns(sheet, 'CLIENTS');
     if (migration.migrated) {
       Logger.log('Clients migration: ' + migration.message);
@@ -7219,6 +7246,15 @@ function setupSubmissionsSheet(ss) {
 
   // Migrate existing data if column order has changed
   if (!isNew && sheet.getLastColumn() > 0) {
+    // Clear all data validation before migration to prevent conflicts
+    try {
+      const fullRange = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+      fullRange.clearDataValidations();
+      Logger.log('Cleared data validations before migration');
+    } catch (e) {
+      Logger.log('Could not clear validations: ' + e.message);
+    }
+
     // Special handling: if Status column doesn't exist, add it with 'New' values
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     if (!currentHeaders.includes('Status') && sheet.getLastRow() > 1) {
