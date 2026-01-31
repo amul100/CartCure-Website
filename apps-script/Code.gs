@@ -12914,9 +12914,9 @@ function showContextAwareDialogForClients(title, clients, callback, selectedEmai
             cancelBtn.disabled = false;
             select.disabled = false;
             submitBtn.innerHTML = 'View History';
-            alert('Error: ' + error);
+            alert('Error: ' + (error.message || error));
           })
-          .${callback}(value);
+          ['${callback}'](value);
       }
     </script>
   `)
