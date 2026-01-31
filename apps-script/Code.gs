@@ -12782,6 +12782,7 @@ function showSendQuoteWithAmountDialog(jobNumber) {
         .btn-primary:hover { background: #45a049; }
         .btn-secondary { background: #f0f0f0; color: #333; }
         .btn-secondary:hover { background: #e0e0e0; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .error { color: #d32f2f; font-size: 12px; margin-top: 5px; display: none; }
       </style>
     </head>
@@ -12811,13 +12812,14 @@ function showSendQuoteWithAmountDialog(jobNumber) {
 
       <div class="buttons">
         <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
-        <button class="btn btn-primary" onclick="sendQuote()">Send Quote</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="sendQuote()">Send Quote</button>
       </div>
 
       <script>
         function sendQuote() {
           const amount = document.getElementById('quoteAmount').value;
           const errorEl = document.getElementById('error');
+          const submitBtn = document.getElementById('submitBtn');
 
           if (!amount || parseFloat(amount) <= 0) {
             errorEl.style.display = 'block';
@@ -12825,11 +12827,16 @@ function showSendQuoteWithAmountDialog(jobNumber) {
           }
 
           errorEl.style.display = 'none';
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Sending...';
+
           google.script.run
             .withSuccessHandler(function() {
               google.script.host.close();
             })
             .withFailureHandler(function(error) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Send Quote';
               alert('Error: ' + error.message);
             })
             .sendQuoteWithAmount('${jobNumber}', parseFloat(amount));
