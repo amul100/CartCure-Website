@@ -12856,19 +12856,72 @@ function showContextAwareDialogForClients(title, clients, callback, selectedEmai
     <style>
       body { font-family: Arial, sans-serif; padding: 20px; }
       select { width: 100%; padding: 10px; margin: 15px 0; font-size: 14px; }
-      button { padding: 10px 20px; background: #2d5d3f; color: white; border: none; cursor: pointer; margin-right: 10px; }
-      button:hover { background: #4a7c59; }
+      button { padding: 10px 20px; background: #2d5d3f; color: white; border: none; cursor: pointer; margin-right: 10px; border-radius: 4px; }
+      button:hover:not(:disabled) { background: #4a7c59; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
       .cancel { background: #666; }
+      .cancel:hover:not(:disabled) { background: #555; }
+      .loading-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
     </style>
     <p>Select a client:</p>
     <select id="clientSelect">${optionsHtml}</select>
     <div>
-      <button onclick="google.script.run.withSuccessHandler(google.script.host.close).${callback}(document.getElementById('clientSelect').value)">View History</button>
-      <button class="cancel" onclick="google.script.host.close()">Cancel</button>
+      <button id="submitBtn" onclick="submitSelection()">View History</button>
+      <button id="cancelBtn" class="cancel" onclick="google.script.host.close()">Cancel</button>
     </div>
+    <script>
+      var isSubmitting = false;
+
+      function submitSelection() {
+        if (isSubmitting) return;
+
+        var value = document.getElementById('clientSelect').value;
+        if (!value) {
+          alert('Please select a client');
+          return;
+        }
+
+        isSubmitting = true;
+        var submitBtn = document.getElementById('submitBtn');
+        var cancelBtn = document.getElementById('cancelBtn');
+        var select = document.getElementById('clientSelect');
+
+        submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+        select.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span>Loading...';
+
+        google.script.run
+          .withSuccessHandler(function() {
+            google.script.host.close();
+          })
+          .withFailureHandler(function(error) {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            cancelBtn.disabled = false;
+            select.disabled = false;
+            submitBtn.innerHTML = 'View History';
+            alert('Error: ' + error);
+          })
+          .${callback}(value);
+      }
+    </script>
   `)
   .setWidth(450)
-  .setHeight(200);
+  .setHeight(220);
 
   ui.showModalDialog(html, title);
 }
