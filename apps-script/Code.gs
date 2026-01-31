@@ -11247,7 +11247,7 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     let bodyContent;
     if (invoiceType === 'Balance' && depositInfo) {
       // Use dedicated balance invoice template
-      const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+      const depositPaidText = depositInfo.paidDate ? ' (paid ' + formatNZDate(depositInfo.paidDate) + ')' : '';
       bodyContent = renderEmailTemplate('email-balance-invoice', {
         invoiceNumber: invoiceNumber,
         jobNumber: jobNumber,
@@ -11290,7 +11290,7 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     // Build plain text version
     let plainTextBody;
     if (invoiceType === 'Balance' && depositInfo) {
-      const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+      const depositPaidText = depositInfo.paidDate ? ' (paid ' + formatNZDate(depositInfo.paidDate) + ')' : '';
       plainTextBody = `BALANCE INVOICE ${invoiceNumber}
 
 Hi ${clientName},
@@ -14515,7 +14515,7 @@ function sendInvoiceEmail(invoiceNumber) {
   let bodyContent;
   if (invoiceType === 'Balance' && depositInfo) {
     // Use dedicated balance invoice template
-    const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+    const depositPaidText = depositInfo.paidDate ? ' (paid ' + formatNZDate(depositInfo.paidDate) + ')' : '';
     bodyContent = renderEmailTemplate('email-balance-invoice', {
       invoiceNumber: invoiceNumber,
       jobNumber: jobNumber,
@@ -14700,7 +14700,7 @@ function renderInvoiceEmailPreview(invoiceNumber) {
   // Render template based on invoice type
   let bodyContent;
   if (invoiceType === 'Balance' && depositInfo) {
-    const depositPaidText = depositInfo.paidDate ? ' (paid ' + depositInfo.paidDate + ')' : '';
+    const depositPaidText = depositInfo.paidDate ? ' (paid ' + formatNZDate(depositInfo.paidDate) + ')' : '';
     bodyContent = renderEmailTemplate('email-balance-invoice', {
       invoiceNumber: invoiceNumber,
       jobNumber: jobNumber,
