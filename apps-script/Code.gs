@@ -4167,7 +4167,8 @@ function buildMenu() {
       .addItem('📋 View Client History', 'viewClientHistory')
       .addItem('📊 View All Clients', 'navigateToClientsSheet')
       .addSeparator()
-      .addItem('🔄 Recalculate All Stats', 'recalculateAllClientStats'))
+      .addItem('🔄 Sync Clients from Jobs', 'syncClientsFromJobs')
+      .addItem('📈 Recalculate All Stats', 'recalculateAllClientStats'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('⚙️ Settings', 'showSettingsDialog')
@@ -10637,6 +10638,17 @@ function createJobFromSubmission(submissionNumber) {
   // Log activity
   logJobActivity(jobNumber, 'Job Created', 'Job created from submission ' + submissionNumber, '', '', 'Auto');
 
+  // Add/update client in Clients sheet
+  if (email) {
+    try {
+      ensureClientExistsAndUpdate(email, { name: name, phone: phone, storeUrl: storeUrl });
+      debugLog.push('Client record updated/created for: ' + email);
+    } catch (clientError) {
+      debugLog.push('Warning: Could not update client record: ' + clientError.message);
+      Logger.log('Warning: Could not update client record: ' + clientError.message);
+    }
+  }
+
   ui.alert('Job Created',
     'Job ' + jobNumber + ' created successfully!\n\n' +
     'Next steps:\n' +
@@ -10959,6 +10971,19 @@ function markQuoteAccepted(jobNumber) {
 
   // OPTIMIZATION: Batch update all fields in a single operation
   updateJobFields(jobNumber, fieldsToUpdate);
+
+  // Update client record (creates if doesn't exist, updates statistics)
+  if (job['Client Email']) {
+    try {
+      ensureClientExistsAndUpdate(job['Client Email'], {
+        name: job['Client Name'],
+        phone: job['Client Phone'],
+        storeUrl: job['Store URL']
+      });
+    } catch (e) {
+      Logger.log('Error updating client record: ' + e.message);
+    }
+  }
 
   // Generate and send deposit invoice for $200+ jobs
   let depositMessage = '';
@@ -11593,12 +11618,16 @@ function markJobComplete(jobNumber) {
     'Days Remaining': ''
   });
 
-  // Update client statistics (increment completed jobs count)
+  // Update client record (creates if doesn't exist, updates statistics)
   if (job['Client Email']) {
     try {
-      updateClientStatistics(job['Client Email']);
+      ensureClientExistsAndUpdate(job['Client Email'], {
+        name: job['Client Name'],
+        phone: job['Client Phone'],
+        storeUrl: job['Store URL']
+      });
     } catch (e) {
-      Logger.log('Error updating client statistics: ' + e.message);
+      Logger.log('Error updating client record: ' + e.message);
     }
   }
 
@@ -12204,6 +12233,145 @@ function updateClientStatistics(clientEmail) {
 }
 
 /**
+ * Ensure a client exists in the Clients sheet and update their statistics
+ * If the client doesn't exist, creates them from job data
+ * If they do exist, updates their statistics
+ *
+ * This is the main function to call when jobs are created or updated
+ * @param {string} clientEmail - The client's email address
+ * @param {Object} [clientInfo] - Optional client info for new clients { name, phone, storeUrl }
+ * @returns {Object} Result with success flag and whether client was created
+ */
+function ensureClientExistsAndUpdate(clientEmail, clientInfo) {
+  if (!clientEmail) {
+    Logger.log('ensureClientExistsAndUpdate: No email provided');
+    return { success: false, error: 'No email provided' };
+  }
+
+  const normalizedEmail = clientEmail.toLowerCase().trim();
+  const existingClient = findClientByEmail(normalizedEmail);
+
+  if (existingClient) {
+    // Client exists - just update their statistics
+    updateClientStatistics(normalizedEmail);
+    return { success: true, isNew: false };
+  }
+
+  // Client doesn't exist - need to create them
+  // First, try to get their info from jobs if not provided
+  if (!clientInfo || !clientInfo.name) {
+    const clientJobs = getClientJobs(normalizedEmail);
+    if (clientJobs.length > 0) {
+      // Get info from the most recent job
+      const latestJob = clientJobs[0];
+      clientInfo = {
+        name: latestJob['Client Name'] || '',
+        phone: latestJob['Client Phone'] || '',
+        storeUrl: latestJob['Store URL'] || ''
+      };
+    }
+  }
+
+  // Create the new client
+  const result = addNewClient({
+    email: normalizedEmail,
+    name: clientInfo?.name || '',
+    phone: clientInfo?.phone || '',
+    storeUrl: clientInfo?.storeUrl || ''
+  });
+
+  if (result.success) {
+    // Now update their statistics from all their jobs
+    updateClientStatistics(normalizedEmail);
+    Logger.log('ensureClientExistsAndUpdate: Created new client ' + normalizedEmail);
+  }
+
+  return { success: result.success, isNew: true };
+}
+
+/**
+ * Sync all clients from jobs - adds missing clients and updates all statistics
+ * Can be called manually from the menu or during maintenance
+ * @returns {Object} Result with counts of added and updated clients
+ */
+function syncClientsFromJobs() {
+  const ui = SpreadsheetApp.getUi();
+  const jobsSheet = getSheet(SHEETS.JOBS);
+
+  if (!jobsSheet || jobsSheet.getLastRow() < 2) {
+    ui.alert('No Jobs', 'No jobs found to sync clients from.', ui.ButtonSet.OK);
+    return { added: 0, updated: 0 };
+  }
+
+  const response = ui.alert(
+    'Sync Clients from Jobs',
+    'This will:\n' +
+    '• Add any clients that exist in Jobs but not in Clients\n' +
+    '• Update statistics for all existing clients\n\n' +
+    'Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return { added: 0, updated: 0 };
+
+  // Get all unique client emails from jobs
+  const lastColumn = jobsSheet.getLastColumn();
+  const headers = jobsSheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  const data = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, lastColumn).getValues();
+
+  const emailIdx = headers.indexOf('Client Email');
+  const nameIdx = headers.indexOf('Client Name');
+  const phoneIdx = headers.indexOf('Client Phone');
+  const storeUrlIdx = headers.indexOf('Store URL');
+
+  if (emailIdx === -1) {
+    ui.alert('Error', 'Client Email column not found in Jobs sheet.', ui.ButtonSet.OK);
+    return { added: 0, updated: 0 };
+  }
+
+  // Collect unique clients with their latest info
+  const clientsMap = new Map();
+  data.forEach(row => {
+    const email = (row[emailIdx] || '').toString().toLowerCase().trim();
+    if (!email) return;
+
+    // Always update to latest info (assuming jobs are sorted newest first)
+    if (!clientsMap.has(email)) {
+      clientsMap.set(email, {
+        email: email,
+        name: row[nameIdx] || '',
+        phone: row[phoneIdx] || '',
+        storeUrl: row[storeUrlIdx] || ''
+      });
+    }
+  });
+
+  let added = 0;
+  let updated = 0;
+
+  clientsMap.forEach((clientInfo, email) => {
+    const result = ensureClientExistsAndUpdate(email, clientInfo);
+    if (result.success) {
+      if (result.isNew) {
+        added++;
+      } else {
+        updated++;
+      }
+    }
+  });
+
+  ui.alert('Sync Complete',
+    'Clients synchronized from Jobs:\n\n' +
+    '• ' + added + ' new clients added\n' +
+    '• ' + updated + ' existing clients updated',
+    ui.ButtonSet.OK
+  );
+
+  Logger.log('syncClientsFromJobs: Added ' + added + ', Updated ' + updated);
+  return { added: added, updated: updated };
+}
+
+/**
  * Get all jobs for a specific client by email
  * @param {string} clientEmail - The client's email address
  * @returns {Array} Array of job objects
@@ -12374,27 +12542,79 @@ function populateClientsFromExistingJobs() {
 }
 
 /**
- * Recalculate statistics for all clients
+ * Recalculate statistics for all clients AND add any missing clients from jobs
  * Utility function to fix any data inconsistencies
  */
 function recalculateAllClientStats() {
   const ui = SpreadsheetApp.getUi();
   const sheet = getSheet(SHEETS.CLIENTS);
+  const jobsSheet = getSheet(SHEETS.JOBS);
 
+  // If no clients exist but jobs do, redirect to syncClientsFromJobs
   if (!sheet || sheet.getLastRow() < 2) {
-    ui.alert('No Clients', 'No clients found to recalculate.', ui.ButtonSet.OK);
+    if (jobsSheet && jobsSheet.getLastRow() >= 2) {
+      // Clients sheet is empty but jobs exist - use sync function
+      syncClientsFromJobs();
+      return;
+    }
+    ui.alert('No Data', 'No clients or jobs found.', ui.ButtonSet.OK);
     return;
   }
 
   const response = ui.alert(
     'Recalculate All Client Statistics',
-    'This will recalculate job counts and revenue for all clients from the Jobs sheet. Continue?',
+    'This will:\n' +
+    '• Add any missing clients from the Jobs sheet\n' +
+    '• Recalculate job counts and revenue for all clients\n\n' +
+    'Continue?',
     ui.ButtonSet.YES_NO
   );
 
   if (response !== ui.Button.YES) return;
 
+  // First, add any missing clients from jobs
+  let added = 0;
+  if (jobsSheet && jobsSheet.getLastRow() >= 2) {
+    const lastColumn = jobsSheet.getLastColumn();
+    const headers = jobsSheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    const data = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, lastColumn).getValues();
+
+    const emailIdx = headers.indexOf('Client Email');
+    const nameIdx = headers.indexOf('Client Name');
+    const phoneIdx = headers.indexOf('Client Phone');
+    const storeUrlIdx = headers.indexOf('Store URL');
+
+    if (emailIdx !== -1) {
+      const processedEmails = new Set();
+      data.forEach(row => {
+        const email = (row[emailIdx] || '').toString().toLowerCase().trim();
+        if (!email || processedEmails.has(email)) return;
+        processedEmails.add(email);
+
+        // Check if client exists
+        const existingClient = findClientByEmail(email);
+        if (!existingClient) {
+          // Add new client
+          addNewClient({
+            email: email,
+            name: row[nameIdx] || '',
+            phone: row[phoneIdx] || '',
+            storeUrl: row[storeUrlIdx] || ''
+          });
+          added++;
+        }
+      });
+    }
+  }
+
+  // Now recalculate stats for all clients (including newly added ones)
+  // Re-get the sheet data since we may have added rows
   const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    ui.alert('Complete', 'Added ' + added + ' new clients. No statistics to recalculate.', ui.ButtonSet.OK);
+    return;
+  }
+
   const emailCol = getColIndex('CLIENTS', 'Client Email');
   const emails = sheet.getRange(2, emailCol, lastRow - 1, 1).getValues();
 
@@ -12407,7 +12627,12 @@ function recalculateAllClientStats() {
     }
   });
 
-  ui.alert('Complete', 'Recalculated statistics for ' + updated + ' clients.', ui.ButtonSet.OK);
+  ui.alert('Complete',
+    'Client sync complete:\n\n' +
+    '• ' + added + ' new clients added\n' +
+    '• ' + updated + ' clients statistics updated',
+    ui.ButtonSet.OK
+  );
 }
 
 /**
@@ -16246,13 +16471,17 @@ function markInvoicePaid(invoiceNumber, method, reference) {
     'Payment Reference': reference
   });
 
-  // Update client statistics (recalculate revenue from paid jobs)
+  // Update client record (creates if doesn't exist, recalculates revenue from paid jobs)
   const clientEmail = invoice['Client Email'];
   if (clientEmail) {
     try {
-      updateClientStatistics(clientEmail);
+      ensureClientExistsAndUpdate(clientEmail, {
+        name: invoice['Client Name'],
+        phone: '',
+        storeUrl: ''
+      });
     } catch (e) {
-      Logger.log('Error updating client statistics: ' + e.message);
+      Logger.log('Error updating client record: ' + e.message);
     }
   }
 

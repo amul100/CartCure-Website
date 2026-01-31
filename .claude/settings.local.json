@@ -95,7 +95,8 @@
       "Bash(du -sh:*)",
       "Bash(git -C \"c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website\" log --oneline -20)",
       "Bash(findstr:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git show:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",
