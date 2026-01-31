@@ -4582,7 +4582,7 @@ function showActionsDialogForRow(sheet, sheetName, row) {
   // Height: 100px header + 80px footer/cancel + (actions * 65px each) + 40px padding
   const dialogHeight = 100 + 80 + (actions.length * 65) + 40;
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
-    .setWidth(380)
+    .setWidth(420)
     .setHeight(dialogHeight);
 
   ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
@@ -4611,28 +4611,22 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
 
   return `
     <!DOCTYPE html>
-    <html style="margin:0;padding:0;width:100%;height:100%;">
+    <html>
       <head>
         <base target="_top">
         <style>
-          * { box-sizing: border-box; }
           body {
-            font-family: 'Google Sans', Roboto, Arial, sans-serif;
-            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+            padding: 20px;
             margin: 0;
-            padding: 0;
-            width: 100%;
-            min-height: 100%;
-          }
-          .container {
-            width: 100%;
+            background: #f9f9f9;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
             padding: 20px;
-            width: 100%;
-            margin-bottom: 16px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 0;
           }
           .header h3 {
             margin: 0 0 8px 0;
@@ -4651,8 +4645,6 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             display: flex;
             flex-direction: column;
             gap: 10px;
-            width: 100%;
-            padding: 0 16px;
           }
           .action-btn {
             display: flex;
@@ -4688,9 +4680,9 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           }
           .btn-close {
             display: block;
-            width: calc(100% - 32px);
+            width: 100%;
             padding: 12px;
-            margin: 20px 16px 16px 16px;
+            margin-top: 20px;
             background: #f1f3f4;
             color: #5f6368;
             border: none;
@@ -4705,8 +4697,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           .loading {
             display: none;
             text-align: center;
-            padding: 40px 16px;
-            width: 100%;
+            padding: 40px 0;
             color: #5f6368;
           }
           .loading.show {
