@@ -4190,6 +4190,7 @@ function buildMenu() {
         .addItem('🔄 Extend Validation Ranges', 'extendValidationRanges')
         .addSeparator()
         .addItem('⏱️ Setup Background Tasks', 'setupBackgroundTaskTrigger')
+        .addItem('🔘 Install Edit Trigger', 'setupEditTrigger')
         .addItem('📊 View Archive Stats', 'showArchiveStats'))
       .addSeparator()
       .addItem(emailLoggingLabel, 'toggleEmailLogging')
@@ -4213,38 +4214,90 @@ function buildMenu() {
 
 /**
  * Handle edit events - used for dashboard refresh checkbox
+ * This is a simple trigger with limited permissions.
+ * For full functionality, run setupEditTrigger() to install the trigger.
  */
 function onEdit(e) {
+  try {
+    onEditHandler(e);
+  } catch (error) {
+    // Simple triggers can't show UI, so just log
+    Logger.log('onEdit error: ' + error.message);
+  }
+}
+
+/**
+ * Main edit handler - called by both simple and installable triggers
+ * @param {Object} e - The edit event object
+ */
+function onEditHandler(e) {
+  if (!e || !e.source || !e.range) return;
+
   const sheet = e.source.getActiveSheet();
   const range = e.range;
+  const sheetName = sheet.getName();
+  const cellAddress = range.getA1Notation();
 
   // Check if edit was on Dashboard sheet, cell H1 (refresh checkbox)
-  if (sheet.getName() === SHEETS.DASHBOARD && range.getA1Notation() === 'H1') {
-    if (e.value === 'TRUE') {
+  if (sheetName === SHEETS.DASHBOARD && cellAddress === 'H1') {
+    if (e.value === 'TRUE' || range.getValue() === true) {
       // Uncheck the box first, then refresh dashboard, analytics, and invoice late fees
       range.setValue(false);
-      updateAllLateFees();
-      refreshDashboard(true);
-      refreshAnalytics();
+      try { updateAllLateFees(); } catch (err) { Logger.log('Late fees error: ' + err.message); }
+      try { refreshDashboard(true); } catch (err) { Logger.log('Dashboard refresh error: ' + err.message); }
+      try { refreshAnalytics(); } catch (err) { Logger.log('Analytics refresh error: ' + err.message); }
     }
   }
 
   // Check if edit was on Analytics sheet, cell H1 (refresh checkbox)
-  if (sheet.getName() === SHEETS.ANALYTICS && range.getA1Notation() === 'H1') {
-    if (e.value === 'TRUE') {
+  if (sheetName === SHEETS.ANALYTICS && cellAddress === 'H1') {
+    if (e.value === 'TRUE' || range.getValue() === true) {
       range.setValue(false);
-      refreshAnalytics();
+      try { refreshAnalytics(); } catch (err) { Logger.log('Analytics refresh error: ' + err.message); }
     }
   }
 
   // Check if edit was on Activity Log sheet, cell I1 (refresh checkbox for email scan)
-  if (sheet.getName() === SHEETS.ACTIVITY_LOG && range.getA1Notation() === 'I1') {
-    if (e.value === 'TRUE') {
+  if (sheetName === SHEETS.ACTIVITY_LOG && cellAddress === 'I1') {
+    if (e.value === 'TRUE' || range.getValue() === true) {
       range.setValue(false);
-      scanSentEmailsForJobs();
+      try { scanSentEmailsForJobs(); } catch (err) { Logger.log('Email scan error: ' + err.message); }
     }
   }
+}
 
+/**
+ * Set up an installable edit trigger for better reliability
+ * Run this once if the H1 refresh checkbox stops working
+ * Installable triggers have more permissions than simple triggers
+ */
+function setupEditTrigger() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Remove any existing edit triggers first
+  const triggers = ScriptApp.getProjectTriggers();
+  let removed = 0;
+  triggers.forEach(trigger => {
+    if (trigger.getEventType() === ScriptApp.EventType.ON_EDIT) {
+      ScriptApp.deleteTrigger(trigger);
+      removed++;
+    }
+  });
+
+  // Create new installable edit trigger
+  ScriptApp.newTrigger('onEditHandler')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onEdit()
+    .create();
+
+  ui.alert('Edit Trigger Installed',
+    (removed > 0 ? 'Removed ' + removed + ' old trigger(s).\n\n' : '') +
+    'Installable edit trigger created successfully.\n\n' +
+    'The H1 refresh checkbox should now work reliably.',
+    ui.ButtonSet.OK
+  );
+
+  Logger.log('Installable edit trigger created');
 }
 
 /**
