@@ -4121,11 +4121,6 @@ function buildMenu() {
         .addItem('📋 Create Test Job for Testimonials', 'createTestJobForTestimonials')
         .addItem('📧 Send All Test Emails', 'sendAllTestEmails')))
     .addToUi();
-
-  // Add separate Actions menu for quick access
-  ui.createMenu('⚡ Actions')
-    .addItem('Open Actions for Selected Row', 'showActionsForSelectedRow')
-    .addToUi();
 }
 
 /**
