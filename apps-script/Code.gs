@@ -5923,9 +5923,32 @@ function setupJobsSheet(ss, clearData) {
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'JOBS');
 
-  // Apply data validation from config (Status, Category, Payment Status dropdowns)
   // Use dynamic row count instead of hardcoded 500 for scalability
   const numRows = getDynamicRowCount(sheet);
+
+  // Clean up invalid Status values before applying validation
+  // This handles cases where old Actions column data (☰) ended up in Status column
+  const statusCol = getColIndex('JOBS', 'Status');
+  const validStatuses = Object.values(JOB_STATUS);
+  const lastDataRow = sheet.getLastRow();
+  if (lastDataRow > 1) {
+    const statusRange = sheet.getRange(2, statusCol, lastDataRow - 1, 1);
+    const statusValues = statusRange.getValues();
+    let fixed = 0;
+    for (let i = 0; i < statusValues.length; i++) {
+      const val = statusValues[i][0];
+      if (val && !validStatuses.includes(val)) {
+        statusValues[i][0] = JOB_STATUS.PENDING_QUOTE;
+        fixed++;
+      }
+    }
+    if (fixed > 0) {
+      statusRange.setValues(statusValues);
+      Logger.log('Fixed ' + fixed + ' invalid Status values in Jobs');
+    }
+  }
+
+  // Apply data validation from config (Status, Category, Payment Status dropdowns)
   applyConfigValidation(sheet, 'JOBS', 2, numRows);
 
   // Apply conditional formatting from config (Status, SLA, Payment colors)
@@ -6204,9 +6227,32 @@ function setupInvoiceLogSheet(ss, clearData) {
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'INVOICES');
 
-  // Apply data validation from config (Status, Invoice Type dropdowns)
   // Use dynamic row count instead of hardcoded 500 for scalability
   const numRows = getDynamicRowCount(sheet);
+
+  // Clean up invalid Status values before applying validation
+  // This handles cases where old Actions column data (☰) ended up in Status column
+  const statusCol = getColIndex('INVOICES', 'Status');
+  const validStatuses = ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
+  const lastDataRow = sheet.getLastRow();
+  if (lastDataRow > 1) {
+    const statusRange = sheet.getRange(2, statusCol, lastDataRow - 1, 1);
+    const statusValues = statusRange.getValues();
+    let fixed = 0;
+    for (let i = 0; i < statusValues.length; i++) {
+      const val = statusValues[i][0];
+      if (val && !validStatuses.includes(val)) {
+        statusValues[i][0] = 'Draft';
+        fixed++;
+      }
+    }
+    if (fixed > 0) {
+      statusRange.setValues(statusValues);
+      Logger.log('Fixed ' + fixed + ' invalid Status values in Invoices');
+    }
+  }
+
+  // Apply data validation from config (Status, Invoice Type dropdowns)
   applyConfigValidation(sheet, 'INVOICES', 2, numRows);
 
   // Apply conditional formatting from config (Status colors)
@@ -7316,6 +7362,28 @@ function setupSubmissionsSheet(ss) {
   // Use dynamic row count instead of hardcoded 1000 for scalability
   const numRows = getDynamicRowCount(sheet);
   applyConfigWrapText(sheet, 'SUBMISSIONS', 2, numRows);
+
+  // Clean up invalid Status values before applying validation
+  // This handles cases where old Actions column data (☰) ended up in Status column
+  const statusCol = getColIndex('SUBMISSIONS', 'Status');
+  const validStatuses = ['New', 'In Review', 'Job Created', 'Declined', 'Spam'];
+  const lastDataRow = sheet.getLastRow();
+  if (lastDataRow > 1) {
+    const statusRange = sheet.getRange(2, statusCol, lastDataRow - 1, 1);
+    const statusValues = statusRange.getValues();
+    let fixed = 0;
+    for (let i = 0; i < statusValues.length; i++) {
+      const val = statusValues[i][0];
+      if (val && !validStatuses.includes(val)) {
+        statusValues[i][0] = 'New';
+        fixed++;
+      }
+    }
+    if (fixed > 0) {
+      statusRange.setValues(statusValues);
+      Logger.log('Fixed ' + fixed + ' invalid Status values in Submissions');
+    }
+  }
 
   // Apply data validation from config (Status dropdown)
   applyConfigValidation(sheet, 'SUBMISSIONS', 2, numRows);
