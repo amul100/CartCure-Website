@@ -4434,11 +4434,11 @@ function showActionsDialogForRow(sheet, sheetName, row) {
 
   // Build and show the dialog
   const htmlContent = buildActionsDialogHtml(entityType, entityId, entityLabel, status, actions);
-  // Height: 70px header + 60px footer + (actions * 58px each) + 20px padding
-  const dialogHeight = 70 + 60 + (actions.length * 58) + 20;
+  // Height: 90px header + 70px footer/cancel + (actions * 62px each) + 30px padding
+  const dialogHeight = 90 + 70 + (actions.length * 62) + 30;
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
     .setWidth(320)
-    .setHeight(Math.min(650, dialogHeight));
+    .setHeight(dialogHeight);
 
   ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
 }
