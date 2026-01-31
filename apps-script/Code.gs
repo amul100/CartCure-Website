@@ -16225,19 +16225,17 @@ function refreshDashboard(force) {
   const jobsData = jobsSheet.getDataRange().getValues();
   const headers = jobsData[0];
 
-  // Use COLUMN_CONFIG as the source of truth for column positions
-  // This ensures consistency with dashboard formulas (which also use COLUMN_CONFIG)
-  // getColIndex returns 1-based, so subtract 1 for 0-based array indexing
+  // Use actual sheet headers for column lookup (handles any column order)
   const cols = {
-    jobNum: getColIndex('JOBS', 'Job #') - 1,
-    status: getColIndex('JOBS', 'Status') - 1,
-    clientName: getColIndex('JOBS', 'Client Name') - 1,
-    jobDescription: getColIndex('JOBS', 'Job Description') - 1,
-    totalInclGst: getColIndex('JOBS', 'Total (incl GST)') - 1,
-    daysRemaining: getColIndex('JOBS', 'Days Remaining') - 1,
-    slaStatus: getColIndex('JOBS', 'SLA Status') - 1,
-    quoteSentDate: getColIndex('JOBS', 'Quote Sent Date') - 1,
-    quoteValidUntil: getColIndex('JOBS', 'Quote Valid Until') - 1
+    jobNum: headers.indexOf('Job #'),
+    status: headers.indexOf('Status'),
+    clientName: headers.indexOf('Client Name'),
+    jobDescription: headers.indexOf('Job Description'),
+    totalInclGst: headers.indexOf('Total (incl GST)'),
+    daysRemaining: headers.indexOf('Days Remaining'),
+    slaStatus: headers.indexOf('SLA Status'),
+    quoteSentDate: headers.indexOf('Quote Sent Date'),
+    quoteValidUntil: headers.indexOf('Quote Valid Until')
   };
 
   // Update SLA calculations for active jobs
@@ -16296,13 +16294,14 @@ function refreshDashboard(force) {
 
   if (submissionsSheet) {
     const subData = submissionsSheet.getDataRange().getValues();
-    // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
-    const statusCol = getColIndex('SUBMISSIONS', 'Status') - 1;
-    const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
-    const timestampCol = getColIndex('SUBMISSIONS', 'Timestamp') - 1;
-    const nameCol = getColIndex('SUBMISSIONS', 'Name') - 1;
-    const emailCol = getColIndex('SUBMISSIONS', 'Email') - 1;
-    const messageCol = getColIndex('SUBMISSIONS', 'Message') - 1;
+    const subHeaders = subData[0];
+    // Use actual sheet headers for column lookup (handles any column order)
+    const statusCol = subHeaders.indexOf('Status');
+    const submissionNumCol = subHeaders.indexOf('Submission #');
+    const timestampCol = subHeaders.indexOf('Timestamp');
+    const nameCol = subHeaders.indexOf('Name');
+    const emailCol = subHeaders.indexOf('Email');
+    const messageCol = subHeaders.indexOf('Message');
 
     // Get new/unactioned submissions
     const newSubmissions = [];
@@ -16414,13 +16413,13 @@ function refreshDashboardForce() {
  * Now: 3 setValues() calls total regardless of job count (99% reduction)
  */
 function updateAllSLAStatus(sheet, data, headers) {
-  // Use COLUMN_CONFIG as source of truth (getColIndex returns 1-based, subtract 1 for array indexing)
-  const statusCol = getColIndex('JOBS', 'Status') - 1;
-  const acceptedDateCol = getColIndex('JOBS', 'Quote Accepted Date') - 1;
-  const turnaroundCol = getColIndex('JOBS', 'Estimated Turnaround') - 1;
-  const daysSinceCol = getColIndex('JOBS', 'Days Since Accepted') - 1;
-  const daysRemainingCol = getColIndex('JOBS', 'Days Remaining') - 1;
-  const slaStatusCol = getColIndex('JOBS', 'SLA Status') - 1;
+  // Use actual sheet headers for column lookup (handles any column order)
+  const statusCol = headers.indexOf('Status');
+  const acceptedDateCol = headers.indexOf('Quote Accepted Date');
+  const turnaroundCol = headers.indexOf('Estimated Turnaround');
+  const daysSinceCol = headers.indexOf('Days Since Accepted');
+  const daysRemainingCol = headers.indexOf('Days Remaining');
+  const slaStatusCol = headers.indexOf('SLA Status');
 
   // Collect all updates to batch them
   const updates = [];
