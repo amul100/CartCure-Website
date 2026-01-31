@@ -4615,24 +4615,23 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
       <head>
         <base target="_top">
         <style>
-          * { box-sizing: border-box; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
           html, body {
             font-family: 'Google Sans', Roboto, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             background: #f8f9fa;
-            width: 100%;
-            height: 100%;
+            width: 500px;
+            min-height: 100%;
+            overflow-x: hidden;
           }
           .container {
-            padding: 0;
-            width: 100%;
+            width: 500px;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
             padding: 20px;
-            margin: 0 0 16px 0;
+            width: 500px;
+            margin-bottom: 16px;
           }
           .header h3 {
             margin: 0 0 8px 0;
@@ -4651,6 +4650,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             display: flex;
             flex-direction: column;
             gap: 10px;
+            width: 500px;
             padding: 0 16px;
           }
           .action-btn {
@@ -4687,7 +4687,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           }
           .btn-close {
             display: block;
-            width: calc(100% - 32px);
+            width: 468px;
             padding: 12px;
             margin: 20px 16px 16px 16px;
             background: #f1f3f4;
@@ -4705,6 +4705,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             display: none;
             text-align: center;
             padding: 40px 16px;
+            width: 500px;
             color: #5f6368;
           }
           .loading.show {
