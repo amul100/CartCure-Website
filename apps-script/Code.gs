@@ -4582,7 +4582,7 @@ function showActionsDialogForRow(sheet, sheetName, row) {
   // Height: 100px header + 80px footer/cancel + (actions * 65px each) + 40px padding
   const dialogHeight = 100 + 80 + (actions.length * 65) + 40;
   const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
-    .setWidth(420)
+    .setWidth(500)
     .setHeight(dialogHeight);
 
   ui.showModalDialog(htmlOutput, 'Actions - ' + entityLabel);
@@ -4615,18 +4615,23 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
       <head>
         <base target="_top">
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
+          * { box-sizing: border-box; }
+          html, body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
             margin: 0;
-            background: #f9f9f9;
+            padding: 0;
+            background: #f8f9fa;
+            width: 100%;
+            height: 100%;
+          }
+          .container {
+            padding: 16px;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
             padding: 20px;
-            margin: -20px -20px 20px -20px;
-            border-radius: 0;
+            margin: -16px -16px 16px -16px;
           }
           .header h3 {
             margin: 0 0 8px 0;
@@ -4697,7 +4702,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           .loading {
             display: none;
             text-align: center;
-            padding: 40px 0;
+            padding: 40px 20px;
             color: #5f6368;
           }
           .loading.show {
