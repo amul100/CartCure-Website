@@ -3155,11 +3155,6 @@ const COLUMN_CONFIG = {
     { name: 'Client Phone', width: 120 },
     { name: 'Store URL', width: 150 },
     { name: 'Job Description', width: 300, format: { wrapText: true } },
-    {
-      name: 'Category',
-      width: 100,
-      validation: { type: 'list', values: JOB_CATEGORIES, allowInvalid: false }
-    },
     { name: 'Quote Amount (excl GST)', width: 130, format: { numberFormat: '$#,##0.00' } },
     { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
     { name: 'Quote Sent Date', width: 110 },
@@ -3209,7 +3204,12 @@ const COLUMN_CONFIG = {
       format: { numberFormat: '$#,##0.00' }
     },
     { name: 'Submission #', width: 90 },
-    { name: 'Last Updated', width: 110 }
+    { name: 'Last Updated', width: 110 },
+    {
+      name: 'Category',
+      width: 100,
+      validation: { type: 'list', values: JOB_CATEGORIES, allowInvalid: false }
+    }
   ],
 
   // -------------------------------------------------------------------------
