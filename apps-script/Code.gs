@@ -1378,14 +1378,14 @@ function setupBackgroundTaskTrigger() {
     }
   }
 
-  // Create new trigger to run every 15 minutes
+  // Create new trigger to run every 1 minute for fast processing
   ScriptApp.newTrigger('processBackgroundTasks')
     .timeBased()
-    .everyMinutes(15)
+    .everyMinutes(1)
     .create();
 
-  Logger.log('Background task trigger created (runs every 15 minutes)');
-  SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every 15 minutes.', SpreadsheetApp.getUi().ButtonSet.OK);
+  Logger.log('Background task trigger created (runs every 1 minute)');
+  SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every 1 minute.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 /**
@@ -15586,11 +15586,11 @@ function ensureAutoTriggersExist() {
     Logger.log('Created scanSentEmailsForJobs trigger');
   }
 
-  // Create background task processor trigger (every 15 minutes)
+  // Create background task processor trigger (every 1 minute for fast deposit invoice sending)
   if (!hasBackgroundTasks) {
     ScriptApp.newTrigger('processBackgroundTasks')
       .timeBased()
-      .everyMinutes(15)
+      .everyMinutes(1)
       .create();
     created++;
     Logger.log('Created processBackgroundTasks trigger');
