@@ -12886,37 +12886,41 @@ function showContextAwareDialogForClients(title, clients, callback, selectedEmai
       var isSubmitting = false;
 
       function submitSelection() {
-        if (isSubmitting) return;
+        try {
+          if (isSubmitting) return;
 
-        var value = document.getElementById('clientSelect').value;
-        if (!value) {
-          alert('Please select a client');
-          return;
+          var value = document.getElementById('clientSelect').value;
+          if (!value) {
+            alert('Please select a client');
+            return;
+          }
+
+          isSubmitting = true;
+          var submitBtn = document.getElementById('submitBtn');
+          var cancelBtn = document.getElementById('cancelBtn');
+          var select = document.getElementById('clientSelect');
+
+          submitBtn.disabled = true;
+          cancelBtn.disabled = true;
+          select.disabled = true;
+          submitBtn.innerHTML = 'Loading...';
+
+          google.script.run
+            .withSuccessHandler(function() {
+              google.script.host.close();
+            })
+            .withFailureHandler(function(error) {
+              isSubmitting = false;
+              submitBtn.disabled = false;
+              cancelBtn.disabled = false;
+              select.disabled = false;
+              submitBtn.innerHTML = 'View History';
+              alert('Server error: ' + (error.message || error));
+            })
+            .displayClientHistoryDialog(value);
+        } catch (e) {
+          alert('JS Error: ' + e.message);
         }
-
-        isSubmitting = true;
-        var submitBtn = document.getElementById('submitBtn');
-        var cancelBtn = document.getElementById('cancelBtn');
-        var select = document.getElementById('clientSelect');
-
-        submitBtn.disabled = true;
-        cancelBtn.disabled = true;
-        select.disabled = true;
-        submitBtn.innerHTML = '<span class="loading-spinner"></span>Loading...';
-
-        google.script.run
-          .withSuccessHandler(function() {
-            google.script.host.close();
-          })
-          .withFailureHandler(function(error) {
-            isSubmitting = false;
-            submitBtn.disabled = false;
-            cancelBtn.disabled = false;
-            select.disabled = false;
-            submitBtn.innerHTML = 'View History';
-            alert('Error: ' + (error.message || error));
-          })
-          ['${callback}'](value);
       }
     </script>
   `)
