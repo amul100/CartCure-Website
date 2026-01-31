@@ -4567,7 +4567,8 @@ function showActionsDialogForRow(sheet, sheetName, row) {
     }
 
     entityType = 'client';
-    entityLabel = clientName ? clientName + ' (' + entityId + ')' : entityId;
+    // Keep label short to prevent dialog from expanding width
+    entityLabel = clientName || entityId;
     actions = getValidClientActions(status);
   }
 
