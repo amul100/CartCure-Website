@@ -4471,20 +4471,24 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
         <base target="_top">
         <style>
           * { box-sizing: border-box; }
-          body {
+          html, body {
             font-family: 'Google Sans', Roboto, Arial, sans-serif;
             margin: 0;
             padding: 0;
             background: #f8f9fa;
+            width: 100%;
+            height: 100%;
           }
           .container {
-            padding: 12px;
+            padding: 16px;
+            width: 100%;
+            min-height: 100%;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
-            padding: 16px;
-            margin: -12px -12px 16px -12px;
+            padding: 20px;
+            margin: -16px -16px 16px -16px;
           }
           .header h3 {
             margin: 0 0 8px 0;
