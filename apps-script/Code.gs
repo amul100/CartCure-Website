@@ -3275,7 +3275,12 @@ const COLUMN_CONFIG = {
     },
     { name: 'Refund Amount', width: 130, format: { numberFormat: '$#,##0.00' } },
     { name: 'Payment Date', width: 130 },
-    { name: 'Payment Method', width: 150 },
+    {
+      name: 'Payment Method',
+      width: 150,
+      validation: { type: 'list', values: ['Bank Transfer', 'PayPal', 'Stripe'], allowInvalid: false },
+      defaultValue: 'Bank Transfer'
+    },
     { name: 'Payment Reference', width: 160 },
     { name: 'Invoice #', width: 100 },
     {
@@ -4957,34 +4962,87 @@ function showOnHoldDialogWithJob(jobNumber) {
 
 /**
  * Show payment method dialog for a specific invoice
+ * Uses HTML dialog with dropdown for consistent payment method selection
  * @param {string} invoiceNumber - The invoice number
  */
 function showPaymentMethodDialogForInvoice(invoiceNumber) {
   const ui = SpreadsheetApp.getUi();
 
-  // First, get payment method
-  const methodResponse = ui.prompt(
-    'Payment Method',
-    'Enter payment method for ' + invoiceNumber + ' (e.g., Bank Transfer, PayPal, Stripe):',
-    ui.ButtonSet.OK_CANCEL
-  );
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+          .container { max-width: 350px; }
+          label { display: block; margin-bottom: 6px; font-weight: bold; color: #333; }
+          select, input { width: 100%; padding: 10px; margin-bottom: 16px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+          select:focus, input:focus { outline: none; border-color: #2d5d3f; }
+          .invoice-info { background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
+          .invoice-info strong { color: #333; }
+          .note { font-size: 12px; color: #666; margin-top: -12px; margin-bottom: 16px; }
+          .button-container { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+          button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+          .btn-primary { background: #2d5d3f; color: white; }
+          .btn-primary:hover { background: #4a7c59; }
+          .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+          .btn-secondary { background: #666; color: white; }
+          .btn-secondary:hover { background: #555; }
+          .btn-secondary:disabled { background: #ccc; cursor: not-allowed; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="invoice-info">
+            <strong>Invoice:</strong> ${invoiceNumber}
+          </div>
 
-  if (methodResponse.getSelectedButton() !== ui.Button.OK) return;
-  const paymentMethod = methodResponse.getResponseText() || 'Not specified';
+          <label for="paymentMethod">Payment Method:</label>
+          <select id="paymentMethod">
+            <option value="Bank Transfer" selected>Bank Transfer</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Stripe">Stripe</option>
+          </select>
 
-  // Then get payment reference
-  const refResponse = ui.prompt(
-    'Payment Reference',
-    'Enter payment reference (optional):',
-    ui.ButtonSet.OK_CANCEL
-  );
+          <label for="paymentRef">Payment Reference (optional):</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID or reference">
+          <div class="note">e.g., Bank ref, PayPal transaction ID, Stripe payment ID</div>
 
-  if (refResponse.getSelectedButton() !== ui.Button.OK) return;
-  const paymentRef = refResponse.getResponseText() || '';
+          <div class="button-container">
+            <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+            <button id="submitBtn" class="btn-primary" onclick="submitPayment()">Mark as Paid</button>
+          </div>
+        </div>
 
-  // Mark the invoice as paid
-  markInvoicePaid(invoiceNumber, paymentMethod, paymentRef);
-  ui.alert('Invoice Paid', invoiceNumber + ' has been marked as paid.', ui.ButtonSet.OK);
+        <script>
+          function submitPayment() {
+            const method = document.getElementById('paymentMethod').value;
+            const reference = document.getElementById('paymentRef').value;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = 'Processing...';
+
+            google.script.run
+              .withSuccessHandler(function() {
+                google.script.host.close();
+              })
+              .withFailureHandler(function(error) {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = 'Mark as Paid';
+                alert('Error: ' + error);
+              })
+              .markInvoicePaid('${invoiceNumber}', method, reference);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(400)
+    .setHeight(320);
+
+  ui.showModalDialog(html, 'Record Payment - ' + invoiceNumber);
 }
 
 /**
@@ -16076,12 +16134,14 @@ function showContextAwareDialogForMarkPaid(title, invoices, itemType, selectedIn
 
           <label for="paymentMethod">Payment Method:</label>
           <select id="paymentMethod">
-            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Bank Transfer" selected>Bank Transfer</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Stripe">Stripe</option>
           </select>
 
-          <label for="paymentRef">Payment Reference:</label>
-          <input type="text" id="paymentRef" placeholder="Transaction ID or reference (optional)">
-          <div class="note">Optional: Enter transaction ID or payment reference</div>
+          <label for="paymentRef">Payment Reference (optional):</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID or reference">
+          <div class="note">e.g., Bank ref, PayPal transaction ID, Stripe payment ID</div>
 
           <div class="button-container">
             <button id="cancelBtn" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
@@ -16258,12 +16318,14 @@ function showPaymentMethodDialog(invoiceNumber) {
 
           <label for="paymentMethod">Payment Method:</label>
           <select id="paymentMethod">
-            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Bank Transfer" selected>Bank Transfer</option>
+            <option value="PayPal">PayPal</option>
+            <option value="Stripe">Stripe</option>
           </select>
 
-          <label for="paymentRef">Payment Reference:</label>
-          <input type="text" id="paymentRef" placeholder="Transaction ID or reference (optional)">
-          <div class="note">Optional: Enter transaction ID or payment reference</div>
+          <label for="paymentRef">Payment Reference (optional):</label>
+          <input type="text" id="paymentRef" placeholder="Transaction ID or reference">
+          <div class="note">e.g., Bank ref, PayPal transaction ID, Stripe payment ID</div>
 
           <div class="button-container">
             <button id="cancelBtn" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
@@ -16484,6 +16546,16 @@ function markInvoicePaid(invoiceNumber, method, reference) {
       Logger.log('Error updating client record: ' + e.message);
     }
   }
+
+  // Log payment to activity log
+  const amount = invoice['Total'] || invoice['Amount'] || '';
+  const paymentDetails = [
+    'Invoice: ' + invoiceNumber,
+    amount ? 'Amount: ' + formatCurrency(parseFloat(amount)) : '',
+    'Method: ' + method,
+    reference ? 'Reference: ' + reference : ''
+  ].filter(Boolean).join(', ');
+  logJobActivity(jobNumber, 'Payment Received', 'Invoice marked as paid', paymentDetails, '', 'Manual');
 
   // Send payment receipt email to client
   const receiptSent = sendPaymentReceiptEmail(invoiceNumber, method, reference);
