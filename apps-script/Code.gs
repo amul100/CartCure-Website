@@ -3127,7 +3127,7 @@ const COLUMN_CONFIG = {
   // JOBS SHEET (32 columns)
   // -------------------------------------------------------------------------
   JOBS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
+    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 120,
@@ -3212,7 +3212,7 @@ const COLUMN_CONFIG = {
   // INVOICE LOG SHEET (20 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
+    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -3254,7 +3254,7 @@ const COLUMN_CONFIG = {
   // CLIENTS SHEET (14 columns)
   // -------------------------------------------------------------------------
   CLIENTS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
+    { name: '⚡', width: 50, defaultValue: '☰' },
     { name: 'Client Email', width: 220 },  // PRIMARY KEY - unique identifier
     { name: 'Client Name', width: 160 },
     { name: 'Client Phone', width: 130 },
@@ -3286,7 +3286,7 @@ const COLUMN_CONFIG = {
   // SUBMISSIONS SHEET (11 columns)
   // -------------------------------------------------------------------------
   SUBMISSIONS: [
-    { name: 'Actions', width: 50, defaultValue: '☰' },
+    { name: '⚡', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -11794,7 +11794,7 @@ function addNewClient(clientData) {
   const timestampStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
   const rowData = buildRowFromConfig('CLIENTS', {
-    'Actions': '☰',
+    '⚡': '☰',
     'Client Email': (clientData.email || '').toLowerCase().trim(),
     'Client Name': clientData.name || '',
     'Client Phone': clientData.phone || '',
@@ -12093,7 +12093,7 @@ function populateClientsFromExistingJobs() {
       : '';
 
     const rowData = buildRowFromConfig('CLIENTS', {
-      'Actions': '☰',
+      '⚡': '☰',
       'Client Email': client.email,
       'Client Name': client.name,
       'Client Phone': client.phone,
@@ -16579,7 +16579,7 @@ function createTestSubmissions() {
     if (!sheet) {
       sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
       sheet.appendRow([
-        'Actions',
+        '⚡',
         'Status',
         'Submission #',
         'Timestamp',
@@ -16649,7 +16649,7 @@ function createTestSubmissions() {
 
       // Create row data (must match COLUMN_CONFIG.SUBMISSIONS order)
       const rowData = [
-        '☰',              // Actions
+        '☰',              // ⚡
         statuses[i],      // Status
         submissionNumber, // Submission #
         timestamp,        // Timestamp
