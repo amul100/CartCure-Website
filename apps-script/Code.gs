@@ -8662,7 +8662,7 @@ function displayActivityLogForJob(jobNumber) {
           .button-row {
             display: flex;
             gap: 10px;
-            margin-top: 20px;
+            margin-bottom: 15px;
           }
           .btn-add-note {
             flex: 1;
@@ -8765,8 +8765,9 @@ function displayActivityLogForJob(jobNumber) {
             <h2>📜 Activity Log</h2>
             <div class="count">${jobNumber} • ${activities.length} ${activities.length === 1 ? 'entry' : 'entries'}</div>
           </div>
-          <div id="activityList" class="activity-list">
-            ${activitiesHtml}
+          <div class="button-row">
+            <button class="btn-add-note" onclick="showNoteInput()">📝 Add Note</button>
+            <button class="btn-close" onclick="google.script.host.close()">Close</button>
           </div>
           <div id="noteInputArea" class="note-input-area">
             <textarea id="noteText" class="note-textarea" placeholder="Enter your note here..."></textarea>
@@ -8775,9 +8776,8 @@ function displayActivityLogForJob(jobNumber) {
               <button id="saveBtn" class="btn-save" onclick="saveNote()">Save Note</button>
             </div>
           </div>
-          <div class="button-row">
-            <button class="btn-add-note" onclick="showNoteInput()">📝 Add Note</button>
-            <button class="btn-close" onclick="google.script.host.close()">Close</button>
+          <div id="activityList" class="activity-list">
+            ${activitiesHtml}
           </div>
         </div>
         <script>
