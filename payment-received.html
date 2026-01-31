@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation | CartCure NZ</title>
+
+    <meta name="title" content="Payment Confirmation | CartCure NZ">
+    <meta name="description" content="Thank you for confirming your payment.">
+    <meta name="author" content="CartCure NZ">
+    <meta name="robots" content="noindex, follow">
+
+    <link rel="canonical" href="https://cartcure.co.nz/payment-received.html">
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QCCZDEN8NX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QCCZDEN8NX');
+    </script>
+
+    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .confirmation-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 8rem 2rem 4rem;
+            background: var(--paper-white);
+            min-height: 60vh;
+        }
+
+        .confirmation-content {
+            font-family: 'Georgia', serif;
+            line-height: 1.8;
+            color: var(--ink-black);
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            padding: 0.5rem 1rem;
+            background: var(--accent-green);
+            color: #ffffff;
+            text-decoration: none;
+            border: 2px solid var(--ink-black);
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 3px 3px 0px rgba(43, 43, 43, 0.3);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px rgba(43, 43, 43, 0.3);
+        }
+
+        .message-box {
+            background: var(--paper-cream);
+            padding: 2.5rem;
+            border: 2px solid var(--paper-border);
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
+        }
+
+        .message-box h1 {
+            font-size: 1.75rem;
+            margin: 0 0 1rem 0;
+            color: var(--ink-black);
+        }
+
+        .message-box p {
+            margin: 0 0 1rem 0;
+            color: var(--ink-gray);
+            font-size: 1.1rem;
+        }
+
+        .message-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .success-box {
+            background: #e6f4ea;
+            border-color: #2d5d3f;
+        }
+
+        .success-box h1 {
+            color: #2d5d3f;
+        }
+
+        .info-box {
+            background: #fff8e1;
+            border-color: #b8860b;
+        }
+
+        .info-box h1 {
+            color: #b8860b;
+        }
+
+        .error-box {
+            background: #fce8e6;
+            border-color: #c53929;
+        }
+
+        .error-box h1 {
+            color: #c53929;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--paper-border);
+            border-top: 4px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .invoice-ref {
+            display: inline-block;
+            background: var(--paper-white);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--paper-border);
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+
+        .check-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Tablet Styles */
+        @media (max-width: 768px) {
+            .confirmation-container {
+                padding: 6rem 1.5rem 3rem;
+            }
+
+            .message-box {
+                padding: 2rem;
+            }
+
+            .message-box h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            .confirmation-container {
+                padding: 5.5rem 1rem 2rem;
+            }
+
+            .message-box {
+                padding: 1.5rem;
+            }
+
+            .message-box h1 {
+                font-size: 1.35rem;
+            }
+
+            .message-box p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header id="header">
+        <nav>
+            <a href="index.html" class="logo">
+                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+            </a>
+        </nav>
+    </header>
+
+    <div class="confirmation-container">
+        <div class="confirmation-content">
+            <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+            <!-- Loading State -->
+            <div class="message-box" id="loadingBox">
+                <div class="loading-spinner"></div>
+                <h1>Processing...</h1>
+                <p>Please wait while we record your payment notification.</p>
+            </div>
+
+            <!-- Success State -->
+            <div class="message-box success-box" id="successBox" style="display: none;">
+                <div class="check-icon">&#10004;</div>
+                <h1>Thank You!</h1>
+                <p>We've received your payment notification for:</p>
+                <div class="invoice-ref" id="invoiceRef"></div>
+                <p>We'll verify your payment and update our records shortly. You won't receive any more payment reminders for this invoice.</p>
+            </div>
+
+            <!-- Already Marked State -->
+            <div class="message-box info-box" id="alreadyMarkedBox" style="display: none;">
+                <div class="check-icon">&#128276;</div>
+                <h1>Already Received</h1>
+                <p>We already have your payment notification for this invoice.</p>
+                <div class="invoice-ref" id="invoiceRefAlready"></div>
+                <p>We're in the process of verifying your payment. Thank you for your patience!</p>
+            </div>
+
+            <!-- Already Paid State -->
+            <div class="message-box success-box" id="alreadyPaidBox" style="display: none;">
+                <div class="check-icon">&#10004;</div>
+                <h1>Payment Confirmed</h1>
+                <p>Great news! This invoice has already been marked as paid in our system.</p>
+                <div class="invoice-ref" id="invoiceRefPaid"></div>
+                <p>Thank you for your business!</p>
+            </div>
+
+            <!-- Error State -->
+            <div class="message-box error-box" id="errorBox" style="display: none;">
+                <div class="check-icon">&#10060;</div>
+                <h1>Something Went Wrong</h1>
+                <p id="errorMessage">We couldn't process your request. Please try again or contact us directly.</p>
+                <p style="margin-top: 1.5rem;">
+                    <a href="mailto:hello@cartcure.co.nz" style="color: #c53929; font-weight: bold;">Contact Support</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="index.html#services">Services</a>
+                <a href="index.html#how-it-works">How It Works</a>
+                <a href="index.html#pricing">Pricing</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+            </div>
+            <p style="opacity: 0.7; font-size: 0.95rem;">&copy; 2026 CartCure NZ</p>
+            <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg/exec';
+
+            // Elements
+            const loadingBox = document.getElementById('loadingBox');
+            const successBox = document.getElementById('successBox');
+            const alreadyMarkedBox = document.getElementById('alreadyMarkedBox');
+            const alreadyPaidBox = document.getElementById('alreadyPaidBox');
+            const errorBox = document.getElementById('errorBox');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const invoiceNumber = urlParams.get('invoice') || '';
+            const jobNumber = urlParams.get('job') || '';
+
+            function showState(state, message) {
+                loadingBox.style.display = 'none';
+                successBox.style.display = 'none';
+                alreadyMarkedBox.style.display = 'none';
+                alreadyPaidBox.style.display = 'none';
+                errorBox.style.display = 'none';
+
+                switch (state) {
+                    case 'success':
+                        document.getElementById('invoiceRef').textContent = invoiceNumber;
+                        successBox.style.display = 'block';
+                        break;
+                    case 'alreadyMarked':
+                        document.getElementById('invoiceRefAlready').textContent = invoiceNumber;
+                        alreadyMarkedBox.style.display = 'block';
+                        break;
+                    case 'alreadyPaid':
+                        document.getElementById('invoiceRefPaid').textContent = invoiceNumber;
+                        alreadyPaidBox.style.display = 'block';
+                        break;
+                    case 'error':
+                        if (message) {
+                            errorMessage.textContent = message;
+                        }
+                        errorBox.style.display = 'block';
+                        break;
+                }
+            }
+
+            async function confirmPayment() {
+                if (!invoiceNumber) {
+                    showState('error', 'No invoice number provided. Please use the link from your invoice email.');
+                    return;
+                }
+
+                try {
+                    const formData = {
+                        action: 'confirmPaymentReceived',
+                        invoiceNumber: invoiceNumber,
+                        jobNumber: jobNumber
+                    };
+
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        if (result.alreadyPaid) {
+                            showState('alreadyPaid');
+                        } else if (result.alreadyMarked) {
+                            showState('alreadyMarked');
+                        } else {
+                            showState('success');
+                        }
+                    } else {
+                        showState('error', result.message || 'We couldn\'t process your request. Please try again.');
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    // If we can't read the response (CORS), assume success
+                    // since the request likely went through
+                    showState('success');
+                }
+            }
+
+            // Auto-submit on page load
+            confirmPayment();
+        })();
+    </script>
+</body>
+
+</html>

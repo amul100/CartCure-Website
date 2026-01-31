@@ -282,6 +282,11 @@ function doPost(e) {
       return handleQuoteAcceptance(data);
     }
 
+    // Handle payment confirmation from web form (client clicked "I have paid")
+    if (action === 'confirmPaymentReceived') {
+      return handlePaymentConfirmation(data);
+    }
+
     const origin = e.parameter.origin || '';
 
     // Security validations
@@ -914,6 +919,158 @@ function handleQuoteAcceptance(data) {
         message: 'Sorry, there was an error processing your acceptance. Please try again or contact us directly.'
       }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle payment confirmation from web form
+ * Called when client clicks "I have paid" button in invoice reminder email
+ */
+function handlePaymentConfirmation(data) {
+  try {
+    const invoiceNumber = (data.invoiceNumber || '').trim().toUpperCase();
+    const jobNumber = (data.jobNumber || '').trim().toUpperCase();
+
+    if (!invoiceNumber) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Invoice number is required'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Get the invoice
+    const invoice = getInvoiceByNumber(invoiceNumber);
+
+    if (!invoice) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'Invoice not found. Please check the invoice number and try again.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const currentStatus = invoice['Status'];
+
+    // Check current status
+    if (currentStatus === 'Paid') {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          alreadyPaid: true,
+          message: 'This invoice has already been marked as paid. Thank you!'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (currentStatus === 'Paid?') {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          alreadyMarked: true,
+          message: 'We already received your payment notification. We\'ll verify it shortly. Thank you!'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (currentStatus === 'Draft' || currentStatus === 'Cancelled') {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          message: 'This invoice cannot be marked as paid. Please contact us if you have questions.'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Update invoice status to "Paid?"
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const invoiceSheet = ss.getSheetByName('Invoice Log');
+    if (!invoiceSheet) {
+      throw new Error('Invoice Log sheet not found');
+    }
+
+    const invoiceData = invoiceSheet.getDataRange().getValues();
+    const headers = invoiceData[0];
+    const invoiceNumCol = headers.indexOf('Invoice #');
+    const statusCol = headers.indexOf('Status');
+
+    for (let i = 1; i < invoiceData.length; i++) {
+      if (invoiceData[i][invoiceNumCol] === invoiceNumber) {
+        invoiceSheet.getRange(i + 1, statusCol + 1).setValue('Paid?');
+        break;
+      }
+    }
+
+    // Log activity
+    const clientName = invoice['Client Name'] || 'Unknown';
+    const total = invoice['Total'] || 0;
+    logActivity(
+      'Payment Claimed',
+      'Client ' + clientName + ' clicked "I have paid" for ' + invoiceNumber + ' ($' + total.toFixed(2) + ')',
+      jobNumber || invoice['Job #'] || '',
+      'Invoice'
+    );
+
+    // Send admin notification email
+    sendPaymentClaimedNotification(invoiceNumber, invoice);
+
+    Logger.log('Payment confirmation received for ' + invoiceNumber);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Thank you for letting us know! We\'ll verify your payment shortly.',
+        invoiceNumber: invoiceNumber
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('Error processing payment confirmation: ' + error.message);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sorry, there was an error. Please try again or contact us directly.'
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Send admin notification when client claims they have paid
+ */
+function sendPaymentClaimedNotification(invoiceNumber, invoice) {
+  try {
+    const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+    const businessName = getSetting('Business Name') || 'CartCure';
+    const clientName = invoice['Client Name'] || 'Unknown';
+    const clientEmail = invoice['Client Email'] || '';
+    const jobNumber = invoice['Job #'] || '';
+    const total = parseFloat(invoice['Total']) || 0;
+    const sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl() + '#gid=' +
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Invoice Log').getSheetId();
+
+    const bodyContent = renderEmailTemplate('email-client-paid-notification', {
+      invoiceNumber: invoiceNumber,
+      clientName: clientName,
+      clientEmail: clientEmail,
+      jobNumber: jobNumber,
+      total: total.toFixed(2),
+      sheetUrl: sheetUrl,
+      businessName: businessName
+    });
+
+    MailApp.sendEmail({
+      to: adminEmail,
+      subject: '💰 Client marked invoice as paid - ' + invoiceNumber,
+      htmlBody: bodyContent
+    });
+
+    Logger.log('Admin notification sent for payment claim: ' + invoiceNumber);
+  } catch (error) {
+    Logger.log('Error sending admin notification: ' + error.message);
+    // Don't throw - admin notification failure shouldn't break the flow
   }
 }
 
@@ -3304,10 +3461,11 @@ const COLUMN_CONFIG = {
     {
       name: 'Status',
       width: 100,
-      validation: { type: 'list', values: ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'], allowInvalid: false },
+      validation: { type: 'list', values: ['Draft', 'Sent', 'Paid', 'Paid?', 'Overdue', 'Cancelled'], allowInvalid: false },
       format: {
         conditionalRules: [
           { when: 'equals', value: 'Paid', background: SHEET_COLORS.paymentPaid, fontColor: SHEET_COLORS.paymentPaidText },
+          { when: 'equals', value: 'Paid?', background: SHEET_COLORS.slaAtRisk, fontColor: SHEET_COLORS.slaAtRiskText },
           { when: 'equals', value: 'Sent', background: SHEET_COLORS.paymentPending, fontColor: SHEET_COLORS.paymentPendingText },
           { when: 'equals', value: 'Overdue', background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
           { when: 'equals', value: 'Cancelled', background: SHEET_COLORS.statusCancelled, fontColor: SHEET_COLORS.statusCancelledText }
@@ -6463,7 +6621,7 @@ function setupInvoiceLogSheet(ss, clearData) {
   // Clean up invalid Status values before applying validation
   // This handles cases where old Actions column data (☰) ended up in Status column
   const statusCol = getColIndex('INVOICES', 'Status');
-  const validStatuses = ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
+  const validStatuses = ['Draft', 'Sent', 'Paid', 'Paid?', 'Overdue', 'Cancelled'];
   const lastDataRow = sheet.getLastRow();
   if (lastDataRow > 1) {
     const statusRange = sheet.getRange(2, statusCol, lastDataRow - 1, 1);
@@ -15382,6 +15540,11 @@ function sendInvoiceReminder(invoiceNumber) {
 
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+  // Build "I have paid" URL
+  const paymentReceivedUrl = 'https://cartcure.co.nz/payment-received.html?' +
+    'invoice=' + encodeURIComponent(invoiceNumber) +
+    '&job=' + encodeURIComponent(jobNumber);
+
   // Render template with data
   const bodyContent = renderEmailTemplate('email-invoice-reminder', {
     invoiceNumber: invoiceNumber,
@@ -15392,7 +15555,8 @@ function sendInvoiceReminder(invoiceNumber) {
     displayTotal: formatCurrency(displayTotal),
     paymentDetailsHtml: paymentDetailsHtml,
     businessName: businessName,
-    gstFooterLine: gstFooterLine
+    gstFooterLine: gstFooterLine,
+    paymentReceivedUrl: paymentReceivedUrl
   });
 
   const htmlBody = wrapEmailHtml(bodyContent);
@@ -15449,9 +15613,9 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
     return false;
   }
 
-  // Skip if invoice is already paid
-  if (invoice['Status'] === 'Paid') {
-    Logger.log('Skipping overdue invoice ' + invoiceNumber + ' - already paid');
+  // Skip if invoice is already paid or client claims they paid
+  if (invoice['Status'] === 'Paid' || invoice['Status'] === 'Paid?') {
+    Logger.log('Skipping overdue invoice ' + invoiceNumber + ' - already paid or marked as paid');
     return false;
   }
 
@@ -15536,6 +15700,11 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
 
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+  // Build "I have paid" URL
+  const paymentReceivedUrl = 'https://cartcure.co.nz/payment-received.html?' +
+    'invoice=' + encodeURIComponent(invoiceNumber) +
+    '&job=' + encodeURIComponent(jobNumber);
+
   // Render template with data
   const bodyContent = renderEmailTemplate('email-overdue-invoice', {
     invoiceNumber: invoiceNumber,
@@ -15549,7 +15718,8 @@ function sendOverdueInvoice(invoiceNumber, isAutomatic) {
     totalWithFees: formatCurrency(feeCalc.totalWithFees),
     paymentDetailsHtml: paymentDetailsHtml,
     businessName: businessName,
-    gstFooterLine: gstFooterLine
+    gstFooterLine: gstFooterLine,
+    paymentReceivedUrl: paymentReceivedUrl
   });
 
   const htmlBody = wrapEmailHtml(bodyContent);
@@ -15715,9 +15885,9 @@ function sendInvoiceReminderAuto(invoiceNumber) {
     return false;
   }
 
-  // Skip if already paid
-  if (invoice['Status'] === 'Paid') {
-    Logger.log('Skipping reminder for ' + invoiceNumber + ' - already paid');
+  // Skip if already paid or client claims they paid
+  if (invoice['Status'] === 'Paid' || invoice['Status'] === 'Paid?') {
+    Logger.log('Skipping reminder for ' + invoiceNumber + ' - already paid or marked as paid');
     return false;
   }
 
@@ -15874,8 +16044,8 @@ function autoSendOverdueInvoices() {
     const invoiceNumber = row[invoiceNumCol];
     const dueDateStr = row[dueDateCol];
 
-    // Skip if already paid
-    if (status === 'Paid') {
+    // Skip if already paid or client claims they paid
+    if (status === 'Paid' || status === 'Paid?') {
       continue;
     }
 

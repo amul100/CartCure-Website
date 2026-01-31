@@ -99,12 +99,24 @@
           </td>
         </tr>
 
+        <!-- Already Paid Button -->
+        <tr>
+          <td style="padding: 0 40px 25px 40px;">
+            <div style="background-color: <?= colors.paperCream ?>; border: 2px solid <?= colors.paperBorder ?>; padding: 20px; text-align: center;">
+              <p style="margin: 0 0 15px 0; color: <?= colors.inkBlack ?>; font-size: 15px;">
+                Already made payment? Let us know and we'll stop these reminders.
+              </p>
+              <a href="<?= paymentReceivedUrl ?>"
+                 style="display: inline-block; background-color: <?= colors.brandGreen ?>; color: #ffffff; padding: 12px 30px; text-decoration: none; font-size: 15px; font-weight: bold; border: 2px solid <?= colors.inkBlack ?>; box-shadow: 2px 2px 0 rgba(0,0,0,0.2);">
+                I Have Paid
+              </a>
+            </div>
+          </td>
+        </tr>
+
         <!-- Closing -->
         <tr>
           <td style="padding: 0 40px 30px 40px;">
-            <p style="margin: 0 0 20px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
-              If you have already made payment, please disregard this notice and accept our apologies for the crossed communication.
-            </p>
             <p style="margin: 0 0 20px 0; color: <?= colors.inkBlack ?>; font-size: 16px; line-height: 1.7;">
               If you have any questions or need to discuss payment arrangements, please reply to this email.
             </p>

@@ -46,10 +46,11 @@ When adding a new email type:
 | email-balance-invoice.html | sendInvoiceEmailSilent() | Balance invoice (final payment after deposit) |
 | email-status-update.html | sendStatusUpdateEmail() | Job status update emails |
 | email-payment-receipt.html | sendPaymentReceiptEmail() | Payment confirmation |
-| email-invoice-reminder.html | sendInvoiceReminder() | Pre-due date reminder |
-| email-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees |
+| email-invoice-reminder.html | sendInvoiceReminder() | Pre-due date reminder with "I Have Paid" button |
+| email-overdue-invoice.html | sendOverdueInvoice() | Overdue invoice with late fees and "I Have Paid" button |
 | email-quote-accepted.html | handleQuoteAcceptance() | Client confirmation after accepting quote |
 | email-quote-reminder.html | sendQuoteReminder() | Quote reminder with Accept Quote button |
+| email-client-paid-notification.html | sendPaymentClaimedNotification() | Admin notification when client clicks "I Have Paid" |
 
 ## Column Configuration System
 **IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object at the top of Code.gs. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.
