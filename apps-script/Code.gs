@@ -11021,9 +11021,9 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     const clientName = invoice['Client Name'];
     const clientEmail = invoice['Client Email'];
     const jobNumber = invoice['Job #'];
-    const amount = invoice['Amount (excl GST)'];
-    const gst = invoice['GST'];
-    const total = invoice['Total'];
+    const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+    const gst = Number(invoice['GST'] || 0).toFixed(2);
+    const total = Number(invoice['Total'] || 0).toFixed(2);
     const dueDate = invoice['Due Date'];
     const invoiceType = invoice['Invoice Type'] || 'Full';
 
@@ -14224,9 +14224,9 @@ function sendInvoiceEmail(invoiceNumber) {
   const clientName = invoice['Client Name'];
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
-  const amount = invoice['Amount (excl GST)'];
-  const gst = invoice['GST'];
-  const total = invoice['Total'];
+  const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+  const gst = Number(invoice['GST'] || 0).toFixed(2);
+  const total = Number(invoice['Total'] || 0).toFixed(2);
   const dueDate = invoice['Due Date'];
   const invoiceType = invoice['Invoice Type'] || 'Full';
 
@@ -14420,9 +14420,9 @@ function renderInvoiceEmailPreview(invoiceNumber) {
   const clientName = invoice['Client Name'];
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
-  const amount = invoice['Amount (excl GST)'];
-  const gst = invoice['GST'];
-  const total = invoice['Total'];
+  const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+  const gst = Number(invoice['GST'] || 0).toFixed(2);
+  const total = Number(invoice['Total'] || 0).toFixed(2);
   const dueDate = invoice['Due Date'];
   const invoiceType = invoice['Invoice Type'] || 'Full';
   const status = invoice['Status'] || 'Draft';
@@ -15929,9 +15929,9 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
   const clientName = invoice['Client Name'];
   const clientEmail = invoice['Client Email'];
   const jobNumber = invoice['Job #'];
-  const amount = invoice['Amount (excl GST)'];
-  const gst = invoice['GST'];
-  const total = invoice['Total'];
+  const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+  const gst = Number(invoice['GST'] || 0).toFixed(2);
+  const total = Number(invoice['Total'] || 0).toFixed(2);
   const paidDate = formatNZDate(new Date());
 
   if (!clientEmail) {
