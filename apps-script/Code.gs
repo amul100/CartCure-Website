@@ -13112,13 +13112,16 @@ function generateQuoteEmailHtml(data) {
   // GST footer line
   const gstFooterLine = data.isGSTRegistered && data.gstNumber ? 'GST: ' + data.gstNumber + '<br>' : '';
 
-  // Build quote acceptance URL with parameters
+  // Build quote acceptance URL with parameters (including bank details for deposit info)
   const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
     'job=' + encodeURIComponent(data.jobNumber) +
     '&name=' + encodeURIComponent(data.clientName) +
     '&desc=' + encodeURIComponent((data.jobDescription || '').substring(0, 100)) +
     '&amount=' + encodeURIComponent(data.total) +
-    '&turnaround=' + encodeURIComponent(data.turnaround);
+    '&turnaround=' + encodeURIComponent(data.turnaround) +
+    '&bank=' + encodeURIComponent(data.bankName || '') +
+    '&account=' + encodeURIComponent(data.bankAccount || '') +
+    '&payee=' + encodeURIComponent(data.businessName || 'CartCure');
 
   // Render template with data
   const bodyContent = renderEmailTemplate('email-quote', {
@@ -13507,6 +13510,8 @@ function sendQuoteReminder(jobNumber) {
 
   const businessName = getSetting('Business Name') || 'CartCure';
   const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
   const isGSTRegistered = getSetting('GST Registered') === 'Yes';
   const gstNumber = getSetting('GST Number') || '';
   const clientName = job['Client Name'];
@@ -13518,13 +13523,16 @@ function sendQuoteReminder(jobNumber) {
 
   const subject = 'Reminder: Your CartCure Quote (' + jobNumber + ')';
 
-  // Build quote acceptance URL
+  // Build quote acceptance URL (including bank details for deposit info)
   const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
     'job=' + encodeURIComponent(jobNumber) +
     '&name=' + encodeURIComponent(clientName) +
     '&desc=' + encodeURIComponent((jobDescription || '').substring(0, 100)) +
     '&amount=' + encodeURIComponent(total) +
-    '&turnaround=' + encodeURIComponent(turnaround);
+    '&turnaround=' + encodeURIComponent(turnaround) +
+    '&bank=' + encodeURIComponent(bankName) +
+    '&account=' + encodeURIComponent(bankAccount) +
+    '&payee=' + encodeURIComponent(businessName);
 
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
@@ -13624,6 +13632,8 @@ function sendQuoteReminderAuto(jobNumber) {
 
   const businessName = getSetting('Business Name') || 'CartCure';
   const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
   const isGSTRegistered = getSetting('GST Registered') === 'Yes';
   const gstNumber = getSetting('GST Number') || '';
   const clientName = job['Client Name'];
@@ -13640,13 +13650,16 @@ function sendQuoteReminderAuto(jobNumber) {
 
   const subject = 'Reminder: Your CartCure Quote (' + jobNumber + ')';
 
-  // Build quote acceptance URL
+  // Build quote acceptance URL (including bank details for deposit info)
   const acceptQuoteUrl = 'https://cartcure.co.nz/quote-acceptance.html?' +
     'job=' + encodeURIComponent(jobNumber) +
     '&name=' + encodeURIComponent(clientName) +
     '&desc=' + encodeURIComponent((jobDescription || '').substring(0, 100)) +
     '&amount=' + encodeURIComponent(total) +
-    '&turnaround=' + encodeURIComponent(turnaround);
+    '&turnaround=' + encodeURIComponent(turnaround) +
+    '&bank=' + encodeURIComponent(bankName) +
+    '&account=' + encodeURIComponent(bankAccount) +
+    '&payee=' + encodeURIComponent(businessName);
 
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';

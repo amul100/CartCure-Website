@@ -15,6 +15,33 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://cartcure.co.nz/quote-acceptance.html">
 
+    <!-- Google Analytics 4 - Replace G-QCCZDEN8NX with your Measurement ID -->
+    <!-- Get your ID at: https://analytics.google.com > Admin > Data Streams > Web -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QCCZDEN8NX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QCCZDEN8NX'); // Replace with your GA4 Measurement ID
+    </script>
+
+    <!-- Meta Pixel (Facebook) - Replace YOUR_PIXEL_ID with your Pixel ID -->
+    <!-- Get your ID at: https://business.facebook.com > Events Manager > Data Sources -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', 'YOUR_PIXEL_ID'); // Replace with your Meta Pixel ID
+        fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
+
     <link rel="icon" type="image/png" href="CartCure_Favicon.png">
     <link rel="stylesheet" href="styles.css">
 
@@ -351,6 +378,88 @@
         .signature-placeholder.hidden {
             display: none;
         }
+
+        /* Deposit Info Section */
+        .deposit-section {
+            background: #fff8e6;
+            border: 2px solid #e6a800;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .deposit-section.visible {
+            display: block;
+        }
+
+        .deposit-section h3 {
+            margin: 0 0 0.75rem 0;
+            color: #996600;
+            font-size: 1.1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .deposit-section .deposit-explanation {
+            color: var(--ink-black);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .deposit-amount {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #996600;
+            margin-bottom: 1rem;
+        }
+
+        .payment-details {
+            background: var(--paper-white);
+            border: 1px solid var(--paper-border);
+            padding: 1rem;
+        }
+
+        .payment-details h4 {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.9rem;
+            color: var(--ink-black);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--paper-border);
+        }
+
+        .payment-row:last-child {
+            border-bottom: none;
+        }
+
+        .payment-row .label {
+            color: var(--ink-gray);
+            font-size: 0.9rem;
+        }
+
+        .payment-row .value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--ink-black);
+            font-size: 0.95rem;
+        }
+
+        .payment-row .value.highlight {
+            color: var(--accent-green);
+        }
+
+        .deposit-note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--ink-gray);
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -423,6 +532,38 @@
                     </label>
                 </div>
 
+                <!-- Deposit Info Section (shown only for quotes >= $200) -->
+                <div class="deposit-section" id="depositSection">
+                    <h3>Deposit Required</h3>
+                    <p class="deposit-explanation">
+                        For quotes over $200, a 50% deposit is required before we begin work.
+                        This helps us schedule your project and ensures commitment from both sides.
+                    </p>
+                    <p class="deposit-amount">Deposit: <span id="depositAmount">$0.00</span></p>
+                    <div class="payment-details">
+                        <h4>Payment Details</h4>
+                        <div class="payment-row">
+                            <span class="label">Bank:</span>
+                            <span class="value" id="bankName"></span>
+                        </div>
+                        <div class="payment-row">
+                            <span class="label">Account:</span>
+                            <span class="value" id="bankAccount"></span>
+                        </div>
+                        <div class="payment-row">
+                            <span class="label">Payee:</span>
+                            <span class="value" id="payeeName"></span>
+                        </div>
+                        <div class="payment-row">
+                            <span class="label">Reference:</span>
+                            <span class="value highlight" id="paymentReference"></span>
+                        </div>
+                    </div>
+                    <p class="deposit-note">
+                        You'll receive a deposit invoice via email after accepting. Work begins once payment is received.
+                    </p>
+                </div>
+
                 <input type="hidden" id="jobNumber" name="jobNumber" value="">
                 <input type="hidden" id="signatureData" name="signatureData" value="">
 
@@ -477,6 +618,9 @@
             const description = urlParams.get('desc') ? decodeURIComponent(urlParams.get('desc')) : '';
             const amount = urlParams.get('amount') ? decodeURIComponent(urlParams.get('amount')) : '';
             const turnaround = urlParams.get('turnaround') ? decodeURIComponent(urlParams.get('turnaround')) : '';
+            const bankName = urlParams.get('bank') ? decodeURIComponent(urlParams.get('bank')) : '';
+            const bankAccount = urlParams.get('account') ? decodeURIComponent(urlParams.get('account')) : '';
+            const payeeName = urlParams.get('payee') ? decodeURIComponent(urlParams.get('payee')) : 'CartCure';
 
             // Initialize page
             function initPage() {
@@ -502,6 +646,25 @@
                 // Set today's date in NZ timezone
                 const nzDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
                 document.getElementById('acceptanceDate').value = nzDate;
+
+                // Check if deposit is required (quotes >= $200)
+                const numericAmount = parseFloat(amount.replace(/[^0-9.]/g, '')) || 0;
+                if (numericAmount >= 200 && (bankName || bankAccount)) {
+                    const depositAmount = numericAmount * 0.5;
+                    const depositSection = document.getElementById('depositSection');
+
+                    // Format deposit amount
+                    document.getElementById('depositAmount').textContent = '$' + depositAmount.toFixed(2);
+
+                    // Populate payment details
+                    document.getElementById('bankName').textContent = bankName || '-';
+                    document.getElementById('bankAccount').textContent = bankAccount || '-';
+                    document.getElementById('payeeName').textContent = payeeName || 'CartCure';
+                    document.getElementById('paymentReference').textContent = jobNumber;
+
+                    // Show the section
+                    depositSection.classList.add('visible');
+                }
 
                 // Hide loading, show form
                 loadingInfo.style.display = 'none';
