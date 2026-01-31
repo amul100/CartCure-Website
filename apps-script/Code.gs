@@ -1905,6 +1905,26 @@ function escapeHtml(text) {
     .replace(/'/g, '&#x27;');
 }
 
+/**
+ * Format activity details with clickable signature links
+ * Escapes HTML but converts "Signature: [URL]" to clickable "click here to view" links
+ */
+function formatActivityDetails(text) {
+  if (!text) return '';
+
+  // First escape all HTML
+  let escaped = escapeHtml(text);
+
+  // Then replace "Signature: [Google Drive URL]" with clickable link
+  // Match pattern: Signature: https://drive.google.com/...
+  escaped = escaped.replace(
+    /Signature:\s*(https:\/\/drive\.google\.com\/[^\s,]+)/g,
+    'Signature: <a href="$1" target="_blank" style="color: #1a73e8; text-decoration: underline;">click here to view</a>'
+  );
+
+  return escaped;
+}
+
 // ============================================================================
 // DATA STORAGE AND LOGGING
 // ============================================================================
@@ -8295,7 +8315,7 @@ function displayActivityLogForJob(jobNumber) {
       color = '#ff6d01';
     }
 
-    const details = activity.details ? '<div class="details">' + escapeHtml(activity.details) + '</div>' : '';
+    const details = activity.details ? '<div class="details">' + formatActivityDetails(activity.details) + '</div>' : '';
     const fromTo = activity.fromTo ? '<div class="from-to">' + escapeHtml(activity.fromTo) + '</div>' : '';
     const loggedBy = activity.loggedBy ? '<span class="logged-by">by ' + escapeHtml(activity.loggedBy) + '</span>' : '';
 
@@ -8720,7 +8740,7 @@ function getActivityListHtml(jobNumber) {
         color = '#ff6d01';
       }
 
-      const details = activity.details ? '<div class="details">' + escapeHtml(activity.details) + '</div>' : '';
+      const details = activity.details ? '<div class="details">' + formatActivityDetails(activity.details) + '</div>' : '';
       const fromTo = activity.fromTo ? '<div class="from-to">' + escapeHtml(activity.fromTo) + '</div>' : '';
       const loggedBy = activity.loggedBy ? '<span class="logged-by">by ' + escapeHtml(activity.loggedBy) + '</span>' : '';
 
