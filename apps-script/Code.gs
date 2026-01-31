@@ -4031,7 +4031,6 @@ function buildMenu() {
     .addSeparator()
     .addSubMenu(ui.createMenu('📋 Jobs')
       .addItem('➕ Create Job from Submission', 'showCreateJobDialog')
-      .addItem('✅ Mark Quote Accepted', 'showAcceptQuoteDialog')
       .addItem('▶️ Start Work on Job', 'showStartWorkDialog')
       .addItem('✔️ Mark Job Complete', 'showCompleteJobDialog')
       .addItem('⏸️ Put Job On Hold', 'showOnHoldDialog')
@@ -4045,6 +4044,7 @@ function buildMenu() {
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('📤 Send Quote', 'showSendQuoteDialog')
       .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
+      .addItem('✅ Mark Quote Accepted', 'showAcceptQuoteDialog')
       .addItem('👎 Mark Quote Declined', 'showDeclineQuoteDialog'))
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('➕ Generate Invoice', 'showGenerateInvoiceDialog')
@@ -10608,14 +10608,12 @@ function showAcceptQuoteDialog() {
 }
 
 /**
- * Mark a quote as accepted - starts the SLA clock
- */
-/**
  * Mark quote as accepted - PERFORMANCE OPTIMIZED
  * OLD: 6 separate updateJobField() calls = 6 sheet loads
  * NEW: 1 batch updateJobFields() call = 1 sheet load (83% reduction)
  *
- * For jobs $200+, automatically generates and sends a 50% deposit invoice
+ * For jobs $200+: Generates/sends deposit invoice, sets status to Accepted (work starts after deposit paid)
+ * For jobs under $200: Automatically starts work immediately (no deposit required)
  */
 function markQuoteAccepted(jobNumber) {
   const ui = SpreadsheetApp.getUi();
@@ -10646,12 +10644,30 @@ function markQuoteAccepted(jobNumber) {
       'A deposit invoice for ' + formatCurrency(parseFloat(depositAmount)) + ' will be:\n' +
       '• Generated automatically\n' +
       '• Sent to the client immediately\n\n' +
+      'Work will start after deposit is paid.\n\n' +
       'Do you want to proceed?',
       ui.ButtonSet.YES_NO
     );
 
     if (response !== ui.Button.YES) {
       return; // User cancelled
+    }
+  } else {
+    // For jobs under $200 (no deposit), show backup reminder before starting work
+    const backupResponse = ui.alert('⚠️ Backup Reminder',
+      'IMPORTANT: Before starting work, ensure the client has a backup of their store.\n\n' +
+      'Per our Terms of Service, clients are responsible for maintaining their own backups.\n\n' +
+      'Have you confirmed the client has a recent backup?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (backupResponse !== ui.Button.YES) {
+      ui.alert('Quote Not Accepted',
+        'Please confirm backup status before accepting the quote.\n\n' +
+        'You may want to send the client a reminder to backup their store.',
+        ui.ButtonSet.OK
+      );
+      return;
     }
   }
 
@@ -10660,15 +10676,27 @@ function markQuoteAccepted(jobNumber) {
   const dueDate = new Date(now);
   dueDate.setDate(dueDate.getDate() + turnaround);
 
-  // OPTIMIZATION: Batch update all 6 fields in a single operation instead of 6 separate calls
-  updateJobFields(jobNumber, {
-    'Status': JOB_STATUS.ACCEPTED,
+  // For jobs under $200: Start work immediately (status = In Progress)
+  // For jobs $200+: Set to Accepted (work starts after deposit is paid)
+  const newStatus = requiresDeposit ? JOB_STATUS.ACCEPTED : JOB_STATUS.IN_PROGRESS;
+
+  // Build fields to update
+  const fieldsToUpdate = {
+    'Status': newStatus,
     'Quote Accepted Date': formatNZDate(now),
     'Days Since Accepted': 0,
     'Days Remaining': turnaround,
     'SLA Status': 'On Track',
     'Due Date': formatNZDate(dueDate)
-  });
+  };
+
+  // If starting work immediately (no deposit), also set Actual Start Date
+  if (!requiresDeposit) {
+    fieldsToUpdate['Actual Start Date'] = formatNZDate(now);
+  }
+
+  // OPTIMIZATION: Batch update all fields in a single operation
+  updateJobFields(jobNumber, fieldsToUpdate);
 
   // Generate and send deposit invoice for $200+ jobs
   let depositMessage = '';
@@ -10683,18 +10711,36 @@ function markQuoteAccepted(jobNumber) {
       depositMessage = '\n\n⚠️ Deposit Invoice Error:\n' + invoiceResult.error +
         '\n\nPlease generate and send manually via CartCure > Invoices.';
     }
+  } else {
+    // For non-deposit jobs, send status update email to notify client work has started
+    sendStatusUpdateEmail(jobNumber, JOB_STATUS.IN_PROGRESS, {
+      wasOnHold: false,
+      daysOnHold: 0
+    });
   }
 
-  ui.alert('Quote Accepted',
-    'Job ' + jobNumber + ' marked as Accepted!\n\n' +
-    'SLA Clock Started:\n' +
-    '- Due Date: ' + formatNZDate(dueDate) + '\n' +
-    '- Days Remaining: ' + turnaround + depositMessage + '\n\n' +
-    'Use CartCure > Jobs > Start Work when you begin.',
-    ui.ButtonSet.OK
-  );
+  // Show appropriate success message
+  if (requiresDeposit) {
+    ui.alert('Quote Accepted',
+      'Job ' + jobNumber + ' marked as Accepted!\n\n' +
+      'SLA Clock Started:\n' +
+      '- Due Date: ' + formatNZDate(dueDate) + '\n' +
+      '- Days Remaining: ' + turnaround + depositMessage + '\n\n' +
+      'Use CartCure > Jobs > Start Work after deposit is paid.',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert('Quote Accepted & Work Started',
+      'Job ' + jobNumber + ' is now In Progress!\n\n' +
+      'SLA Clock Started:\n' +
+      '- Due Date: ' + formatNZDate(dueDate) + '\n' +
+      '- Days Remaining: ' + turnaround + '\n\n' +
+      'Client has been notified that work has started.',
+      ui.ButtonSet.OK
+    );
+  }
 
-  Logger.log('Quote accepted for ' + jobNumber + (requiresDeposit ? ' (deposit invoice sent)' : ''));
+  Logger.log('Quote accepted for ' + jobNumber + (requiresDeposit ? ' (deposit invoice sent)' : ' (work started immediately)'));
 
   // Refresh dashboard to show updated data
   refreshDashboard();
