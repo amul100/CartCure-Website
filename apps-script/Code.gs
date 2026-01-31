@@ -4216,7 +4216,7 @@ function onEdit(e) {
     if (e.value === 'TRUE') {
       // Uncheck the box first, then refresh
       range.setValue(false);
-      refreshDashboard();
+      refreshDashboard(true); // Force refresh to ensure data is populated
     }
   }
 
@@ -5725,6 +5725,22 @@ function setupSheets(clearData) {
     logDebug('Step 10: Enabling automatic triggers...');
     const triggersCreated = ensureAutoTriggersExist();
     logDebug('Step 10 COMPLETE: ' + triggersCreated + ' trigger(s) created');
+
+    // Step 11: Refresh Dashboard and Analytics with actual data
+    logDebug('Step 11: Refreshing Dashboard and Analytics...');
+    try {
+      refreshDashboard(true);
+      logDebug('  Dashboard refreshed');
+    } catch (dashErr) {
+      logDebug('  Dashboard refresh error: ' + dashErr.message);
+    }
+    try {
+      refreshAnalytics();
+      logDebug('  Analytics refreshed');
+    } catch (analyticsErr) {
+      logDebug('  Analytics refresh error: ' + analyticsErr.message);
+    }
+    logDebug('Step 11 COMPLETE');
 
     logAllSheets('FINAL STATE');
     logDebug('========== SETUP SHEETS SUCCESS ==========');
