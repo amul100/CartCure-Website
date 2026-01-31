@@ -4478,13 +4478,13 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
             background: #f8f9fa;
           }
           .container {
-            padding: 20px;
+            padding: 12px;
           }
           .header {
             background: linear-gradient(135deg, #2d5d3f 0%, #1e4a2f 100%);
             color: white;
-            padding: 20px;
-            margin: -20px -20px 20px -20px;
+            padding: 16px;
+            margin: -12px -12px 16px -12px;
           }
           .header h3 {
             margin: 0 0 8px 0;
