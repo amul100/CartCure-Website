@@ -3967,9 +3967,17 @@ function migrateSheetColumns(sheet, sheetKey) {
     if (rowIndex === 0) {
       return expectedHeaders; // Header row
     }
-    return expectedHeaders.map(expectedCol => {
+    return expectedHeaders.map((expectedCol, colIndex) => {
       const currentIndex = currentHeaders.indexOf(expectedCol);
-      return currentIndex >= 0 ? row[currentIndex] : '';
+      if (currentIndex >= 0) {
+        return row[currentIndex];
+      }
+      // Column is new - use defaultValue from config if available
+      const colConfig = config[colIndex];
+      if (colConfig && colConfig.hasOwnProperty('defaultValue')) {
+        return colConfig.defaultValue;
+      }
+      return '';
     });
   });
 
