@@ -3866,7 +3866,10 @@ function applyConfigFormulas(sheet, sheetKey, startRow, numRows) {
  */
 function applyConfigColumnWidths(sheet, sheetKey) {
   const widths = getColWidths(sheetKey);
-  for (let col = 1; col <= widths.length; col++) {
+  const maxCol = sheet.getMaxColumns();
+  // Only set widths for columns that exist in the sheet
+  const colsToSet = Math.min(widths.length, maxCol);
+  for (let col = 1; col <= colsToSet; col++) {
     sheet.setColumnWidth(col, widths[col - 1]);
   }
 }
