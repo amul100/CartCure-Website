@@ -3127,6 +3127,7 @@ const COLUMN_CONFIG = {
   // JOBS SHEET (32 columns)
   // -------------------------------------------------------------------------
   JOBS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 120,
@@ -3211,6 +3212,7 @@ const COLUMN_CONFIG = {
   // INVOICE LOG SHEET (20 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
@@ -3252,6 +3254,7 @@ const COLUMN_CONFIG = {
   // CLIENTS SHEET (14 columns)
   // -------------------------------------------------------------------------
   CLIENTS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     { name: 'Client Email', width: 220 },  // PRIMARY KEY - unique identifier
     { name: 'Client Name', width: 160 },
     { name: 'Client Phone', width: 130 },
@@ -3283,6 +3286,7 @@ const COLUMN_CONFIG = {
   // SUBMISSIONS SHEET (11 columns)
   // -------------------------------------------------------------------------
   SUBMISSIONS: [
+    { name: 'Actions', width: 50, defaultValue: '☰' },
     {
       name: 'Status',
       width: 100,
