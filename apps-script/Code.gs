@@ -4173,7 +4173,6 @@ function buildMenu() {
       .addItem('👁️ View Overdue Invoices', 'showOverdueInvoicesWithFees'))
     .addSubMenu(ui.createMenu('👥 Clients')
       .addItem('📋 View Client History', 'viewClientHistory')
-      .addItem('📊 View All Clients', 'navigateToClientsSheet')
       .addSeparator()
       .addItem('🔄 Sync Clients from Jobs', 'syncClientsFromJobs')
       .addItem('📈 Recalculate All Stats', 'recalculateAllClientStats'))
