@@ -16579,6 +16579,7 @@ function createTestSubmissions() {
     if (!sheet) {
       sheet = ss.insertSheet(SHEETS.SUBMISSIONS);
       sheet.appendRow([
+        'Actions',
         'Status',
         'Submission #',
         'Timestamp',
@@ -16646,18 +16647,19 @@ function createTestSubmissions() {
       date.setMinutes(date.getMinutes() - minutesAgo);
       const timestamp = date.toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
-      // Create row data
+      // Create row data (must match COLUMN_CONFIG.SUBMISSIONS order)
       const rowData = [
-        statuses[i],
-        submissionNumber,
-        timestamp,
-        testNames[i],
-        testEmails[i],
-        testPhones[i],
-        testStores[i],
-        testMessages[i],
-        'No',
-        ''
+        '☰',              // Actions
+        statuses[i],      // Status
+        submissionNumber, // Submission #
+        timestamp,        // Timestamp
+        testNames[i],     // Name
+        testEmails[i],    // Email
+        testPhones[i],    // Phone
+        testStores[i],    // Store URL
+        testMessages[i],  // Message
+        'No',             // Has Voice Note
+        ''                // Voice Note Link
       ];
 
       // Insert at top (row 2) so newest submissions appear first
