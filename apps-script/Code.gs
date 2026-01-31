@@ -3147,24 +3147,24 @@ const COLUMN_CONFIG = {
       },
       defaultValue: JOB_STATUS.PENDING_QUOTE
     },
-    { name: 'Job #', width: 60 },
-    { name: 'Total (incl GST)', width: 100, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Job #', width: 70 },
+    { name: 'Total (incl GST)', width: 115, format: { numberFormat: '$#,##0.00' } },
     { name: 'Created Date', width: 100 },
     { name: 'Client Name', width: 120 },
     { name: 'Client Email', width: 180 },
     { name: 'Client Phone', width: 120 },
     { name: 'Store URL', width: 150 },
     { name: 'Job Description', width: 300, format: { wrapText: true } },
-    { name: 'Quote Amount (excl GST)', width: 130, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Quote Amount (excl GST)', width: 155, format: { numberFormat: '$#,##0.00' } },
     { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Quote Sent Date', width: 110 },
-    { name: 'Quote Valid Until', width: 110 },
-    { name: 'Quote Accepted Date', width: 120 },
-    { name: 'Days Since Accepted', width: 120 },
-    { name: 'Days Remaining', width: 100 },
+    { name: 'Quote Sent Date', width: 120 },
+    { name: 'Quote Valid Until', width: 120 },
+    { name: 'Quote Accepted Date', width: 145 },
+    { name: 'Days Since Accepted', width: 145 },
+    { name: 'Days Remaining', width: 120 },
     {
       name: 'SLA Status',
-      width: 80,
+      width: 90,
       format: {
         conditionalRules: [
           { when: 'equals', value: 'OVERDUE', background: SHEET_COLORS.slaOverdue, fontColor: SHEET_COLORS.slaOverdueText, bold: true },
@@ -3173,13 +3173,13 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Estimated Turnaround', width: 130, defaultValue: JOB_CONFIG.DEFAULT_SLA_DAYS },
+    { name: 'Estimated Turnaround', width: 150, defaultValue: JOB_CONFIG.DEFAULT_SLA_DAYS },
     { name: 'Due Date', width: 90 },
-    { name: 'Actual Start Date', width: 110 },
-    { name: 'Actual Completion Date', width: 140 },
+    { name: 'Actual Start Date', width: 125 },
+    { name: 'Actual Completion Date', width: 165 },
     {
       name: 'Payment Status',
-      width: 110,
+      width: 115,
       validation: { type: 'list', values: Object.values(PAYMENT_STATUS), allowInvalid: false },
       format: {
         conditionalRules: [
@@ -3192,19 +3192,19 @@ const COLUMN_CONFIG = {
       },
       defaultValue: PAYMENT_STATUS.UNPAID
     },
-    { name: 'Payment Date', width: 100 },
-    { name: 'Payment Method', width: 110 },
-    { name: 'Payment Reference', width: 120 },
+    { name: 'Payment Date', width: 110 },
+    { name: 'Payment Method', width: 130 },
+    { name: 'Payment Reference', width: 140 },
     { name: 'Invoice #', width: 80 },
     {
       name: 'Remaining Balance',
-      width: 120,
+      width: 140,
       // Formula uses column name placeholders: {{Total (incl GST)}} and {{Job #}}
       formula: '=IF({{Total (incl GST)}}{{row}}="","",{{Total (incl GST)}}{{row}}-SUMIFS(\'Invoice Log\'!{{INVOICES.Total}}:{{INVOICES.Total}},\'Invoice Log\'!{{INVOICES.Job #}}:{{INVOICES.Job #}},{{Job #}}{{row}},\'Invoice Log\'!{{INVOICES.Status}}:{{INVOICES.Status}},"Paid"))',
       format: { numberFormat: '$#,##0.00' }
     },
-    { name: 'Submission #', width: 90 },
-    { name: 'Last Updated', width: 110 },
+    { name: 'Submission #', width: 100 },
+    { name: 'Last Updated', width: 115 },
     {
       name: 'Category',
       width: 100,
@@ -3237,18 +3237,18 @@ const COLUMN_CONFIG = {
     { name: 'Client Phone', width: 120 },
     { name: 'Invoice Date', width: 100 },
     { name: 'Due Date', width: 90 },
-    { name: 'Amount (excl GST)', width: 120, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Amount (excl GST)', width: 140, format: { numberFormat: '$#,##0.00' } },
     { name: 'GST', width: 60, format: { numberFormat: '$#,##0.00' } },
     { name: 'Total', width: 80, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Sent Date', width: 90 },
-    { name: 'Paid Date', width: 90 },
-    { name: 'Payment Reference', width: 130 },
-    { name: 'Days Overdue', width: 90 },
+    { name: 'Sent Date', width: 95 },
+    { name: 'Paid Date', width: 95 },
+    { name: 'Payment Reference', width: 145 },
+    { name: 'Days Overdue', width: 110 },
     { name: 'Late Fee', width: 80, format: { numberFormat: '$#,##0.00' } },
-    { name: 'Total With Fees', width: 100, format: { numberFormat: '$#,##0.00' } },
+    { name: 'Total With Fees', width: 115, format: { numberFormat: '$#,##0.00' } },
     {
       name: 'Invoice Type',
-      width: 90,
+      width: 105,
       validation: { type: 'list', values: ['Full', 'Deposit', 'Balance', 'Additional'], allowInvalid: false }
     },
     { name: 'Notes', width: 150 }
@@ -3304,14 +3304,14 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Submission #', width: 100 },
-    { name: 'Timestamp', width: 140 },
+    { name: 'Submission #', width: 115 },
+    { name: 'Timestamp', width: 145 },
     { name: 'Name', width: 120 },
     { name: 'Email', width: 180 },
     { name: 'Phone', width: 120 },
-    { name: 'Store URL', width: 150 },
+    { name: 'Store URL', width: 180 },
     { name: 'Message', width: 350, format: { wrapText: true } },
-    { name: 'Has Voice Note', width: 100 },
+    { name: 'Has Voice Note', width: 115 },
     { name: 'Voice Note Link', width: 150 }
   ],
 
@@ -3319,7 +3319,7 @@ const COLUMN_CONFIG = {
   // TESTIMONIALS SHEET (9 columns)
   // -------------------------------------------------------------------------
   TESTIMONIALS: [
-    { name: 'Show on Website', width: 110, validation: { type: 'checkbox' } },
+    { name: 'Show on Website', width: 130, validation: { type: 'checkbox' } },
     { name: 'Submitted', width: 140 },
     { name: 'Name', width: 120 },
     { name: 'Business', width: 150 },
@@ -3340,7 +3340,7 @@ const COLUMN_CONFIG = {
     { name: 'Subject/Summary', width: 250 },
     { name: 'Details', width: 350, format: { wrapText: true } },
     { name: 'From/To', width: 200 },
-    { name: 'Logged By', width: 80 }
+    { name: 'Logged By', width: 100 }
   ]
 };
 
