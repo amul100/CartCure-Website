@@ -11808,18 +11808,40 @@ function putJobOnHold(jobNumber, explanation) {
 
 /**
  * Show dialog to cancel a job
+ * Uses selected row to auto-detect job number (like other action features)
  */
 function showCancelJobDialog() {
+  const ui = SpreadsheetApp.getUi();
   const selectedJob = getSelectedJobNumber();
   // Can cancel jobs that are Accepted, In Progress, or On Hold
   const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.IN_PROGRESS, JOB_STATUS.ON_HOLD]);
-  showContextAwareDialog(
-    'Cancel Job',
-    jobs,
-    'Job',
-    'showCancelJobConfirmation',
-    selectedJob
-  );
+
+  // If we have a selected job, verify it's valid for cancellation and proceed directly
+  if (selectedJob) {
+    const isValidSelection = jobs && jobs.length > 0 &&
+      jobs.some(job => String(job.number).trim() === String(selectedJob).trim());
+
+    if (isValidSelection) {
+      // Directly show the cancellation confirmation - no dropdown needed
+      showCancelJobConfirmation(selectedJob);
+      return;
+    } else {
+      // Selected job exists but isn't valid for cancellation - explain why
+      const job = getJobByNumber(selectedJob);
+      if (job) {
+        ui.alert(
+          'Cannot Cancel',
+          'Job ' + selectedJob + ' cannot be cancelled.\n\n' +
+          'Current status: ' + (job['Status'] || 'Unknown') + '\n\n' +
+          'Only jobs with status Accepted, In Progress, or On Hold can be cancelled.',
+          ui.ButtonSet.OK
+        );
+      }
+    }
+  }
+
+  // Fall back to dropdown dialog if no valid job selected
+  showDropdownDialog('Cancel Job', jobs, 'Job', 'showCancelJobConfirmation');
 }
 
 /**
