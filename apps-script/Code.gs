@@ -8659,13 +8659,15 @@ function displayActivityLogForJob(jobNumber) {
             white-space: pre-wrap;
             word-break: break-word;
           }
-          .button-row {
-            display: flex;
-            gap: 10px;
+          .button-row-top {
             margin-bottom: 15px;
           }
+          .button-row-bottom {
+            margin-top: 20px;
+            text-align: center;
+          }
           .btn-add-note {
-            flex: 1;
+            width: 100%;
             padding: 12px;
             background: #34a853;
             color: white;
@@ -8679,9 +8681,8 @@ function displayActivityLogForJob(jobNumber) {
             background: #2d8a47;
           }
           .btn-close {
-            flex: 1;
-            padding: 12px;
-            background: #1a73e8;
+            padding: 10px 40px;
+            background: #5f6368;
             color: white;
             border: none;
             border-radius: 4px;
@@ -8690,7 +8691,7 @@ function displayActivityLogForJob(jobNumber) {
             font-weight: 500;
           }
           .btn-close:hover {
-            background: #1557b0;
+            background: #4a4e51;
           }
           .note-input-area {
             display: none;
@@ -8765,9 +8766,8 @@ function displayActivityLogForJob(jobNumber) {
             <h2>📜 Activity Log</h2>
             <div class="count">${jobNumber} • ${activities.length} ${activities.length === 1 ? 'entry' : 'entries'}</div>
           </div>
-          <div class="button-row">
+          <div class="button-row-top">
             <button class="btn-add-note" onclick="showNoteInput()">📝 Add Note</button>
-            <button class="btn-close" onclick="google.script.host.close()">Close</button>
           </div>
           <div id="noteInputArea" class="note-input-area">
             <textarea id="noteText" class="note-textarea" placeholder="Enter your note here..."></textarea>
@@ -8778,6 +8778,9 @@ function displayActivityLogForJob(jobNumber) {
           </div>
           <div id="activityList" class="activity-list">
             ${activitiesHtml}
+          </div>
+          <div class="button-row-bottom">
+            <button class="btn-close" onclick="google.script.host.close()">Close</button>
           </div>
         </div>
         <script>
