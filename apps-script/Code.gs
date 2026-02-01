@@ -5816,15 +5816,32 @@ function restoreSheetData(ss, backup) {
     }
   }
 
-  // Restore Settings data (overwrite default settings with backed up values)
+  // Restore Settings data - merge backed up values into the new sheet (preserves styling)
   if (backup.settings && backup.settings.length > 0) {
     const settingsSheet = ss.getSheetByName(SHEETS.SETTINGS);
     if (settingsSheet) {
-      // Clear existing data first
-      settingsSheet.clear();
-      // Restore backed up settings
-      settingsSheet.getRange(1, 1, backup.settings.length, backup.settings[0].length).setValues(backup.settings);
-      Logger.log('Restored settings data');
+      // Build a map of backed-up settings (setting name -> value)
+      const backedUpValues = {};
+      for (let i = 1; i < backup.settings.length; i++) {
+        const settingName = backup.settings[i][0];
+        const settingValue = backup.settings[i][1];
+        if (settingName) {
+          backedUpValues[settingName] = settingValue;
+        }
+      }
+
+      // Update each setting in the new sheet with the backed-up value
+      const currentData = settingsSheet.getDataRange().getValues();
+      let updatedCount = 0;
+      for (let i = 1; i < currentData.length; i++) {
+        const settingName = currentData[i][0];
+        if (settingName && backedUpValues.hasOwnProperty(settingName)) {
+          // Restore the backed-up value
+          settingsSheet.getRange(i + 1, 2).setValue(backedUpValues[settingName]);
+          updatedCount++;
+        }
+      }
+      Logger.log('Restored ' + updatedCount + ' settings values (preserved styling)');
     }
   }
 
