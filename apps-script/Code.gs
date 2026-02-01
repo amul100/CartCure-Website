@@ -6933,69 +6933,44 @@ function setupSettingsSheet(ss, clearData) {
     sheet.getRange(1, 1, mergedSettings.length, 3).setValues(mergedSettings);
   }
 
-  // === DARK MODE STYLING ===
-  const darkColors = {
-    background: '#1a1a2e',      // Deep navy
-    backgroundAlt: '#16213e',   // Slightly lighter navy
-    headerBg: '#0f3460',        // Dark blue header
-    text: '#e4e4e7',            // Light gray text
-    accent: '#00d4aa',          // Green accent (same as dialog)
-    muted: '#71717a',           // Muted gray for descriptions
-    border: '#2d3748'           // Subtle border color
-  };
+  // === STANDARD PAPER STYLING (matches other sheets) ===
+  const numCols = 3;
+  const numRows = defaultSettings.length;
 
-  // Apply dark background to entire visible area
-  const maxCols = 10;
-  const maxRows = 50;
-  sheet.getRange(1, 1, maxRows, maxCols).setBackground(darkColors.background);
+  // Apply paper-like background to entire sheet
+  applyPaperBackground(sheet);
 
-  // Format header row - dark blue with white text
-  const headerRange = sheet.getRange(1, 1, 1, 3);
-  headerRange.setBackground(darkColors.headerBg);
-  headerRange.setFontColor('#ffffff');
-  headerRange.setFontWeight('bold');
-  headerRange.setFontFamily('Arial');
-  headerRange.setFontSize(11);
-  headerRange.setHorizontalAlignment('center');
-  headerRange.setVerticalAlignment('middle');
-  sheet.setRowHeight(1, 40);
+  // Format header row with brand styling
+  const headerRange = sheet.getRange(1, 1, 1, numCols);
+  applyHeaderStyle(headerRange);
+  applyBorders(headerRange, true, false);
+  sheet.setRowHeight(1, 35);
 
-  // Apply alternating dark rows for settings
-  for (let i = 2; i <= defaultSettings.length; i++) {
-    const rowRange = sheet.getRange(i, 1, 1, 3);
-    const bgColor = (i % 2 === 0) ? darkColors.backgroundAlt : darkColors.background;
-    rowRange.setBackground(bgColor);
-    sheet.setRowHeight(i, 32);
-  }
+  // Apply alternating row colors for settings rows
+  applyAlternatingRows(sheet, 2, numRows - 1, numCols);
 
-  // Format setting names (first column) - white bold text
-  const settingNamesRange = sheet.getRange(2, 1, defaultSettings.length - 1, 1);
+  // Set default text styling for data area
+  const dataRange = sheet.getRange(2, 1, numRows - 1, numCols);
+  dataRange.setFontFamily('Arial');
+  dataRange.setFontSize(10);
+  dataRange.setFontColor(SHEET_COLORS.inkBlack);
+  dataRange.setVerticalAlignment('middle');
+
+  // Format setting names (first column) - bold
+  const settingNamesRange = sheet.getRange(2, 1, numRows - 1, 1);
   settingNamesRange.setFontWeight('bold');
-  settingNamesRange.setFontColor(darkColors.text);
-  settingNamesRange.setFontFamily('Arial');
-  settingNamesRange.setFontSize(10);
-  settingNamesRange.setVerticalAlignment('middle');
 
-  // Format value column - green accent color
-  const valueRange = sheet.getRange(2, 2, defaultSettings.length - 1, 1);
-  valueRange.setFontFamily('Arial');
-  valueRange.setFontSize(10);
-  valueRange.setFontColor(darkColors.accent);
+  // Format value column - brand green, bold, centered
+  const valueRange = sheet.getRange(2, 2, numRows - 1, 1);
+  valueRange.setFontColor(SHEET_COLORS.brandGreen);
   valueRange.setFontWeight('bold');
   valueRange.setHorizontalAlignment('center');
-  valueRange.setVerticalAlignment('middle');
 
-  // Format description column - muted gray italic
-  const descRange = sheet.getRange(2, 3, defaultSettings.length - 1, 1);
-  descRange.setFontFamily('Arial');
+  // Format description column - gray italic
+  const descRange = sheet.getRange(2, 3, numRows - 1, 1);
   descRange.setFontSize(9);
-  descRange.setFontColor(darkColors.muted);
+  descRange.setFontColor(SHEET_COLORS.inkGray);
   descRange.setFontStyle('italic');
-  descRange.setVerticalAlignment('middle');
-
-  // Add subtle borders
-  const tableRange = sheet.getRange(1, 1, defaultSettings.length, 3);
-  tableRange.setBorder(true, true, true, true, true, true, darkColors.border, SpreadsheetApp.BorderStyle.SOLID);
 
   // Set column widths
   sheet.setColumnWidth(1, 200);  // Setting Name
@@ -7011,8 +6986,15 @@ function setupSettingsSheet(ss, clearData) {
     .build();
   sheet.getRange(3, 2).setDataValidation(gstRule);
 
-  // Hide gridlines for cleaner look
-  sheet.setHiddenGridlines(true);
+  // Add dropdown validation for Yes/No settings
+  const yesNoRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Yes', 'No'], true)
+    .setAllowInvalid(false)
+    .build();
+  // Confirm Selection Dialog (row 12)
+  sheet.getRange(12, 2).setDataValidation(yesNoRule);
+  // Header Row Protection (row 13)
+  sheet.getRange(13, 2).setDataValidation(yesNoRule);
 
   Logger.log('Settings sheet ' + (isNew ? 'created' : (clearData ? 'reset' : 'updated')));
 }
