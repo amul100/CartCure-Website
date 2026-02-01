@@ -985,23 +985,16 @@ function handlePaymentConfirmation(data) {
     }
 
     // Update invoice status to "Paid?"
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const invoiceSheet = ss.getSheetByName('Invoice Log');
+    // NOTE: Must use getSheet() instead of getActiveSpreadsheet() because
+    // getActiveSpreadsheet() returns null in web app context (doPost)
+    const invoiceSheet = getSheet(SHEETS.INVOICES);
     if (!invoiceSheet) {
       throw new Error('Invoice Log sheet not found');
     }
 
-    const invoiceData = invoiceSheet.getDataRange().getValues();
-    const headers = invoiceData[0];
-    const invoiceNumCol = headers.indexOf('Invoice #');
-    const statusCol = headers.indexOf('Status');
-
-    for (let i = 1; i < invoiceData.length; i++) {
-      if (invoiceData[i][invoiceNumCol] === invoiceNumber) {
-        invoiceSheet.getRange(i + 1, statusCol + 1).setValue('Paid?');
-        break;
-      }
-    }
+    // Use _rowIndex from getInvoiceByNumber and column helper for efficiency
+    const statusCol = getColIndex('INVOICES', 'Status');
+    invoiceSheet.getRange(invoice._rowIndex, statusCol).setValue('Paid?');
 
     // Log activity
     const clientName = invoice['Client Name'] || 'Unknown';
