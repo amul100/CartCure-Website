@@ -927,9 +927,18 @@ function handleQuoteAcceptance(data) {
  * Called when client clicks "I have paid" button in invoice reminder email
  */
 function handlePaymentConfirmation(data) {
+  // DEBUG: Create early debug file to trace issues
+  const debugLog = [];
+  const debugTs = new Date().toISOString().replace(/[:.]/g, '-');
+  debugLog.push('=== handlePaymentConfirmation DEBUG ===');
+  debugLog.push('Timestamp: ' + debugTs);
+  debugLog.push('Data received: ' + JSON.stringify(data));
+
   try {
     const invoiceNumber = (data.invoiceNumber || '').trim().toUpperCase();
     const jobNumber = (data.jobNumber || '').trim().toUpperCase();
+    debugLog.push('Invoice Number (parsed): ' + invoiceNumber);
+    debugLog.push('Job Number (parsed): ' + jobNumber);
 
     if (!invoiceNumber) {
       return ContentService
@@ -941,9 +950,13 @@ function handlePaymentConfirmation(data) {
     }
 
     // Get the invoice
+    debugLog.push('Calling getInvoiceByNumber...');
     const invoice = getInvoiceByNumber(invoiceNumber);
+    debugLog.push('getInvoiceByNumber returned: ' + (invoice ? 'found' : 'null'));
 
     if (!invoice) {
+      debugLog.push('ERROR: Invoice not found');
+      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -952,10 +965,16 @@ function handlePaymentConfirmation(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    debugLog.push('Invoice _rowIndex: ' + invoice._rowIndex);
+    debugLog.push('Invoice Status: ' + invoice['Status']);
+    debugLog.push('Invoice Client: ' + invoice['Client Name']);
+
     const currentStatus = invoice['Status'];
 
     // Check current status
     if (currentStatus === 'Paid') {
+      debugLog.push('Status already Paid - returning alreadyPaid');
+      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -966,6 +985,8 @@ function handlePaymentConfirmation(data) {
     }
 
     if (currentStatus === 'Paid?') {
+      debugLog.push('Status already Paid? - returning alreadyMarked');
+      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -976,6 +997,8 @@ function handlePaymentConfirmation(data) {
     }
 
     if (currentStatus === 'Draft' || currentStatus === 'Cancelled') {
+      debugLog.push('Status is Draft/Cancelled - cannot mark paid');
+      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -987,29 +1010,48 @@ function handlePaymentConfirmation(data) {
     // Update invoice status to "Paid?"
     // NOTE: Must use getSheet() instead of getActiveSpreadsheet() because
     // getActiveSpreadsheet() returns null in web app context (doPost)
+    debugLog.push('Getting invoice sheet...');
     const invoiceSheet = getSheet(SHEETS.INVOICES);
+    debugLog.push('Invoice sheet: ' + (invoiceSheet ? invoiceSheet.getName() : 'null'));
     if (!invoiceSheet) {
+      debugLog.push('ERROR: Invoice sheet not found');
+      savePaymentDebugFile(debugTs, debugLog);
       throw new Error('Invoice Log sheet not found');
     }
 
     // Use _rowIndex from getInvoiceByNumber and column helper for efficiency
     const statusCol = getColIndex('INVOICES', 'Status');
+    debugLog.push('Status column index: ' + statusCol);
+    debugLog.push('About to update row ' + invoice._rowIndex + ', column ' + statusCol + ' to "Paid?"');
+
     invoiceSheet.getRange(invoice._rowIndex, statusCol).setValue('Paid?');
+    debugLog.push('setValue completed');
+
+    // Verify the update
+    const verifyValue = invoiceSheet.getRange(invoice._rowIndex, statusCol).getValue();
+    debugLog.push('Verification read: ' + verifyValue);
 
     // Log activity
     const clientName = invoice['Client Name'] || 'Unknown';
     const total = invoice['Total'] || 0;
+    debugLog.push('Logging activity...');
     logActivity(
       'Payment Claimed',
       'Client ' + clientName + ' clicked "I have paid" for ' + invoiceNumber + ' ($' + total.toFixed(2) + ')',
       jobNumber || invoice['Job #'] || '',
       'Invoice'
     );
+    debugLog.push('Activity logged');
 
     // Send admin notification email
+    debugLog.push('Sending admin notification...');
     sendPaymentClaimedNotification(invoiceNumber, invoice);
+    debugLog.push('Admin notification sent');
 
     Logger.log('Payment confirmation received for ' + invoiceNumber);
+
+    debugLog.push('SUCCESS - returning success response');
+    savePaymentDebugFile(debugTs, debugLog);
 
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -1021,12 +1063,30 @@ function handlePaymentConfirmation(data) {
 
   } catch (error) {
     Logger.log('Error processing payment confirmation: ' + error.message);
+    debugLog.push('CATCH ERROR: ' + error.message);
+    debugLog.push('Error stack: ' + error.stack);
+    savePaymentDebugFile(debugTs, debugLog);
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
         message: 'Sorry, there was an error. Please try again or contact us directly.'
       }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Save payment confirmation debug file to Drive
+ */
+function savePaymentDebugFile(timestamp, logArray) {
+  try {
+    const folder = getOrCreateDebugFolder();
+    folder.createFile('PAYMENT_DEBUG_' + timestamp + '.txt', logArray.join('\n'));
+  } catch (e) {
+    // Fallback to Drive root if folder fails
+    try {
+      DriveApp.createFile('PAYMENT_DEBUG_' + timestamp + '.txt', logArray.join('\n'));
+    } catch (e2) { /* ignore */ }
   }
 }
 
