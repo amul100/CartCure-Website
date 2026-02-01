@@ -2424,13 +2424,18 @@ function saveToSheet(data) {
     }
 
     // Prepare the row data with Status first (set to 'New')
+    // Prefix phone with apostrophe if it starts with 0 to preserve leading zeros in Google Sheets
+    const phoneForSheet = data.phone && String(data.phone).trim().startsWith('0')
+      ? "'" + String(data.phone).trim()
+      : data.phone;
+
     const rowData = [
       'New',
       data.submissionNumber,
       data.timestamp,
       data.name,
       data.email,
-      data.phone,
+      phoneForSheet,
       data.storeUrl,
       data.message,
       data.hasVoiceNote ? 'Yes' : 'No',
@@ -3689,16 +3694,30 @@ function buildRowFromConfig(sheetKey, data) {
   }
 
   return config.map(col => {
+    let value;
     // Use provided value if exists
     if (data.hasOwnProperty(col.name)) {
-      return data[col.name];
+      value = data[col.name];
     }
     // Use default value if defined
-    if (col.hasOwnProperty('defaultValue')) {
-      return col.defaultValue;
+    else if (col.hasOwnProperty('defaultValue')) {
+      value = col.defaultValue;
     }
     // Otherwise empty string
-    return '';
+    else {
+      value = '';
+    }
+
+    // Preserve leading zeros for text-formatted columns (like phone numbers)
+    // Prefix with apostrophe to force Google Sheets to treat as text
+    if (col.format && col.format.numberFormat === '@' && value) {
+      const strValue = String(value).trim();
+      if (strValue.startsWith('0')) {
+        return "'" + strValue;
+      }
+    }
+
+    return value;
   });
 }
 
@@ -4325,6 +4344,7 @@ function buildMenu() {
       .addItem('📤 Send Invoice', 'showSendInvoiceDialog')
       .addItem('🔔 Send Invoice Reminder', 'showSendInvoiceReminderDialog')
       .addItem('✅ Mark as Paid', 'showMarkPaidDialog')
+      .addItem('❌ Mark as Not Paid', 'showMarkNotPaidDialog')
       .addSeparator()
       .addItem('⚠️ Send Overdue Invoice', 'showSendOverdueInvoiceDialog')
       .addItem('💸 Update Late Fees', 'updateAllLateFees')
@@ -4608,6 +4628,11 @@ function getValidInvoiceActions(status) {
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
       { id: 'sendOverdue', label: 'Send Overdue Notice', icon: '⚠️' },
       { id: 'markPaid', label: 'Mark as Paid', icon: '✅' }
+    ],
+    'Paid?': [
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'markPaid', label: 'Confirm Payment', icon: '✅' },
+      { id: 'markNotPaid', label: 'Mark as Not Paid', icon: '❌' }
     ],
     'Paid': [
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }
@@ -5073,6 +5098,10 @@ function executeInvoiceAction(invoiceNumber, actionId) {
 
     case 'sendOverdue':
       sendOverdueInvoice(invoiceNumber);
+      return { success: true };
+
+    case 'markNotPaid':
+      markInvoiceAsNotPaid(invoiceNumber);
       return { success: true };
 
     default:
@@ -16276,7 +16305,7 @@ function ensureAutoTriggersExist() {
  */
 function showMarkPaidDialog() {
   const selectedInvoice = getSelectedInvoiceNumber();
-  const invoices = getInvoicesByStatus(['Sent', 'Overdue']);
+  const invoices = getInvoicesByStatus(['Sent', 'Overdue', 'Paid?']);
 
   // Use context-aware dialog for consistent behavior
   showContextAwareDialogForMarkPaid(
@@ -16285,6 +16314,114 @@ function showMarkPaidDialog() {
     'Invoice',
     selectedInvoice
   );
+}
+
+/**
+ * Show dialog to mark invoice as NOT paid
+ * Only shows invoices with "Paid?" status (client claimed payment but not verified)
+ */
+function showMarkNotPaidDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const selectedInvoice = getSelectedInvoiceNumber();
+  const invoices = getInvoicesByStatus(['Paid?']);
+
+  // If no Paid? invoices exist
+  if (!invoices || invoices.length === 0) {
+    ui.alert('No Pending Verification',
+      'There are no invoices awaiting payment verification.\n\n' +
+      'This action is only available for invoices with "Paid?" status ' +
+      '(where clients have clicked "I Have Paid" but payment hasn\'t been verified yet).',
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // If we have a context-selected invoice with Paid? status, confirm directly
+  if (selectedInvoice) {
+    const isValidSelection = invoices.some(inv => inv.number === selectedInvoice);
+    if (isValidSelection) {
+      const selectedInv = invoices.find(inv => inv.number === selectedInvoice);
+      const response = ui.alert(
+        'Confirm: Mark as Not Paid',
+        'Invoice ' + selectedInvoice + ' (' + selectedInv.clientName + ') - ' + formatCurrency(selectedInv.total) + '\n\n' +
+        'This will revert the status from "Paid?" back to "Sent" or "Overdue" depending on the due date.\n\n' +
+        'Are you sure this payment has NOT been received?',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (response === ui.Button.YES) {
+        markInvoiceAsNotPaid(selectedInvoice);
+        return;
+      }
+    }
+  }
+
+  // Show dropdown dialog for selection
+  if (invoices.length === 1) {
+    // Only one invoice - confirm directly
+    const inv = invoices[0];
+    const response = ui.alert(
+      'Confirm: Mark as Not Paid',
+      'Invoice ' + inv.number + ' (' + inv.clientName + ') - ' + formatCurrency(inv.total) + '\n\n' +
+      'This will revert the status from "Paid?" back to "Sent" or "Overdue" depending on the due date.\n\n' +
+      'Are you sure this payment has NOT been received?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response === ui.Button.YES) {
+      markInvoiceAsNotPaid(inv.number);
+    }
+    return;
+  }
+
+  // Multiple invoices - show selection dialog
+  const optionsHtml = invoices.map(inv =>
+    '<option value="' + inv.number + '">' + inv.number + ' - ' + inv.clientName + ' (' + formatCurrency(inv.total) + ')</option>'
+  ).join('');
+
+  const html = HtmlService.createHtmlOutput(`
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+      .container { max-width: 400px; margin: 0 auto; }
+      h3 { color: #333; margin-bottom: 15px; }
+      .info { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; }
+      select { width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px; }
+      .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px; }
+      .btn-danger { background: #dc3545; color: white; }
+      .btn-secondary { background: #6c757d; color: white; }
+      .btn:hover { opacity: 0.9; }
+    </style>
+    <div class="container">
+      <h3>Mark Invoice as Not Paid</h3>
+      <div class="info">
+        ⚠️ This will revert the invoice status from "Paid?" to "Sent" or "Overdue" based on the due date.
+        Late fees will be recalculated from the original due date.
+      </div>
+      <select id="invoiceSelect">
+        <option value="">-- Select Invoice --</option>
+        ${optionsHtml}
+      </select>
+      <div>
+        <button class="btn btn-danger" onclick="submit()">Mark as Not Paid</button>
+        <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      </div>
+    </div>
+    <script>
+      function submit() {
+        const invoiceNumber = document.getElementById('invoiceSelect').value;
+        if (!invoiceNumber) {
+          alert('Please select an invoice');
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(() => google.script.host.close())
+          .markInvoiceAsNotPaid(invoiceNumber);
+      }
+    </script>
+  `)
+    .setWidth(450)
+    .setHeight(280);
+
+  ui.showModalDialog(html, 'Mark as Not Paid');
 }
 
 /**
@@ -16864,6 +17001,93 @@ function markInvoicePaid(invoiceNumber, method, reference) {
   // Refresh dashboard and analytics to show updated data
   refreshDashboard(true);
   refreshAnalytics();
+}
+
+/**
+ * Mark invoice as NOT paid - reverts "Paid?" status to Sent or Overdue
+ * Used when admin verifies that client hasn't actually paid
+ * The overdue days calculation is based on the original due date, so time spent
+ * in "Paid?" status still counts towards late fees when reverted to Overdue
+ */
+function markInvoiceAsNotPaid(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    ui.alert('Not Found', 'Invoice ' + invoiceNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Verify the invoice is in "Paid?" status
+  if (invoice['Status'] !== 'Paid?') {
+    ui.alert('Invalid Status',
+      'Invoice ' + invoiceNumber + ' is not in "Paid?" status.\n\nCurrent status: ' + invoice['Status'],
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // Calculate if the invoice is overdue based on due date
+  const dueDate = invoice['Due Date'];
+  let isOverdue = false;
+
+  if (dueDate) {
+    let due;
+    if (dueDate instanceof Date) {
+      due = dueDate;
+    } else {
+      // Parse DD/MM/YYYY format
+      const parts = dueDate.split('/');
+      if (parts.length === 3) {
+        due = new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+    }
+
+    if (due) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      due.setHours(0, 0, 0, 0);
+      isOverdue = now > due;
+    }
+  }
+
+  const newStatus = isOverdue ? 'Overdue' : 'Sent';
+  const jobNumber = invoice['Job #'];
+
+  // Update invoice status
+  updateInvoiceField(invoiceNumber, 'Status', newStatus);
+
+  // Log activity
+  const clientName = invoice['Client Name'] || 'Unknown';
+  const total = invoice['Total'] || 0;
+  logActivity(
+    'Payment Rejected',
+    'Invoice ' + invoiceNumber + ' for ' + clientName + ' marked as NOT paid. Status reverted to ' + newStatus + '. Amount: $' + (parseFloat(total) || 0).toFixed(2),
+    jobNumber || '',
+    'Invoice'
+  );
+
+  // Also log to job activity if we have a job number
+  if (jobNumber) {
+    logJobActivity(
+      jobNumber,
+      'Payment Rejected',
+      'Client payment claim rejected',
+      'Invoice ' + invoiceNumber + ' - Status reverted to ' + newStatus,
+      '',
+      'Manual'
+    );
+  }
+
+  ui.alert('Invoice Updated',
+    'Invoice ' + invoiceNumber + ' marked as NOT paid.\n\n' +
+    'Status changed from "Paid?" to "' + newStatus + '".\n\n' +
+    (isOverdue ? 'Note: Late fees will be recalculated based on the original due date.' : ''),
+    ui.ButtonSet.OK);
+
+  Logger.log('Invoice ' + invoiceNumber + ' marked as not paid, status reverted to ' + newStatus);
+
+  // Refresh dashboard
+  refreshDashboard(true);
 }
 
 // ============================================================================
