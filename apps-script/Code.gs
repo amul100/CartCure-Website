@@ -927,18 +927,9 @@ function handleQuoteAcceptance(data) {
  * Called when client clicks "I have paid" button in invoice reminder email
  */
 function handlePaymentConfirmation(data) {
-  // DEBUG: Create early debug file to trace issues
-  const debugLog = [];
-  const debugTs = new Date().toISOString().replace(/[:.]/g, '-');
-  debugLog.push('=== handlePaymentConfirmation DEBUG ===');
-  debugLog.push('Timestamp: ' + debugTs);
-  debugLog.push('Data received: ' + JSON.stringify(data));
-
   try {
     const invoiceNumber = (data.invoiceNumber || '').trim().toUpperCase();
     const jobNumber = (data.jobNumber || '').trim().toUpperCase();
-    debugLog.push('Invoice Number (parsed): ' + invoiceNumber);
-    debugLog.push('Job Number (parsed): ' + jobNumber);
 
     if (!invoiceNumber) {
       return ContentService
@@ -950,13 +941,9 @@ function handlePaymentConfirmation(data) {
     }
 
     // Get the invoice
-    debugLog.push('Calling getInvoiceByNumber...');
     const invoice = getInvoiceByNumber(invoiceNumber);
-    debugLog.push('getInvoiceByNumber returned: ' + (invoice ? 'found' : 'null'));
 
     if (!invoice) {
-      debugLog.push('ERROR: Invoice not found');
-      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -965,16 +952,10 @@ function handlePaymentConfirmation(data) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    debugLog.push('Invoice _rowIndex: ' + invoice._rowIndex);
-    debugLog.push('Invoice Status: ' + invoice['Status']);
-    debugLog.push('Invoice Client: ' + invoice['Client Name']);
-
     const currentStatus = invoice['Status'];
 
     // Check current status
     if (currentStatus === 'Paid') {
-      debugLog.push('Status already Paid - returning alreadyPaid');
-      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -985,8 +966,6 @@ function handlePaymentConfirmation(data) {
     }
 
     if (currentStatus === 'Paid?') {
-      debugLog.push('Status already Paid? - returning alreadyMarked');
-      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -997,8 +976,6 @@ function handlePaymentConfirmation(data) {
     }
 
     if (currentStatus === 'Draft' || currentStatus === 'Cancelled') {
-      debugLog.push('Status is Draft/Cancelled - cannot mark paid');
-      savePaymentDebugFile(debugTs, debugLog);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: false,
@@ -1010,48 +987,29 @@ function handlePaymentConfirmation(data) {
     // Update invoice status to "Paid?"
     // NOTE: Must use getSheet() instead of getActiveSpreadsheet() because
     // getActiveSpreadsheet() returns null in web app context (doPost)
-    debugLog.push('Getting invoice sheet...');
     const invoiceSheet = getSheet(SHEETS.INVOICES);
-    debugLog.push('Invoice sheet: ' + (invoiceSheet ? invoiceSheet.getName() : 'null'));
     if (!invoiceSheet) {
-      debugLog.push('ERROR: Invoice sheet not found');
-      savePaymentDebugFile(debugTs, debugLog);
       throw new Error('Invoice Log sheet not found');
     }
 
     // Use _rowIndex from getInvoiceByNumber and column helper for efficiency
     const statusCol = getColIndex('INVOICES', 'Status');
-    debugLog.push('Status column index: ' + statusCol);
-    debugLog.push('About to update row ' + invoice._rowIndex + ', column ' + statusCol + ' to "Paid?"');
-
     invoiceSheet.getRange(invoice._rowIndex, statusCol).setValue('Paid?');
-    debugLog.push('setValue completed');
-
-    // Verify the update
-    const verifyValue = invoiceSheet.getRange(invoice._rowIndex, statusCol).getValue();
-    debugLog.push('Verification read: ' + verifyValue);
 
     // Log activity
     const clientName = invoice['Client Name'] || 'Unknown';
     const total = invoice['Total'] || 0;
-    debugLog.push('Logging activity...');
     logActivity(
       'Payment Claimed',
       'Client ' + clientName + ' clicked "I have paid" for ' + invoiceNumber + ' ($' + total.toFixed(2) + ')',
       jobNumber || invoice['Job #'] || '',
       'Invoice'
     );
-    debugLog.push('Activity logged');
 
     // Send admin notification email
-    debugLog.push('Sending admin notification...');
     sendPaymentClaimedNotification(invoiceNumber, invoice);
-    debugLog.push('Admin notification sent');
 
     Logger.log('Payment confirmation received for ' + invoiceNumber);
-
-    debugLog.push('SUCCESS - returning success response');
-    savePaymentDebugFile(debugTs, debugLog);
 
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -1063,30 +1021,12 @@ function handlePaymentConfirmation(data) {
 
   } catch (error) {
     Logger.log('Error processing payment confirmation: ' + error.message);
-    debugLog.push('CATCH ERROR: ' + error.message);
-    debugLog.push('Error stack: ' + error.stack);
-    savePaymentDebugFile(debugTs, debugLog);
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
         message: 'Sorry, there was an error. Please try again or contact us directly.'
       }))
       .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-/**
- * Save payment confirmation debug file to Drive
- */
-function savePaymentDebugFile(timestamp, logArray) {
-  try {
-    const folder = getOrCreateDebugFolder();
-    folder.createFile('PAYMENT_DEBUG_' + timestamp + '.txt', logArray.join('\n'));
-  } catch (e) {
-    // Fallback to Drive root if folder fails
-    try {
-      DriveApp.createFile('PAYMENT_DEBUG_' + timestamp + '.txt', logArray.join('\n'));
-    } catch (e2) { /* ignore */ }
   }
 }
 
@@ -5735,25 +5675,31 @@ function resetColumnWidthsInternal(ss) {
 function backupSheetData(ss) {
   const backup = {};
 
-  // Back up Submissions data
+  // Back up Submissions data (include headers for column mapping during restore)
   const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
   if (submissionsSheet && submissionsSheet.getLastRow() > 1) {
-    backup.submissions = submissionsSheet.getRange(2, 1, submissionsSheet.getLastRow() - 1, submissionsSheet.getLastColumn()).getValues();
-    Logger.log('Backed up ' + backup.submissions.length + ' submission rows');
+    const subLastCol = submissionsSheet.getLastColumn();
+    backup.submissionHeaders = submissionsSheet.getRange(1, 1, 1, subLastCol).getValues()[0];
+    backup.submissions = submissionsSheet.getRange(2, 1, submissionsSheet.getLastRow() - 1, subLastCol).getValues();
+    Logger.log('Backed up ' + backup.submissions.length + ' submission rows with ' + backup.submissionHeaders.length + ' columns');
   }
 
-  // Back up Jobs data
+  // Back up Jobs data (include headers for column mapping during restore)
   const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
   if (jobsSheet && jobsSheet.getLastRow() > 1) {
-    backup.jobs = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, jobsSheet.getLastColumn()).getValues();
-    Logger.log('Backed up ' + backup.jobs.length + ' job rows');
+    const jobsLastCol = jobsSheet.getLastColumn();
+    backup.jobHeaders = jobsSheet.getRange(1, 1, 1, jobsLastCol).getValues()[0];
+    backup.jobs = jobsSheet.getRange(2, 1, jobsSheet.getLastRow() - 1, jobsLastCol).getValues();
+    Logger.log('Backed up ' + backup.jobs.length + ' job rows with ' + backup.jobHeaders.length + ' columns');
   }
 
-  // Back up Invoice Log data
+  // Back up Invoice Log data (include headers for column mapping during restore)
   const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
   if (invoiceSheet && invoiceSheet.getLastRow() > 1) {
-    backup.invoices = invoiceSheet.getRange(2, 1, invoiceSheet.getLastRow() - 1, invoiceSheet.getLastColumn()).getValues();
-    Logger.log('Backed up ' + backup.invoices.length + ' invoice rows');
+    const lastCol = invoiceSheet.getLastColumn();
+    backup.invoiceHeaders = invoiceSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    backup.invoices = invoiceSheet.getRange(2, 1, invoiceSheet.getLastRow() - 1, lastCol).getValues();
+    Logger.log('Backed up ' + backup.invoices.length + ' invoice rows with ' + backup.invoiceHeaders.length + ' columns');
   }
 
   // Back up Settings data
@@ -5763,11 +5709,13 @@ function backupSheetData(ss) {
     Logger.log('Backed up settings data');
   }
 
-  // Back up Testimonials data
+  // Back up Testimonials data (include headers for column mapping during restore)
   const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
   if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
-    backup.testimonials = testimonialsSheet.getRange(2, 1, testimonialsSheet.getLastRow() - 1, testimonialsSheet.getLastColumn()).getValues();
-    Logger.log('Backed up ' + backup.testimonials.length + ' testimonial rows');
+    const testLastCol = testimonialsSheet.getLastColumn();
+    backup.testimonialHeaders = testimonialsSheet.getRange(1, 1, 1, testLastCol).getValues()[0];
+    backup.testimonials = testimonialsSheet.getRange(2, 1, testimonialsSheet.getLastRow() - 1, testLastCol).getValues();
+    Logger.log('Backed up ' + backup.testimonials.length + ' testimonial rows with ' + backup.testimonialHeaders.length + ' columns');
   }
 
   return backup;
@@ -5816,30 +5764,52 @@ function deleteAllSheets(ss) {
  * @param {Object} backup - The backed up data object
  */
 function restoreSheetData(ss, backup) {
-  // Restore Submissions data
+  // Helper function to map data from old column order to new column order
+  function mapDataToNewColumns(oldHeaders, oldData, newHeaders) {
+    return oldData.map(row => {
+      return newHeaders.map(newCol => {
+        const oldIndex = oldHeaders.indexOf(newCol);
+        if (oldIndex >= 0 && oldIndex < row.length) {
+          return row[oldIndex];
+        }
+        return ''; // New column that didn't exist in backup
+      });
+    });
+  }
+
+  // Restore Submissions data with column mapping
   if (backup.submissions && backup.submissions.length > 0) {
     const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
     if (submissionsSheet) {
-      submissionsSheet.getRange(2, 1, backup.submissions.length, backup.submissions[0].length).setValues(backup.submissions);
-      Logger.log('Restored ' + backup.submissions.length + ' submission rows');
+      const newHeaders = submissionsSheet.getRange(1, 1, 1, submissionsSheet.getLastColumn()).getValues()[0];
+      const oldHeaders = backup.submissionHeaders || newHeaders; // Fallback for backwards compatibility
+      const mappedData = mapDataToNewColumns(oldHeaders, backup.submissions, newHeaders);
+      submissionsSheet.getRange(2, 1, mappedData.length, newHeaders.length).setValues(mappedData);
+      Logger.log('Restored ' + mappedData.length + ' submission rows (mapped from ' + oldHeaders.length + ' to ' + newHeaders.length + ' columns)');
     }
   }
 
-  // Restore Jobs data
+  // Restore Jobs data with column mapping
   if (backup.jobs && backup.jobs.length > 0) {
     const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
     if (jobsSheet) {
-      jobsSheet.getRange(2, 1, backup.jobs.length, backup.jobs[0].length).setValues(backup.jobs);
-      Logger.log('Restored ' + backup.jobs.length + ' job rows');
+      const newHeaders = jobsSheet.getRange(1, 1, 1, jobsSheet.getLastColumn()).getValues()[0];
+      const oldHeaders = backup.jobHeaders || newHeaders; // Fallback for backwards compatibility
+      const mappedData = mapDataToNewColumns(oldHeaders, backup.jobs, newHeaders);
+      jobsSheet.getRange(2, 1, mappedData.length, newHeaders.length).setValues(mappedData);
+      Logger.log('Restored ' + mappedData.length + ' job rows (mapped from ' + oldHeaders.length + ' to ' + newHeaders.length + ' columns)');
     }
   }
 
-  // Restore Invoice Log data
+  // Restore Invoice Log data with column mapping
   if (backup.invoices && backup.invoices.length > 0) {
     const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
     if (invoiceSheet) {
-      invoiceSheet.getRange(2, 1, backup.invoices.length, backup.invoices[0].length).setValues(backup.invoices);
-      Logger.log('Restored ' + backup.invoices.length + ' invoice rows');
+      const newHeaders = invoiceSheet.getRange(1, 1, 1, invoiceSheet.getLastColumn()).getValues()[0];
+      const oldHeaders = backup.invoiceHeaders || newHeaders; // Fallback for backwards compatibility
+      const mappedData = mapDataToNewColumns(oldHeaders, backup.invoices, newHeaders);
+      invoiceSheet.getRange(2, 1, mappedData.length, newHeaders.length).setValues(mappedData);
+      Logger.log('Restored ' + mappedData.length + ' invoice rows (mapped from ' + oldHeaders.length + ' to ' + newHeaders.length + ' columns)');
     }
   }
 
@@ -5855,12 +5825,15 @@ function restoreSheetData(ss, backup) {
     }
   }
 
-  // Restore Testimonials data
+  // Restore Testimonials data with column mapping
   if (backup.testimonials && backup.testimonials.length > 0) {
     const testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
     if (testimonialsSheet) {
-      testimonialsSheet.getRange(2, 1, backup.testimonials.length, backup.testimonials[0].length).setValues(backup.testimonials);
-      Logger.log('Restored ' + backup.testimonials.length + ' testimonial rows');
+      const newHeaders = testimonialsSheet.getRange(1, 1, 1, testimonialsSheet.getLastColumn()).getValues()[0];
+      const oldHeaders = backup.testimonialHeaders || newHeaders; // Fallback for backwards compatibility
+      const mappedData = mapDataToNewColumns(oldHeaders, backup.testimonials, newHeaders);
+      testimonialsSheet.getRange(2, 1, mappedData.length, newHeaders.length).setValues(mappedData);
+      Logger.log('Restored ' + mappedData.length + ' testimonial rows (mapped from ' + oldHeaders.length + ' to ' + newHeaders.length + ' columns)');
     }
   }
 }
