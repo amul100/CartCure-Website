@@ -889,6 +889,7 @@ function handleQuoteAcceptance(data) {
       total: parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0,
       dueDate: formatNZDate(dueDate),
       turnaround: turnaround,
+      jobDescription: job['Job Description'] || '',
       timestamp: now.toISOString()
     };
 
@@ -1237,6 +1238,7 @@ function processQuoteAcceptanceTask(task) {
   const total = task.total;
   const dueDate = task.dueDate;
   const turnaround = task.turnaround;
+  const jobDescription = task.jobDescription || '';
 
   // Track which subtasks need to run (on retry, only run failed ones)
   const pendingSubtasks = task.pendingSubtasks || ['signature', 'activityLog', 'clientUpdate', 'depositInvoice', 'adminEmail', 'clientEmail'];
@@ -1446,7 +1448,8 @@ Use CartCure > Jobs > Start Work when you begin.`;
         dueDate: dueDate,
         businessName: businessName,
         gstFooterLine: gstFooterLine,
-        paymentDetailsHtml: paymentDetailsHtml
+        paymentDetailsHtml: paymentDetailsHtml,
+        jobDescription: jobDescription
       });
 
       const htmlBody = wrapEmailHtml(bodyContent);
