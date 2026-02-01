@@ -11573,6 +11573,11 @@ function sendInvoiceEmailSilent(invoiceNumber) {
     // GST footer line
     const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+    // Build "I have paid" URL
+    const paymentReceivedUrl = 'https://cartcure.co.nz/payment-received.html?' +
+      'invoice=' + encodeURIComponent(invoiceNumber) +
+      '&job=' + encodeURIComponent(jobNumber);
+
     // Render template based on invoice type
     let bodyContent;
     if (invoiceType === 'Balance' && depositInfo) {
@@ -11591,7 +11596,8 @@ function sendInvoiceEmailSilent(invoiceNumber) {
         pricingRowsHtml: pricingRowsHtml,
         bankDetailsHtml: bankDetailsHtml,
         gstFooterLine: gstFooterLine,
-        businessName: businessName
+        businessName: businessName,
+        paymentReceivedUrl: paymentReceivedUrl
       });
     } else {
       // Use standard invoice template for Deposit and Full invoices
@@ -11611,7 +11617,8 @@ function sendInvoiceEmailSilent(invoiceNumber) {
         depositNoticeHtml: depositNoticeHtml,
         bankDetailsHtml: bankDetailsHtml,
         gstFooterLine: gstFooterLine,
-        businessName: businessName
+        businessName: businessName,
+        paymentReceivedUrl: paymentReceivedUrl
       });
     }
 
@@ -15102,6 +15109,11 @@ function sendInvoiceEmail(invoiceNumber) {
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+  // Build "I have paid" URL
+  const paymentReceivedUrl = 'https://cartcure.co.nz/payment-received.html?' +
+    'invoice=' + encodeURIComponent(invoiceNumber) +
+    '&job=' + encodeURIComponent(jobNumber);
+
   // Render template based on invoice type
   let bodyContent;
   if (invoiceType === 'Balance' && depositInfo) {
@@ -15120,7 +15132,8 @@ function sendInvoiceEmail(invoiceNumber) {
       pricingRowsHtml: pricingRowsHtml,
       bankDetailsHtml: bankDetailsHtml,
       gstFooterLine: gstFooterLine,
-      businessName: businessName
+      businessName: businessName,
+      paymentReceivedUrl: paymentReceivedUrl
     });
   } else {
     // Use standard invoice template
@@ -15136,7 +15149,8 @@ function sendInvoiceEmail(invoiceNumber) {
       depositNoticeHtml: '', // No deposit notice for standard invoices
       bankDetailsHtml: bankDetailsHtml,
       gstFooterLine: gstFooterLine,
-      businessName: businessName
+      businessName: businessName,
+      paymentReceivedUrl: paymentReceivedUrl
     });
   }
 

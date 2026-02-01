@@ -321,7 +321,7 @@
         <ul>
             <li><strong>Jobs:</strong> Shows actions like "Send Quote", "Start Work", "Mark Complete" based on job status</li>
             <li><strong>Submissions:</strong> Shows "Create Job", "Decline", or "Mark as Spam" for new submissions</li>
-            <li><strong>Invoices:</strong> Shows "View", "Send", "Send Reminder", or "Mark as Paid" based on invoice status</li>
+            <li><strong>Invoices:</strong> Shows "View", "Send", "Send Reminder", "Mark as Paid", or "Mark as Not Paid" based on invoice status. "Paid?" status invoices show both "Confirm Payment" and "Mark as Not Paid" options</li>
         </ul>
     </li>
     <li><strong>Always Available Actions:</strong> "View Activity Log" and "Add Note" are always available for jobs</li>
@@ -993,6 +993,38 @@
     This encourages satisfied customers to leave testimonials while the positive experience is fresh!
 </div>
 
+<h4>Client-Reported Payments ("I Have Paid" Button)</h4>
+<p>Invoice reminder and overdue emails include an <strong>"I Have Paid"</strong> button that clients can click to notify you of payment. When a client clicks this button:</p>
+<ol>
+    <li>The invoice status changes to <strong>"Paid?"</strong> (pending verification)</li>
+    <li>You receive an email notification that the client claims to have paid</li>
+    <li>Late fees are <strong>frozen</strong> while in "Paid?" status (no new fees accrue)</li>
+    <li>The invoice appears in the "Mark as Paid" dialog for easy confirmation</li>
+</ol>
+
+<h4>Verifying Client-Reported Payments</h4>
+<p>When you see invoices with "Paid?" status, verify the payment in your bank account:</p>
+
+<p><strong>If payment is confirmed:</strong></p>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Mark as Paid</strong></li>
+    <li>Select the "Paid?" invoice and choose "Confirm Payment"</li>
+    <li>Enter payment method and reference</li>
+    <li>Receipt is sent to client as normal</li>
+</ol>
+
+<p><strong>If payment is NOT received:</strong></p>
+<ol>
+    <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Mark as Not Paid</strong></li>
+    <li>Select the "Paid?" invoice</li>
+    <li>Status reverts to "Sent" or "Overdue" based on the due date</li>
+    <li>Late fees resume calculating from the <strong>original due date</strong> (time in "Paid?" status still counts)</li>
+</ol>
+
+<div class="warning">
+    <strong>Important:</strong> The "Paid?" status freezes late fee calculations while you verify payment. However, if you mark the invoice as "Not Paid", late fees are recalculated from the original due date - the time spent in "Paid?" status is <strong>not</strong> excluded from overdue days.
+</div>
+
 <h3>Late Payment Fees</h3>
 <p>Per the Terms of Service, late fees apply to overdue invoices:</p>
 <ul>
@@ -1085,7 +1117,7 @@
     <strong>Invoice Log Columns (20 columns):</strong> The Invoice Log sheet includes:
     <ul>
         <li><strong>Actions</strong> - Click ☰ for quick actions</li>
-        <li><strong>Status</strong> - Draft, Sent, Paid, Overdue, or Cancelled</li>
+        <li><strong>Status</strong> - Draft, Sent, Paid, Paid?, Overdue, or Cancelled</li>
         <li><strong>Invoice #</strong> - Unique invoice identifier (INV-WORD-XXX)</li>
         <li><strong>Job #</strong> - Linked job number</li>
         <li><strong>Client Name, Email, Phone</strong> - Client contact info</li>
@@ -1639,6 +1671,10 @@
         <tr>
             <td>Mark Paid</td>
             <td>CartCure &gt; Invoices &gt; Mark as Paid</td>
+        </tr>
+        <tr>
+            <td>Mark Not Paid</td>
+            <td>CartCure &gt; Invoices &gt; Mark as Not Paid</td>
         </tr>
         <tr>
             <td>Send Overdue Invoice</td>
