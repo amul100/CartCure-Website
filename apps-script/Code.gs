@@ -15330,6 +15330,11 @@ function renderInvoiceEmailPreview(invoiceNumber) {
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
 
+  // Build "I have paid" URL
+  const paymentReceivedUrl = 'https://cartcure.co.nz/payment-received.html?' +
+    'invoice=' + encodeURIComponent(invoiceNumber) +
+    '&job=' + encodeURIComponent(jobNumber);
+
   // Render template based on invoice type
   let bodyContent;
   if (invoiceType === 'Balance' && depositInfo) {
@@ -15347,7 +15352,8 @@ function renderInvoiceEmailPreview(invoiceNumber) {
       pricingRowsHtml: pricingRowsHtml,
       bankDetailsHtml: bankDetailsHtml,
       gstFooterLine: gstFooterLine,
-      businessName: businessName
+      businessName: businessName,
+      paymentReceivedUrl: paymentReceivedUrl
     });
   } else {
     bodyContent = renderEmailTemplate('email-invoice', {
@@ -15362,7 +15368,8 @@ function renderInvoiceEmailPreview(invoiceNumber) {
       depositNoticeHtml: '',
       bankDetailsHtml: bankDetailsHtml,
       gstFooterLine: gstFooterLine,
-      businessName: businessName
+      businessName: businessName,
+      paymentReceivedUrl: paymentReceivedUrl
     });
   }
 
@@ -18252,7 +18259,8 @@ function sendAllTestEmails() {
       depositNoticeHtml: '',
       bankDetailsHtml: 'Bank: ' + bankName + '<br>Account: ' + bankAccount + '<br>',
       gstFooterLine: gstFooterLine,
-      businessName: businessName
+      businessName: businessName,
+      paymentReceivedUrl: 'https://cartcure.co.nz/payment-received.html?invoice=INV-TEST-001&job=J-TEST-001'
     });
     GmailApp.sendEmail(testEmail, '[TEST] Invoice INV-TEST-001 from CartCure', 'Test invoice email', {
       htmlBody: wrapEmailHtml(invoiceBody),
