@@ -17112,24 +17112,14 @@ function markInvoiceAsNotPaid(invoiceNumber) {
   // Log activity
   const clientName = invoice['Client Name'] || 'Unknown';
   const total = invoice['Total'] || 0;
-  logActivity(
-    'Payment Rejected',
-    'Invoice ' + invoiceNumber + ' for ' + clientName + ' marked as NOT paid. Status reverted to ' + newStatus + '. Amount: $' + (parseFloat(total) || 0).toFixed(2),
+  logJobActivity(
     jobNumber || '',
-    'Invoice'
+    'Payment Rejected',
+    'Invoice marked as NOT paid',
+    'Invoice ' + invoiceNumber + ' for ' + clientName + ' marked as NOT paid. Status reverted to ' + newStatus + '. Amount: $' + (parseFloat(total) || 0).toFixed(2),
+    '',
+    'Manual'
   );
-
-  // Also log to job activity if we have a job number
-  if (jobNumber) {
-    logJobActivity(
-      jobNumber,
-      'Payment Rejected',
-      'Client payment claim rejected',
-      'Invoice ' + invoiceNumber + ' - Status reverted to ' + newStatus,
-      '',
-      'Manual'
-    );
-  }
 
   ui.alert('Invoice Updated',
     'Invoice ' + invoiceNumber + ' marked as NOT paid.\n\n' +
