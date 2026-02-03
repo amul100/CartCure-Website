@@ -1000,11 +1000,13 @@ function handlePaymentConfirmation(data) {
     // Log activity
     const clientName = invoice['Client Name'] || 'Unknown';
     const total = invoice['Total'] || 0;
-    logActivity(
-      'Payment Claimed',
-      'Client ' + clientName + ' clicked "I have paid" for ' + invoiceNumber + ' ($' + total.toFixed(2) + ')',
+    logJobActivity(
       jobNumber || invoice['Job #'] || '',
-      'Invoice'
+      'Payment Claimed',
+      'Client clicked "I have paid"',
+      'Client ' + clientName + ' clicked "I have paid" for ' + invoiceNumber + ' ($' + total.toFixed(2) + ')',
+      '',
+      'Auto'
     );
 
     // Send admin notification email
@@ -1042,8 +1044,10 @@ function sendPaymentClaimedNotification(invoiceNumber, invoice) {
     const clientEmail = invoice['Client Email'] || '';
     const jobNumber = invoice['Job #'] || '';
     const total = parseFloat(invoice['Total']) || 0;
-    const sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl() + '#gid=' +
-      SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Invoice Log').getSheetId();
+    // Use getSpreadsheet() helper instead of getActiveSpreadsheet() for web app context
+    const ss = getSpreadsheet();
+    const invoiceSheet = ss.getSheetByName('Invoice Log');
+    const sheetUrl = ss.getUrl() + '#gid=' + (invoiceSheet ? invoiceSheet.getSheetId() : 0);
 
     const bodyContent = renderEmailTemplate('email-client-paid-notification', {
       invoiceNumber: invoiceNumber,
