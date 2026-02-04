@@ -3,7 +3,7 @@
  * Provides offline caching and faster repeat visits
  */
 
-const CACHE_NAME = 'cartcure-v3';
+const CACHE_NAME = 'cartcure-v4';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -48,7 +48,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - stale-while-revalidate strategy
+// Fetch event - different strategies for different resource types
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
@@ -63,27 +63,55 @@ self.addEventListener('fetch', (event) => {
     // Skip Google Apps Script API calls (always need fresh data)
     if (url.hostname === 'script.google.com') return;
 
-    event.respondWith(
-        caches.match(event.request)
-            .then((cachedResponse) => {
-                // Create fetch promise for background update
-                const fetchPromise = fetch(event.request)
-                    .then((networkResponse) => {
-                        // Only cache successful responses
-                        if (networkResponse.ok) {
-                            const responseClone = networkResponse.clone();
-                            caches.open(CACHE_NAME)
-                                .then((cache) => cache.put(event.request, responseClone));
-                        }
-                        return networkResponse;
-                    })
-                    .catch(() => {
-                        // Network failed, return cached version or nothing
-                        return cachedResponse;
-                    });
+    // Determine if this is a critical resource that should use network-first
+    // CSS and HTML need fresh content to avoid layout issues
+    const isCriticalResource = url.pathname.endsWith('.css') ||
+                               url.pathname.endsWith('.html') ||
+                               url.pathname === '/' ||
+                               url.pathname === '';
 
-                // Return cached version immediately, update in background
-                return cachedResponse || fetchPromise;
-            })
-    );
+    if (isCriticalResource) {
+        // Network-first strategy for CSS/HTML: always try network, fallback to cache
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    // Cache the fresh response for offline use
+                    if (networkResponse.ok) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME)
+                            .then((cache) => cache.put(event.request, responseClone));
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // Network failed, try cache as fallback
+                    return caches.match(event.request);
+                })
+        );
+    } else {
+        // Stale-while-revalidate for images, scripts, and other assets
+        event.respondWith(
+            caches.match(event.request)
+                .then((cachedResponse) => {
+                    // Create fetch promise for background update
+                    const fetchPromise = fetch(event.request)
+                        .then((networkResponse) => {
+                            // Only cache successful responses
+                            if (networkResponse.ok) {
+                                const responseClone = networkResponse.clone();
+                                caches.open(CACHE_NAME)
+                                    .then((cache) => cache.put(event.request, responseClone));
+                            }
+                            return networkResponse;
+                        })
+                        .catch(() => {
+                            // Network failed, return cached version or nothing
+                            return cachedResponse;
+                        });
+
+                    // Return cached version immediately, update in background
+                    return cachedResponse || fetchPromise;
+                })
+        );
+    }
 });

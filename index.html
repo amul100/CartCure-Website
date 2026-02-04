@@ -100,9 +100,8 @@
         @media(max-width:768px){.menu-toggle{display:flex;flex-direction:column;gap:6px;cursor:pointer;padding:8px}.nav-links{display:none}.hero{padding:7rem 1.5rem 3rem}.hero-container{grid-template-columns:1fr}}
     </style>
 
-    <!-- Full stylesheet loaded asynchronously to avoid render blocking -->
-    <link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="styles.css"></noscript>
+    <!-- Full stylesheet - critical CSS above provides fast first paint -->
+    <link rel="stylesheet" href="styles.css">
 
     <!-- Structured Data - Organization -->
     <script type="application/ld+json">
