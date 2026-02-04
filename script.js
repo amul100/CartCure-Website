@@ -221,17 +221,7 @@
     if (elements.menuToggle && elements.navLinks) {
         elements.menuToggle.addEventListener('click', () => {
             elements.navLinks.classList.toggle('active');
-            const spans = elements.menuToggle.querySelectorAll('span');
-
-            if (elements.navLinks.classList.contains('active')) {
-                spans[0].style.transform = 'rotate(45deg) translateY(8px)';
-                spans[1].style.opacity = '0';
-                spans[2].style.transform = 'rotate(-45deg) translateY(-8px)';
-            } else {
-                spans[0].style.transform = '';
-                spans[1].style.opacity = '1';
-                spans[2].style.transform = '';
-            }
+            elements.menuToggle.classList.toggle('active');
         });
     }
 
@@ -242,10 +232,7 @@
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.addEventListener('click', () => {
                 elements.navLinks.classList.remove('active');
-                const spans = elements.menuToggle.querySelectorAll('span');
-                spans[0].style.transform = '';
-                spans[1].style.opacity = '1';
-                spans[2].style.transform = '';
+                elements.menuToggle.classList.remove('active');
             });
         });
     }
@@ -722,21 +709,35 @@
         rootMargin: '0px 0px 50px 0px'
     };
 
-    const observer = new IntersectionObserver((entries) => {
+    // Scroll reveal observer for service cards and benefit items
+    const scrollRevealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('revealed');
             }
         });
     }, observerOptions);
 
-    document.querySelectorAll('.service-card, .benefit-item').forEach((el, index) => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(30px)';
-        el.style.transition = `all 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s`;
-        observer.observe(el);
+    // Apply scroll-reveal class to cards (CSS handles the animation)
+    document.querySelectorAll('.service-card, .benefit-item').forEach((el) => {
+        el.classList.add('scroll-reveal');
+        scrollRevealObserver.observe(el);
     });
+
+    // Scroll arrow visibility observer (pauses animation when not visible for performance)
+    const scrollArrowObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.target.id === 'scrollArrow') {
+                entry.target.classList.toggle('visible', entry.isIntersecting);
+            }
+        });
+    }, { threshold: 0.1 });
+
+    if (scrollArrow) {
+        // Start visible since hero is above the fold
+        scrollArrow.classList.add('visible');
+        scrollArrowObserver.observe(scrollArrow);
+    }
 
     // ========================================================================
     // INITIALIZATION
@@ -764,6 +765,21 @@
             console.log('- Input Sanitization: DOMPurify');
             console.log('- Max Audio Duration: ' + SecurityConfig.AUDIO.MAX_DURATION_SECONDS + 's');
             console.log('- Max Audio Size: ' + (SecurityConfig.AUDIO.MAX_FILE_SIZE_BYTES / 1024 / 1024) + 'MB');
+        }
+
+        // Register service worker for offline caching and faster repeat visits
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then((registration) => {
+                    if (!IS_PRODUCTION) {
+                        console.log('Service Worker registered:', registration.scope);
+                    }
+                })
+                .catch((error) => {
+                    if (!IS_PRODUCTION) {
+                        console.warn('Service Worker registration failed:', error);
+                    }
+                });
         }
     }
 
@@ -864,15 +880,15 @@
             testimonialGrid.parentNode.appendChild(seeAllContainer);
         }
 
-        // Animate cards in
-        testimonialGrid.querySelectorAll('.testimonial-card').forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = `all 0.4s ease ${index * 0.1}s`;
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 50);
+        // Animate cards in using CSS classes (no inline styles)
+        testimonialGrid.querySelectorAll('.testimonial-card').forEach((card) => {
+            card.classList.add('fade-in-up');
+            // Use double RAF for batched style updates (ensures class is applied before animation)
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    card.classList.add('animate');
+                });
+            });
         });
     }
 
@@ -891,16 +907,15 @@
             </div>
         `;
 
-        // Animate in
+        // Animate in using CSS classes
         const comingSoon = testimonialGrid.querySelector('.testimonials-coming-soon');
         if (comingSoon) {
-            comingSoon.style.opacity = '0';
-            comingSoon.style.transform = 'translateY(20px)';
-            comingSoon.style.transition = 'all 0.5s ease';
-            setTimeout(() => {
-                comingSoon.style.opacity = '1';
-                comingSoon.style.transform = 'translateY(0)';
-            }, 50);
+            comingSoon.classList.add('fade-in-up');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    comingSoon.classList.add('animate');
+                });
+            });
         }
     }
 
@@ -942,9 +957,12 @@
         if (audioObjectUrl) {
             URL.revokeObjectURL(audioObjectUrl);
         }
-        // Disconnect IntersectionObserver to prevent memory leaks
-        if (observer) {
-            observer.disconnect();
+        // Disconnect IntersectionObservers to prevent memory leaks
+        if (scrollRevealObserver) {
+            scrollRevealObserver.disconnect();
+        }
+        if (scrollArrowObserver) {
+            scrollArrowObserver.disconnect();
         }
     });
 

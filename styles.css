@@ -49,7 +49,7 @@ header {
     z-index: 1000;
     background: var(--paper-cream);
     border-bottom: 2px solid var(--paper-border);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 8px var(--shadow-light);
 }
 
@@ -107,7 +107,7 @@ nav {
     text-decoration: none;
     font-weight: 600;
     font-size: 0.95rem;
-    transition: all 0.2s;
+    transition: color 0.2s;
     position: relative;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     letter-spacing: 0.3px;
@@ -148,7 +148,20 @@ nav {
     width: 28px;
     height: 2px;
     background: var(--ink-black);
-    transition: all 0.3s;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+/* Mobile menu toggle active state (hamburger to X) */
+.menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translateY(8px);
+}
+
+.menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translateY(-8px);
 }
 
 .menu-toggle:active {
@@ -283,7 +296,7 @@ nav {
         0 10px 30px var(--shadow-medium);
     position: relative;
     transform: rotate(-0.5deg);
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .contact-card:hover {
@@ -335,7 +348,7 @@ nav {
     border: 2px solid var(--paper-border);
     font-size: 1.05rem;
     font-family: 'Georgia', serif;
-    transition: all 0.2s;
+    transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
     background: var(--paper-cream);
     color: var(--ink-black);
     border-radius: 0;
@@ -418,7 +431,7 @@ nav {
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1148,8 +1161,13 @@ footer {
     width: 40px;
     height: 40px;
     stroke: var(--ink-gray);
-    animation: bounce 2s infinite;
+    animation: none; /* Paused by default for performance */
     filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1));
+}
+
+/* Only animate when visible (controlled by JS IntersectionObserver) */
+.scroll-arrow.visible svg {
+    animation: bounce 2s infinite;
 }
 
 @keyframes bounce {
@@ -1163,6 +1181,50 @@ footer {
         transform: translateY(10px);
     }
 }
+
+/* ========================================================================
+   ANIMATION UTILITY CLASSES (for JS-controlled animations)
+   ======================================================================== */
+
+/* Scroll reveal animation - applied to service cards and benefit items */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Staggered delays for scroll reveal (applied via CSS, no JS needed) */
+.scroll-reveal:nth-child(1) { transition-delay: 0s; }
+.scroll-reveal:nth-child(2) { transition-delay: 0.05s; }
+.scroll-reveal:nth-child(3) { transition-delay: 0.1s; }
+.scroll-reveal:nth-child(4) { transition-delay: 0.15s; }
+.scroll-reveal:nth-child(5) { transition-delay: 0.2s; }
+.scroll-reveal:nth-child(6) { transition-delay: 0.25s; }
+
+/* Fade in up animation - applied to testimonial cards */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-in-up.animate {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Staggered delays for fade-in-up */
+.fade-in-up:nth-child(1) { transition-delay: 0s; }
+.fade-in-up:nth-child(2) { transition-delay: 0.1s; }
+.fade-in-up:nth-child(3) { transition-delay: 0.2s; }
+.fade-in-up:nth-child(4) { transition-delay: 0.3s; }
+.fade-in-up:nth-child(5) { transition-delay: 0.4s; }
+.fade-in-up:nth-child(6) { transition-delay: 0.5s; }
 
 @media (max-width: 1100px) {
     .hero-container {

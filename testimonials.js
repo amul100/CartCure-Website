@@ -94,26 +94,13 @@
     if (menuToggle && navLinks) {
         menuToggle.addEventListener('click', () => {
             navLinks.classList.toggle('active');
-            const spans = menuToggle.querySelectorAll('span');
-
-            if (navLinks.classList.contains('active')) {
-                spans[0].style.transform = 'rotate(45deg) translateY(8px)';
-                spans[1].style.opacity = '0';
-                spans[2].style.transform = 'rotate(-45deg) translateY(-8px)';
-            } else {
-                spans[0].style.transform = '';
-                spans[1].style.opacity = '1';
-                spans[2].style.transform = '';
-            }
+            menuToggle.classList.toggle('active');
         });
 
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.classList.remove('active');
-                const spans = menuToggle.querySelectorAll('span');
-                spans[0].style.transform = '';
-                spans[1].style.opacity = '1';
-                spans[2].style.transform = '';
+                menuToggle.classList.remove('active');
             });
         });
     }
@@ -205,15 +192,15 @@
             testimonialGrid.appendChild(card);
         });
 
-        // Animate cards in
-        testimonialGrid.querySelectorAll('.testimonial-card').forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = `all 0.4s ease ${index * 0.1}s`;
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 50);
+        // Animate cards in using CSS classes (no inline styles)
+        testimonialGrid.querySelectorAll('.testimonial-card').forEach((card) => {
+            card.classList.add('fade-in-up');
+            // Use double RAF for batched style updates
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    card.classList.add('animate');
+                });
+            });
         });
     }
 

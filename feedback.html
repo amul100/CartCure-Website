@@ -55,7 +55,7 @@
     <noscript><img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
 
-    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="icon" type="image/png" href="CartCure_Favicon_compressed.png">
     <link rel="stylesheet" href="styles.css">
 
     <!-- Structured Data - Breadcrumb -->
@@ -442,7 +442,10 @@
     <header id="header">
         <nav>
             <a href="index.html" class="logo">
-                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+                <picture>
+                    <source srcset="CartCure_fullLogo.webp" type="image/webp">
+                    <img src="CartCure_fullLogo_compressed.jpg" alt="CartCure" class="logo-img" width="150" height="50">
+                </picture>
             </a>
         </nav>
     </header>

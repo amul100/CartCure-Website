@@ -39,7 +39,7 @@
     <link rel="canonical" href="https://cartcure.co.nz/">
 
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.facebook.com https://www.google-analytics.com; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cdn.jsdelivr.net https://www.google-analytics.com https://analytics.google.com; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.facebook.com https://www.google-analytics.com; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cdn.jsdelivr.net https://www.google-analytics.com https://analytics.google.com; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests;">
 
     <!-- Google Analytics 4 - Replace G-QCCZDEN8NX with your Measurement ID -->
     <!-- Get your ID at: https://analytics.google.com > Admin > Data Streams > Web -->
@@ -68,15 +68,41 @@
     <noscript><img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
 
-    <link rel="icon" type="image/png" href="CartCure_Favicon.png">
+    <link rel="icon" type="image/png" href="CartCure_Favicon_compressed.png" sizes="48x48">
 
     <!-- Resource Hints for Performance -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://www.googletagmanager.com">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="preload" href="CartCure_fullLogo.webp" as="image" type="image/webp" fetchpriority="high">
 
-    <link rel="stylesheet" href="styles.css">
+    <!-- Critical CSS (above-the-fold styles inlined for faster first paint) -->
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--brand-green:#2d5d3f;--paper-white:#f9f7f3;--paper-cream:#faf8f4;--paper-beige:#ece8df;--paper-border:#d4cfc3;--ink-black:#2b2b2b;--ink-gray:#5a5a5a;--accent-green:#2d5d3f;--accent-green-light:#4a7c59;--shadow-light:rgba(0,0,0,0.08);--shadow-medium:rgba(0,0,0,0.12)}
+        body{font-family:'Georgia','Garamond','Times New Roman',serif;line-height:1.7;color:var(--ink-black);background:var(--paper-beige)}
+        html{scroll-behavior:smooth}
+        header{position:fixed;top:0;width:100%;z-index:1000;background:var(--paper-cream);border-bottom:2px solid var(--paper-border);box-shadow:0 2px 8px var(--shadow-light)}
+        nav{max-width:1400px;margin:0 auto;padding:1rem 3rem;display:flex;justify-content:space-between;align-items:center}
+        .logo{display:flex;align-items:center;gap:0.5rem}
+        .logo-img{height:50px;width:auto}
+        .nav-links{display:flex;gap:3rem;list-style:none;align-items:center}
+        .nav-links a{color:var(--ink-black);text-decoration:none;font-weight:600;font-size:0.95rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+        .menu-toggle{display:none}
+        .hero{min-height:90vh;display:flex;align-items:center;padding:8rem 3rem 2rem;background:linear-gradient(135deg,rgba(45,93,63,0.03) 0%,rgba(249,247,243,0) 50%,rgba(45,93,63,0.02) 100%),var(--paper-cream);position:relative}
+        .hero-container{max-width:1400px;width:100%;margin:0 auto;display:grid;grid-template-columns:1.1fr 0.9fr;gap:0 5rem;align-items:start;position:relative;z-index:1}
+        .hero-content h1{font-size:clamp(2.8rem,5vw,4rem);font-weight:700;margin-bottom:1.5rem;line-height:1.2;color:var(--ink-black)}
+        .hero-content p{font-size:1.2rem;margin-bottom:1.25rem;color:var(--ink-gray);max-width:580px}
+        .contact-card{background:var(--paper-white);padding:2rem;border:3px solid var(--paper-border);box-shadow:8px 8px 0px rgba(45,93,63,0.08),0 10px 30px var(--shadow-medium);transform:rotate(-0.5deg)}
+        .contact-card h2{font-size:1.5rem;font-weight:700;margin-bottom:0.4rem;color:var(--ink-black)}
+        @media(max-width:768px){.menu-toggle{display:flex;flex-direction:column;gap:6px;cursor:pointer;padding:8px}.nav-links{display:none}.hero{padding:7rem 1.5rem 3rem}.hero-container{grid-template-columns:1fr}}
+    </style>
+
+    <!-- Full stylesheet loaded asynchronously to avoid render blocking -->
+    <link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="styles.css"></noscript>
 
     <!-- Structured Data - Organization -->
     <script type="application/ld+json">
@@ -85,7 +111,7 @@
         "@type": "Organization",
         "name": "CartCure",
         "url": "https://cartcure.co.nz",
-        "logo": "https://cartcure.co.nz/CartCure_fullLogo.png",
+        "logo": "https://cartcure.co.nz/CartCure_fullLogo_compressed.jpg",
         "description": "Quick Shopify fixes for New Zealand businesses. Design updates, bug fixes, and store improvements from $50.",
         "foundingDate": "2024",
         "areaServed": {
@@ -107,7 +133,7 @@
         "@context": "https://schema.org",
         "@type": "LocalBusiness",
         "name": "CartCure",
-        "image": "https://cartcure.co.nz/CartCure_fullLogo.png",
+        "image": "https://cartcure.co.nz/CartCure_fullLogo_compressed.jpg",
         "url": "https://cartcure.co.nz",
         "email": "info@cartcure.co.nz",
         "address": {
@@ -193,7 +219,10 @@
     <header id="header">
         <nav>
             <a href="index.html" class="logo">
-                <img src="CartCure_fullLogo.png" alt="CartCure" class="logo-img">
+                <picture>
+                    <source srcset="CartCure_fullLogo.webp" type="image/webp">
+                    <img src="CartCure_fullLogo_compressed.jpg" alt="CartCure" class="logo-img" width="150" height="50" fetchpriority="high">
+                </picture>
             </a>
             <ul class="nav-links" id="navLinks">
                 <li><a href="#services">Services</a></li>
