@@ -519,7 +519,8 @@
         }
 
         // Disable button and show sending state
-        button.textContent = 'Sending...';
+        const hasAudioForUpload = recordedAudioBlob !== null;
+        button.textContent = hasAudioForUpload ? 'Uploading... 0%' : 'Sending...';
         button.disabled = true;
         button.style.opacity = '0.7';
 
@@ -571,21 +572,44 @@
                 console.log('Submission number:', debugData.submissionNumber);
             }
 
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'cors',
-                cache: 'no-cache',
-                redirect: 'follow',
-                body: formBody
+            // Use XMLHttpRequest for upload progress tracking (voice notes can be large)
+            const responseText = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                // Track upload progress for voice notes
+                if (hasAudio) {
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            button.textContent = `Uploading... ${percent}%`;
+                        }
+                    });
+
+                    xhr.upload.addEventListener('load', () => {
+                        button.textContent = 'Processing...';
+                    });
+                }
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(xhr.responseText);
+                    } else {
+                        reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+                    }
+                });
+
+                xhr.addEventListener('error', () => reject(new Error('Network error')));
+                xhr.addEventListener('timeout', () => reject(new Error('Request timed out')));
+
+                xhr.open('POST', SCRIPT_URL);
+                xhr.timeout = 120000; // 2 minute timeout for large uploads
+                xhr.send(formBody);
             });
 
             // Debug logging - only in development
             if (!IS_PRODUCTION) {
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
+                console.log('Response received');
             }
-
-            const responseText = await response.text();
 
             // Parse response with error handling
             let result;
