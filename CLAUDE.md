@@ -171,6 +171,39 @@ function someFunction(data) {
 
 This ensures you get a debug file even if the function fails immediately.
 
+## Background Task System & Diagnostics
+Quote acceptance, deposit invoices, and other async operations use a background task queue processed every minute by a time-based trigger.
+
+### Diagnosing Background Task Issues
+If async operations (like deposit invoices after quote acceptance) aren't working:
+
+1. **Run diagnostics**: `CartCure > ⚙️ Settings > 🔍 Diagnose Background Tasks`
+   - Shows if trigger is installed
+   - Shows pending tasks in queue
+   - Provides instructions for checking execution logs
+
+2. **If trigger is missing**: `CartCure > ⚙️ Settings > ⏱️ Setup Background Tasks`
+
+3. **If tasks are stuck**: `CartCure > ⚙️ Settings > ▶️ Manually Process Tasks`
+
+4. **Check execution logs**: Extensions > Apps Script > Executions sidebar
+   - Look for `processBackgroundTasks` entries
+   - Check for errors in recent executions
+
+### Key Functions
+- `queueBackgroundTask(taskData)` - Adds task to queue
+- `processBackgroundTasks()` - Processes queue (runs every 1 min via trigger)
+- `processQuoteAcceptanceTask(task)` - Handles quote acceptance subtasks
+- `diagnoseBackgroundTasks()` - Shows diagnostic info
+- `manuallyProcessBackgroundTasks()` - Force processes stuck tasks
+
+### Debug Logging Added
+The quote acceptance flow logs:
+- `Quote acceptance taskData - Total: X, requiresDeposit: true/false`
+- `Deposit invoice required/NOT required for JOB-XXX (total: $X)`
+
+These appear in Apps Script execution logs.
+
 ## Apps Script Deployment
 **IMPORTANT**: After making changes to Code.gs:
 
