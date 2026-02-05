@@ -7047,7 +7047,7 @@ function executeClientStatusChangeFromMenu(newStatus, actionLabel) {
     return;
   }
 
-  const emailCol = getColIndex('CLIENTS', 'Email') - 1;
+  const emailCol = getColIndex('CLIENTS', 'Client Email') - 1;
   const data = sheet.getDataRange().getValues();
   const emails = selectedRows.map(row => data[row - 1][emailCol]).filter(e => e);
 
@@ -7094,7 +7094,7 @@ function showRecalculateClientStatsDialog() {
     return;
   }
 
-  const emailCol = getColIndex('CLIENTS', 'Email') - 1;
+  const emailCol = getColIndex('CLIENTS', 'Client Email') - 1;
   const data = sheet.getDataRange().getValues();
   const emails = selectedRows.map(row => data[row - 1][emailCol]).filter(e => e);
 
