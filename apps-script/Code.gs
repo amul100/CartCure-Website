@@ -5872,6 +5872,274 @@ function executeBatchClientAction(clientEmail, actionId) {
   }
 }
 
+/**
+ * Show a batch action confirmation dialog for menu-triggered actions
+ * Used when user selects multiple rows and uses a menu action
+ * @param {string} entityType - Type of entity (job, submission, invoice, client)
+ * @param {Array<string>} entityIds - Array of entity IDs to process
+ * @param {string} actionId - The action to execute
+ * @param {string} actionLabel - Human-readable label for the action
+ * @param {number} totalSelected - Total number of rows selected (optional, for showing filtered info)
+ */
+function showBatchMenuActionDialog(entityType, entityIds, actionId, actionLabel, totalSelected) {
+  const ui = SpreadsheetApp.getUi();
+  const validCount = entityIds.length;
+  const totalCount = totalSelected || validCount;
+
+  // Get proper entity type label
+  const entityLabels = {
+    'job': 'Job',
+    'submission': 'Submission',
+    'invoice': 'Invoice',
+    'client': 'Client'
+  };
+  const entityLabel = entityLabels[entityType] || 'Item';
+  const entityLabelPlural = entityLabel + 's';
+
+  // Build the selection info message
+  let selectionInfo = '';
+  if (totalCount > validCount) {
+    selectionInfo = `<div class="selection-warning">
+      <strong>${totalCount} rows selected</strong> - ${validCount} valid for this action
+    </div>`;
+  } else {
+    selectionInfo = `<div class="selection-info">
+      <strong>${validCount} ${validCount === 1 ? entityLabel : entityLabelPlural}</strong> selected
+    </div>`;
+  }
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; min-width: 100%; }
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          .container { width: 100%; }
+          h3 { margin: 0 0 12px 0; color: #333; }
+          .selection-info {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            color: #2e7d32;
+            font-size: 14px;
+          }
+          .selection-warning {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            color: #e65100;
+            font-size: 14px;
+          }
+          .entity-section-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .entity-list {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 2px solid #2d5d3f;
+            border-radius: 6px;
+            padding: 0;
+            margin-bottom: 15px;
+            font-size: 13px;
+            background: #fff;
+          }
+          .entity-item {
+            padding: 8px 12px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
+          }
+          .entity-item:last-child { border-bottom: none; }
+          .entity-item:nth-child(odd) { background: #f8f9fa; }
+          .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          button {
+            padding: 12px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+          }
+          .confirm { background: #2d5d3f; color: white; }
+          .confirm:hover:not(:disabled) { background: #4a7c59; }
+          .cancel { background: #e0e0e0; color: #333; }
+          .cancel:hover:not(:disabled) { background: #d0d0d0; }
+          button:disabled { opacity: 0.6; cursor: not-allowed; }
+          .progress-container {
+            display: none;
+            margin-top: 15px;
+          }
+          .progress-container.show { display: block; }
+          .progress-bar-bg {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+          }
+          .progress-bar {
+            height: 100%;
+            background: #2d5d3f;
+            width: 0%;
+            transition: width 0.3s ease;
+          }
+          .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+          }
+          .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h3>${escapeHtml(actionLabel)}</h3>
+          ${selectionInfo}
+          <div class="entity-section-label">${entityLabelPlural} to be affected:</div>
+          <div class="entity-list">
+            ${entityIds.map(id => '<div class="entity-item">' + escapeHtml(id) + '</div>').join('')}
+          </div>
+          <div class="buttons">
+            <button class="cancel" id="cancelBtn" onclick="google.script.host.close()">Cancel</button>
+            <button class="confirm" id="confirmBtn" onclick="executeBatch()">Confirm (${validCount})</button>
+          </div>
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-bar-bg">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">Processing 0 of ${validCount}...</div>
+          </div>
+        </div>
+        <script>
+          var entityIds = ${JSON.stringify(entityIds)};
+          var entityType = '${entityType}';
+          var actionId = '${actionId}';
+          var isProcessing = false;
+          var progressInterval = null;
+          var currentBatchId = null;
+
+          function executeBatch() {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            // Update UI
+            document.getElementById('confirmBtn').disabled = true;
+            document.getElementById('cancelBtn').disabled = true;
+            document.getElementById('confirmBtn').innerHTML = '<span class="loading-spinner"></span>Processing...';
+            document.getElementById('progressContainer').classList.add('show');
+
+            // Start progress polling
+            startProgressPolling();
+
+            google.script.run
+              .withSuccessHandler(function(result) {
+                stopProgressPolling();
+                updateProgress(entityIds.length, entityIds.length);
+
+                if (result && result.error) {
+                  alert('Error: ' + result.error);
+                  google.script.host.close();
+                } else if (result && result.results) {
+                  var successes = result.results.filter(function(r) { return r.success; }).length;
+                  var failures = result.results.filter(function(r) { return !r.success; });
+
+                  var message = 'Batch action completed!\\n\\n';
+                  message += 'Successful: ' + successes + ' of ' + result.results.length + '\\n';
+
+                  if (failures.length > 0) {
+                    message += '\\nFailed (' + failures.length + '):\\n';
+                    failures.slice(0, 5).forEach(function(f) {
+                      message += '- ' + f.entityId + ': ' + (f.error || 'Unknown error') + '\\n';
+                    });
+                    if (failures.length > 5) {
+                      message += '... and ' + (failures.length - 5) + ' more\\n';
+                    }
+                  }
+
+                  alert(message);
+                  google.script.host.close();
+                } else {
+                  google.script.host.close();
+                }
+              })
+              .withFailureHandler(function(error) {
+                stopProgressPolling();
+                alert('Error: ' + (error.message || 'Unknown error'));
+                google.script.host.close();
+              })
+              .executeBatchActionFromDialog(entityType, entityIds, actionId);
+          }
+
+          function updateProgress(processed, total) {
+            var percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+            document.getElementById('progressText').textContent = 'Processing ' + processed + ' of ' + total + ' (' + percent + '%)';
+            document.getElementById('progressBar').style.width = percent + '%';
+          }
+
+          function startProgressPolling() {
+            progressInterval = setInterval(function() {
+              google.script.run
+                .withSuccessHandler(function(progress) {
+                  if (progress && progress.processed !== undefined) {
+                    updateProgress(progress.processed, progress.total);
+                  }
+                })
+                .getBatchProgress(currentBatchId);
+            }, 500);
+          }
+
+          function stopProgressPolling() {
+            if (progressInterval) {
+              clearInterval(progressInterval);
+              progressInterval = null;
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  // Calculate dynamic height based on number of items
+  const baseHeight = 280;
+  const itemHeight = 35;
+  const maxListHeight = 180;
+  const listHeight = Math.min(validCount * itemHeight, maxListHeight);
+  const dialogHeight = Math.min(baseHeight + listHeight, 480);
+
+  const html = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(450)
+    .setHeight(dialogHeight);
+
+  ui.showModalDialog(html, actionLabel + ' - Batch');
+}
+
 // ============================================================================
 // SILENT BATCH ACTION HELPERS
 // These are versions of existing functions that don't show UI dialogs
@@ -11564,6 +11832,53 @@ function getAvailableSubmissions() {
 }
 
 /**
+ * Get a submission by its submission number
+ * @param {string} submissionNumber - The submission number (e.g., CC-MAPLE-001)
+ * @returns {Object|null} Submission object with all fields, or null if not found
+ */
+function getSubmissionByNumber(submissionNumber) {
+  const sheet = getSheet(SHEETS.SUBMISSIONS);
+  if (!sheet) return null;
+
+  // Use TextFinder for fast lookup
+  const finder = sheet.createTextFinder(submissionNumber)
+    .matchEntireCell(true)
+    .matchCase(false);
+
+  const foundRange = finder.findNext();
+  if (!foundRange) return null;
+
+  // Verify it's in the Submission # column
+  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #');
+  if (foundRange.getColumn() !== subNumCol) {
+    // Try to find in correct column
+    const allMatches = finder.findAll();
+    let correctMatch = null;
+    for (const match of allMatches) {
+      if (match.getColumn() === subNumCol) {
+        correctMatch = match;
+        break;
+      }
+    }
+    if (!correctMatch) return null;
+  }
+
+  const row = foundRange.getRow();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rowData = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  // Build object from row data
+  const submission = {};
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i]) {
+      submission[headers[i]] = rowData[i];
+    }
+  }
+
+  return submission;
+}
+
+/**
  * Fallback implementation - loads all columns from Submissions
  * Used when required columns cannot be found in headers
  */
@@ -11994,6 +12309,144 @@ function getSelectedSubmissionNumber() {
 }
 
 /**
+ * Get all job numbers from currently selected rows (for batch operations)
+ * @returns {Array<string>} Array of unique job numbers from selected rows
+ */
+function getSelectedJobNumbers() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const range = SpreadsheetApp.getActiveRange();
+  const startRow = range.getRow();
+  const numRows = range.getNumRows();
+
+  const jobNumbers = [];
+  const seen = new Set();
+
+  // Determine which column to read job numbers from
+  let jobColIndex = null;
+  if (sheetName === SHEETS.JOBS) {
+    jobColIndex = getColIndex('JOBS', 'Job #');
+  } else if (sheetName === SHEETS.INVOICES) {
+    jobColIndex = getColIndex('INVOICES', 'Job #');
+  } else if (sheetName === SHEETS.ACTIVITY_LOG) {
+    jobColIndex = getColIndex('ACTIVITY_LOG', 'Job #');
+  }
+
+  for (let i = 0; i < numRows; i++) {
+    const row = startRow + i;
+    if (row <= 1) continue; // Skip header row
+
+    let jobNumber = null;
+
+    // If we have a known column for this sheet, use it
+    if (jobColIndex) {
+      const value = sheet.getRange(row, jobColIndex).getValue();
+      if (value && isJobNumberFormat(value.toString().trim())) {
+        jobNumber = value.toString().trim();
+      }
+    }
+
+    // Add to array if valid and not already seen
+    if (jobNumber && !seen.has(jobNumber)) {
+      seen.add(jobNumber);
+      jobNumbers.push(jobNumber);
+    }
+  }
+
+  return jobNumbers;
+}
+
+/**
+ * Get all submission numbers from currently selected rows (for batch operations)
+ * @returns {Array<string>} Array of unique submission numbers from selected rows
+ */
+function getSelectedSubmissionNumbers() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const range = SpreadsheetApp.getActiveRange();
+  const startRow = range.getRow();
+  const numRows = range.getNumRows();
+
+  const submissionNumbers = [];
+  const seen = new Set();
+
+  // Determine which column to read submission numbers from
+  let subColIndex = null;
+  if (sheetName === SHEETS.SUBMISSIONS) {
+    subColIndex = getColIndex('SUBMISSIONS', 'Submission #');
+  } else if (sheetName === SHEETS.JOBS) {
+    subColIndex = getColIndex('JOBS', 'Submission #');
+  }
+
+  for (let i = 0; i < numRows; i++) {
+    const row = startRow + i;
+    if (row <= 1) continue; // Skip header row
+
+    let subNumber = null;
+
+    // If we have a known column for this sheet, use it
+    if (subColIndex) {
+      const value = sheet.getRange(row, subColIndex).getValue();
+      if (value && isSubmissionNumberFormat(value.toString().trim())) {
+        subNumber = value.toString().trim();
+      }
+    }
+
+    // Add to array if valid and not already seen
+    if (subNumber && !seen.has(subNumber)) {
+      seen.add(subNumber);
+      submissionNumbers.push(subNumber);
+    }
+  }
+
+  return submissionNumbers;
+}
+
+/**
+ * Get all invoice numbers from currently selected rows (for batch operations)
+ * @returns {Array<string>} Array of unique invoice numbers from selected rows
+ */
+function getSelectedInvoiceNumbers() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const sheetName = sheet.getName();
+  const range = SpreadsheetApp.getActiveRange();
+  const startRow = range.getRow();
+  const numRows = range.getNumRows();
+
+  const invoiceNumbers = [];
+  const seen = new Set();
+
+  // Determine which column to read invoice numbers from
+  let invColIndex = null;
+  if (sheetName === SHEETS.INVOICES) {
+    invColIndex = getColIndex('INVOICES', 'Invoice #');
+  }
+
+  for (let i = 0; i < numRows; i++) {
+    const row = startRow + i;
+    if (row <= 1) continue; // Skip header row
+
+    let invNumber = null;
+
+    // If we have a known column for this sheet, use it
+    if (invColIndex) {
+      const value = sheet.getRange(row, invColIndex).getValue();
+      if (value && isInvoiceNumberFormat(value.toString().trim())) {
+        invNumber = value.toString().trim();
+      }
+    }
+
+    // Add to array if valid and not already seen
+    if (invNumber && !seen.has(invNumber)) {
+      seen.add(invNumber);
+      invoiceNumbers.push(invNumber);
+    }
+  }
+
+  return invoiceNumbers;
+}
+
+/**
  * Check if a value matches invoice number format
  * @param {string} value - Value to check
  * @returns {boolean} True if matches invoice number format
@@ -12328,8 +12781,34 @@ function showDropdownDialog(title, items, itemType, callback) {
 
 /**
  * Show dialog to create job from submission
+ * Supports batch processing when multiple rows are selected
  */
 function showCreateJobDialog() {
+  // Check for multiple selected rows
+  const selectedSubmissions = getSelectedSubmissionNumbers();
+
+  if (selectedSubmissions.length > 1) {
+    const totalSelected = selectedSubmissions.length;
+
+    // Filter to only submissions that can have jobs created (not already "Job Created")
+    const validSubmissions = selectedSubmissions.filter(subNum => {
+      const sub = getSubmissionByNumber(subNum);
+      return sub && sub['Status'] !== 'Job Created';
+    });
+
+    if (validSubmissions.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Submissions',
+        'All selected submissions already have jobs created.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('submission', validSubmissions, 'createJob', 'Create Jobs from Submissions', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedSubmission = getSelectedSubmissionNumber();
   const submissions = getAvailableSubmissions();
   showContextAwareDialog(
@@ -12744,7 +13223,36 @@ function updateJobField(jobNumber, fieldName, value) {
 /**
  * Show dialog to mark quote as accepted
  */
+/**
+ * Show dialog to mark quote as accepted
+ * Supports batch processing when multiple rows are selected
+ */
 function showAcceptQuoteDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can have quotes accepted
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.QUOTED || job['Status'] === JOB_STATUS.QUOTE_REMINDED);
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can have quotes accepted. Jobs must be in Quoted or Quote Reminded status.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'markAccepted', 'Mark Quotes Accepted', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED]);
   showContextAwareDialog(
@@ -13342,8 +13850,34 @@ function updateSubmissionStatus(submissionNumber, status) {
 
 /**
  * Show dialog to start work on a job
+ * Supports batch processing when multiple rows are selected
  */
 function showStartWorkDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can be started (Accepted or On Hold status)
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.ACCEPTED || job['Status'] === JOB_STATUS.ON_HOLD);
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can be started. Jobs must be in Accepted or On Hold status.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'startWork', 'Start Work on Jobs', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.ON_HOLD]);
   showContextAwareDialog(
@@ -13455,8 +13989,34 @@ function startWorkOnJob(jobNumber) {
 
 /**
  * Show dialog to mark job complete
+ * Supports batch processing when multiple rows are selected
  */
 function showCompleteJobDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can be completed (In Progress status)
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && job['Status'] === JOB_STATUS.IN_PROGRESS;
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can be marked complete. Jobs must be In Progress.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'markComplete', 'Mark Jobs Complete', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.IN_PROGRESS]);
   showContextAwareDialog(
@@ -13724,9 +14284,38 @@ function putJobOnHold(jobNumber, explanation) {
 /**
  * Show dialog to cancel a job
  * Uses selected row to auto-detect job number (like other action features)
+ * Supports batch processing when multiple rows are selected
  */
 function showCancelJobDialog() {
   const ui = SpreadsheetApp.getUi();
+
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can be cancelled
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.ACCEPTED ||
+                     job['Status'] === JOB_STATUS.IN_PROGRESS ||
+                     job['Status'] === JOB_STATUS.ON_HOLD);
+    });
+
+    if (validJobs.length === 0) {
+      ui.alert('No Valid Jobs',
+        'None of the selected jobs can be cancelled.\n\nOnly jobs with status Accepted, In Progress, or On Hold can be cancelled.',
+        ui.ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'cancel', 'Cancel Jobs', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   // Can cancel jobs that are Accepted, In Progress, or On Hold
   const jobs = getJobsByStatus([JOB_STATUS.ACCEPTED, JOB_STATUS.IN_PROGRESS, JOB_STATUS.ON_HOLD]);
@@ -15743,8 +16332,34 @@ function sendStatusUpdateEmail(jobNumber, newStatus, options = {}) {
 
 /**
  * Show dialog to send quote reminder
+ * Supports batch processing when multiple rows are selected
  */
 function showQuoteReminderDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can receive quote reminders
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.QUOTED || job['Status'] === JOB_STATUS.QUOTE_REMINDED);
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can receive quote reminders. Jobs must be in Quoted or Quote Reminded status.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'sendQuoteReminder', 'Send Quote Reminders', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED]);
   showContextAwareDialog(
@@ -16082,8 +16697,36 @@ function autoSendQuoteReminders() {
 
 /**
  * Show dialog to decline quote
+ * Supports batch processing when multiple rows are selected
  */
 function showDeclineQuoteDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can have quotes declined
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.QUOTED ||
+                     job['Status'] === JOB_STATUS.QUOTE_REMINDED ||
+                     job['Status'] === JOB_STATUS.PENDING_QUOTE);
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can have quotes declined.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'markDeclined', 'Mark Quotes Declined', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   const jobs = getJobsByStatus([JOB_STATUS.QUOTED, JOB_STATUS.QUOTE_REMINDED, JOB_STATUS.PENDING_QUOTE]);
   showContextAwareDialog(
@@ -16124,8 +16767,36 @@ function markQuoteDeclined(jobNumber) {
 
 /**
  * Show dialog to generate invoice
+ * Supports batch processing when multiple rows are selected
  */
 function showGenerateInvoiceDialog() {
+  // Check for multiple selected rows
+  const selectedJobs = getSelectedJobNumbers();
+
+  if (selectedJobs.length > 1) {
+    const totalSelected = selectedJobs.length;
+
+    // Filter to only jobs that can have invoices generated
+    const validJobs = selectedJobs.filter(jobNum => {
+      const job = getJobByNumber(jobNum);
+      return job && (job['Status'] === JOB_STATUS.COMPLETED ||
+                     job['Status'] === JOB_STATUS.ACCEPTED ||
+                     job['Status'] === JOB_STATUS.IN_PROGRESS);
+    });
+
+    if (validJobs.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Jobs',
+        'None of the selected jobs can have invoices generated.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('job', validJobs, 'generateInvoice', 'Generate Invoices', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedJob = getSelectedJobNumber();
   // Show jobs that may need invoices: Completed jobs (for full/balance invoices)
   // and Accepted jobs (for deposit invoices on $200+ jobs)
@@ -16297,8 +16968,34 @@ function generateInvoiceForJob(jobNumber) {
 
 /**
  * Show dialog to send invoice
+ * Supports batch processing when multiple rows are selected
  */
 function showSendInvoiceDialog() {
+  // Check for multiple selected rows
+  const selectedInvoices = getSelectedInvoiceNumbers();
+
+  if (selectedInvoices.length > 1) {
+    const totalSelected = selectedInvoices.length;
+
+    // Filter to only invoices that can be sent (Draft status)
+    const validInvoices = selectedInvoices.filter(invNum => {
+      const invoice = getInvoiceByNumber(invNum);
+      return invoice && invoice['Status'] === 'Draft';
+    });
+
+    if (validInvoices.length === 0) {
+      SpreadsheetApp.getUi().alert('No Valid Invoices',
+        'None of the selected invoices can be sent. Invoices must be in Draft status.',
+        SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+
+    // Show batch dialog with total selected count
+    showBatchMenuActionDialog('invoice', validInvoices, 'sendInvoice', 'Send Invoices', totalSelected);
+    return;
+  }
+
+  // Single row - use existing behavior
   const selectedInvoice = getSelectedInvoiceNumber();
   const invoices = getInvoicesByStatus(['Draft']);
   showContextAwareDialog(
