@@ -4931,21 +4931,30 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           .loading {
             display: none;
             text-align: center;
-            padding: 40px 20px;
-            color: #5f6368;
+            padding: 50px 20px;
+            color: #202124;
+            background: #f8f9fa;
+            border: 2px solid #2d5d3f;
+            border-radius: 12px;
+            margin: 10px 0;
           }
           .loading.show {
             display: block;
           }
           .spinner {
             display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid #e8eaed;
+            width: 48px;
+            height: 48px;
+            border: 5px solid #e8eaed;
             border-top-color: #2d5d3f;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
+          }
+          .loading-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2d5d3f;
           }
           @keyframes spin {
             to { transform: rotate(360deg); }
@@ -4963,7 +4972,7 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
           </div>
           <div id="loadingIndicator" class="loading">
             <div class="spinner"></div>
-            <div>Executing action...</div>
+            <div class="loading-text">Executing action...</div>
           </div>
           <div id="actionsList" class="actions-list">
             ${buttonsHtml}
@@ -5558,8 +5567,12 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
           .loading {
             display: none;
             text-align: center;
-            padding: 40px 20px;
-            color: #5f6368;
+            padding: 60px 20px;
+            color: #202124;
+            background: #f8f9fa;
+            border: 3px solid #2d5d3f;
+            border-radius: 12px;
+            margin: 20px 0;
           }
           .loading.show {
             display: block;
@@ -5569,13 +5582,18 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
           }
           .spinner {
             display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid #e8eaed;
-            border-top-color: #1a73e8;
+            width: 56px;
+            height: 56px;
+            border: 6px solid #e8eaed;
+            border-top-color: #2d5d3f;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+          }
+          .loading-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d5d3f;
           }
           @keyframes spin {
             to { transform: rotate(360deg); }
@@ -5600,7 +5618,7 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
 
           <div id="loadingIndicator" class="loading">
             <div class="spinner"></div>
-            <div id="loadingText">Processing...</div>
+            <div class="loading-text" id="loadingText">Processing...</div>
           </div>
 
           <div id="content" class="content">
@@ -6035,6 +6053,36 @@ function showBatchMenuActionDialog(entityType, entityIds, actionId, actionLabel,
             margin-right: 8px;
             vertical-align: middle;
           }
+          .loading-overlay {
+            display: none;
+            text-align: center;
+            padding: 50px 20px;
+            background: #f8f9fa;
+            border: 3px solid #2d5d3f;
+            border-radius: 12px;
+            margin-top: 20px;
+          }
+          .loading-overlay.show {
+            display: block;
+          }
+          .spinner-large {
+            display: inline-block;
+            width: 56px;
+            height: 56px;
+            border: 6px solid #e8eaed;
+            border-top-color: #2d5d3f;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+          }
+          .loading-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d5d3f;
+          }
+          .content-area.hidden {
+            display: none;
+          }
           @keyframes spin { to { transform: rotate(360deg); } }
         </style>
       </head>
@@ -6042,13 +6090,19 @@ function showBatchMenuActionDialog(entityType, entityIds, actionId, actionLabel,
         <div class="container">
           <h3>${escapeHtml(actionLabel)}</h3>
           ${selectionInfo}
-          <div class="entity-section-label">${entityLabelPlural} to be affected:</div>
-          <div class="entity-list">
-            ${entityIds.map(id => '<div class="entity-item">' + escapeHtml(id) + '</div>').join('')}
+          <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner-large"></div>
+            <div class="loading-text" id="loadingText">Processing ${validCount} item${validCount !== 1 ? 's' : ''}...</div>
           </div>
-          <div class="buttons">
-            <button class="cancel" id="cancelBtn" onclick="google.script.host.close()">Cancel</button>
-            <button class="confirm" id="confirmBtn" onclick="executeBatch()">Confirm (${validCount})</button>
+          <div id="contentArea" class="content-area">
+            <div class="entity-section-label">${entityLabelPlural} to be affected:</div>
+            <div class="entity-list">
+              ${entityIds.map(id => '<div class="entity-item">' + escapeHtml(id) + '</div>').join('')}
+            </div>
+            <div class="buttons">
+              <button class="cancel" id="cancelBtn" onclick="google.script.host.close()">Cancel</button>
+              <button class="confirm" id="confirmBtn" onclick="executeBatch()">Confirm (${validCount})</button>
+            </div>
           </div>
         </div>
         <script>
@@ -6061,10 +6115,9 @@ function showBatchMenuActionDialog(entityType, entityIds, actionId, actionLabel,
             if (isProcessing) return;
             isProcessing = true;
 
-            // Update UI
-            document.getElementById('confirmBtn').disabled = true;
-            document.getElementById('cancelBtn').disabled = true;
-            document.getElementById('confirmBtn').innerHTML = '<span class="loading-spinner"></span>Processing...';
+            // Show full-screen loading
+            document.getElementById('loadingOverlay').classList.add('show');
+            document.getElementById('contentArea').classList.add('hidden');
 
             google.script.run
               .withSuccessHandler(function(result) {
