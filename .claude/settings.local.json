@@ -97,7 +97,13 @@
       "Bash(findstr:*)",
       "Bash(ls:*)",
       "Bash(git show:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(du:*)",
+      "Bash(Paid\" button, but it wasn''t being passed when previewing invoices during\njob completion.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(find:*)",
+      "Bash(identify -verbose:*)",
+      "Bash(cmd //c \"dir c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website\\\\*.png\")",
+      "Bash(grep:*)"
     ],
     "deny": [
       "Bash(rm -rf /*)",

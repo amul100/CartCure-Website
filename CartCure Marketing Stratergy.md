@@ -149,7 +149,6 @@ With zero active time available, Cart Cure needs systems that capture, nurture, 
 | Tally | $0 (free plan) | Lead capture forms with unlimited responses |
 | MailerLite | $9 | Email automation with 1,000 subscriber capacity |
 | HubSpot CRM | $0 (free plan) | Contact management, deal tracking |
-| Tidio | $0 (free plan) | Website chatbot handling basic inquiries 24/7 |
 | **Total** | **$9/month** | |
 
 **Budget allocation note:** The $21 difference from the $30 automation budget provides buffer for when subscriber counts exceed free tier limits.
@@ -168,16 +167,6 @@ With zero active time available, Cart Cure needs systems that capture, nurture, 
 - Email 3 (day 5): Check-in, offer to discuss
 
 Welcome emails achieve **83.63% open rates** compared to 40% for newsletters. Setting up these sequences once creates a system that nurtures every lead automatically.
-
-### Chatbot configuration
-
-Tidio's free plan handles basic website inquiries:
-- Greeting message offering help
-- FAQ responses for common questions ("What's your turnaround time?" "How much does X cost?")
-- Lead capture form if visitor wants to discuss a project
-- Email notification when human response needed
-
-This captures leads even at 2am without requiring active monitoring.
 
 ---
 
@@ -228,14 +217,13 @@ Transparent pricing becomes a competitive advantage when every competitor requir
 - [ ] Set up Google Search Console and Analytics 4
 - [ ] Implement LocalBusiness schema on homepage
 - [ ] Submit to Google Business Profile
-- [ ] Create accounts: Tally, MailerLite, HubSpot CRM, Tidio
+- [ ] Create accounts: Tally, MailerLite, HubSpot CRM
 - [ ] Submit to Yellow NZ, Finda, Localist (free listings)
 
 ### Week 2: Automation configuration
 - [ ] Build lead capture form in Tally, embed on website
 - [ ] Create welcome email sequence in MailerLite (5 emails)
 - [ ] Create inquiry follow-up sequence (3 emails)
-- [ ] Configure Tidio chatbot with FAQ responses
 - [ ] Connect Tally → MailerLite → HubSpot CRM via native integrations
 
 ### Week 3: Advertising launch

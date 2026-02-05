@@ -94,6 +94,21 @@ Add a new object to the appropriate sheet's array in `COLUMN_CONFIG`:
 - `TESTIMONIALS` - Testimonials sheet (9 columns)
 - `ACTIVITY_LOG` - Activity Log sheet (7 columns)
 
+## CartCure Menu - Dual Action Access
+The `🛒 CartCure` menu offers two ways to perform actions:
+
+| Method | Location | Use Case |
+|--------|----------|----------|
+| **Actions Dialog** | `⚡ Actions` | Shows only valid actions for current row status. Supports batch selection. Best for new users. |
+| **Submenu Items** | `📋 Jobs`, `📥 Submissions`, `💰 Quotes`, `🧾 Invoices`, `👥 Clients` | Direct access to specific actions (e.g., `▶️ Start Work`, `📤 Send Quote`). Best for power users. |
+
+### Sync Requirement
+**Both systems must stay identical.** When modifying actions, update:
+- **Actions Dialog:** `getValidJobActions()`, `getValidSubmissionActions()`, `getValidInvoiceActions()`, `getValidClientActions()` (~line 4542-4677)
+- **Submenus:** `onOpen()` menu builder (~line 4315)
+
+Both call the same underlying `show...Dialog()` functions.
+
 ## Apps Script Debugging
 **IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
 

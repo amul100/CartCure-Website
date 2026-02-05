@@ -4333,6 +4333,11 @@ function buildMenu() {
       .addItem('⭐ Request Testimonial', 'showRequestTestimonialDialog')
       .addSeparator()
       .addItem('🔽 Sort Newest First', 'sortJobsNewestFirst'))
+    .addSubMenu(ui.createMenu('📥 Submissions')
+      .addItem('➕ Create Job', 'showCreateJobDialog')
+      .addItem('👀 Mark In Review', 'showMarkInReviewDialog')
+      .addItem('👎 Decline', 'showDeclineSubmissionDialog')
+      .addItem('🚫 Mark as Spam', 'showMarkSpamDialog'))
     .addSubMenu(ui.createMenu('💰 Quotes')
       .addItem('📤 Send Quote', 'showSendQuoteDialog')
       .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
@@ -4351,6 +4356,11 @@ function buildMenu() {
       .addItem('👁️ View Overdue Invoices', 'showOverdueInvoicesWithFees'))
     .addSubMenu(ui.createMenu('👥 Clients')
       .addItem('📋 View Client History', 'viewClientHistory')
+      .addItem('🔄 Recalculate Stats', 'showRecalculateClientStatsDialog')
+      .addSeparator()
+      .addItem('⭐ Set VIP', 'showSetClientVIPDialog')
+      .addItem('✅ Set Active', 'showSetClientActiveDialog')
+      .addItem('⏸️ Set Inactive', 'showSetClientInactiveDialog')
       .addSeparator()
       .addItem('🔄 Sync Clients from Jobs', 'syncClientsFromJobs')
       .addItem('📈 Recalculate All Stats', 'recalculateAllClientStats'))
@@ -6992,6 +7002,197 @@ function updateSubmissionStatus(submissionNumber, newStatus) {
       return;
     }
   }
+}
+
+// ============================================================================
+// CLIENT STATUS MENU FUNCTIONS
+// ============================================================================
+
+/**
+ * Menu function: Set selected client(s) to VIP status
+ */
+function showSetClientVIPDialog() {
+  executeClientStatusChangeFromMenu(CLIENT_STATUS.VIP, 'Set VIP');
+}
+
+/**
+ * Menu function: Set selected client(s) to Active status
+ */
+function showSetClientActiveDialog() {
+  executeClientStatusChangeFromMenu(CLIENT_STATUS.ACTIVE, 'Set Active');
+}
+
+/**
+ * Menu function: Set selected client(s) to Inactive status
+ */
+function showSetClientInactiveDialog() {
+  executeClientStatusChangeFromMenu(CLIENT_STATUS.INACTIVE, 'Set Inactive');
+}
+
+/**
+ * Helper: Execute client status change from menu selection
+ */
+function executeClientStatusChangeFromMenu(newStatus, actionLabel) {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+
+  if (sheet.getName() !== SHEETS.CLIENTS) {
+    ui.alert('Wrong Sheet', 'Please select rows on the Clients sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const selectedRows = getSelectedRows();
+  if (selectedRows.length === 0) {
+    ui.alert('Select a Client', 'Please select one or more client rows.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const emailCol = getColIndex('CLIENTS', 'Email') - 1;
+  const data = sheet.getDataRange().getValues();
+  const emails = selectedRows.map(row => data[row - 1][emailCol]).filter(e => e);
+
+  if (emails.length === 0) {
+    ui.alert('No Valid Clients', 'No valid client emails found in selection.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const confirmMsg = emails.length === 1
+    ? 'Set ' + emails[0] + ' to ' + newStatus + '?'
+    : 'Set ' + emails.length + ' clients to ' + newStatus + '?';
+
+  const response = ui.alert(actionLabel, confirmMsg, ui.ButtonSet.YES_NO);
+  if (response !== ui.Button.YES) return;
+
+  let successCount = 0;
+  emails.forEach(email => {
+    try {
+      updateClientStatus(email, newStatus);
+      successCount++;
+    } catch (e) {
+      Logger.log('Failed to update ' + email + ': ' + e.message);
+    }
+  });
+
+  ui.alert('Complete', successCount + ' of ' + emails.length + ' clients updated to ' + newStatus + '.', ui.ButtonSet.OK);
+}
+
+/**
+ * Menu function: Recalculate stats for selected client(s)
+ */
+function showRecalculateClientStatsDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+
+  if (sheet.getName() !== SHEETS.CLIENTS) {
+    ui.alert('Wrong Sheet', 'Please select rows on the Clients sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const selectedRows = getSelectedRows();
+  if (selectedRows.length === 0) {
+    ui.alert('Select a Client', 'Please select one or more client rows.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const emailCol = getColIndex('CLIENTS', 'Email') - 1;
+  const data = sheet.getDataRange().getValues();
+  const emails = selectedRows.map(row => data[row - 1][emailCol]).filter(e => e);
+
+  if (emails.length === 0) {
+    ui.alert('No Valid Clients', 'No valid client emails found in selection.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const confirmMsg = emails.length === 1
+    ? 'Recalculate stats for ' + emails[0] + '?'
+    : 'Recalculate stats for ' + emails.length + ' clients?';
+
+  const response = ui.alert('Recalculate Stats', confirmMsg, ui.ButtonSet.YES_NO);
+  if (response !== ui.Button.YES) return;
+
+  let successCount = 0;
+  emails.forEach(email => {
+    try {
+      updateClientStatistics(email);
+      successCount++;
+    } catch (e) {
+      Logger.log('Failed to recalculate stats for ' + email + ': ' + e.message);
+    }
+  });
+
+  ui.alert('Complete', 'Stats recalculated for ' + successCount + ' of ' + emails.length + ' clients.', ui.ButtonSet.OK);
+}
+
+// ============================================================================
+// SUBMISSION STATUS MENU FUNCTIONS
+// ============================================================================
+
+/**
+ * Menu function: Mark selected submission(s) as In Review
+ */
+function showMarkInReviewDialog() {
+  executeSubmissionStatusChangeFromMenu('In Review', 'Mark In Review');
+}
+
+/**
+ * Menu function: Mark selected submission(s) as Spam
+ */
+function showMarkSpamDialog() {
+  executeSubmissionStatusChangeFromMenu('Spam', 'Mark as Spam');
+}
+
+/**
+ * Menu function: Decline selected submission(s)
+ */
+function showDeclineSubmissionDialog() {
+  executeSubmissionStatusChangeFromMenu('Declined', 'Decline Submission');
+}
+
+/**
+ * Helper: Execute submission status change from menu selection
+ */
+function executeSubmissionStatusChangeFromMenu(newStatus, actionLabel) {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+
+  if (sheet.getName() !== SHEETS.SUBMISSIONS) {
+    ui.alert('Wrong Sheet', 'Please select rows on the Submissions sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const selectedRows = getSelectedRows();
+  if (selectedRows.length === 0) {
+    ui.alert('Select a Submission', 'Please select one or more submission rows.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+  const data = sheet.getDataRange().getValues();
+  const submissionNumbers = selectedRows.map(row => data[row - 1][subNumCol]).filter(s => s);
+
+  if (submissionNumbers.length === 0) {
+    ui.alert('No Valid Submissions', 'No valid submission numbers found in selection.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const confirmMsg = submissionNumbers.length === 1
+    ? 'Mark ' + submissionNumbers[0] + ' as ' + newStatus + '?'
+    : 'Mark ' + submissionNumbers.length + ' submissions as ' + newStatus + '?';
+
+  const response = ui.alert(actionLabel, confirmMsg, ui.ButtonSet.YES_NO);
+  if (response !== ui.Button.YES) return;
+
+  let successCount = 0;
+  submissionNumbers.forEach(subNum => {
+    try {
+      updateSubmissionStatus(subNum, newStatus);
+      successCount++;
+    } catch (e) {
+      Logger.log('Failed to update ' + subNum + ': ' + e.message);
+    }
+  });
+
+  ui.alert('Complete', successCount + ' of ' + submissionNumbers.length + ' submissions marked as ' + newStatus + '.', ui.ButtonSet.OK);
 }
 
 /**
