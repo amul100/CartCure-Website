@@ -5554,26 +5554,6 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
           .content.hidden {
             display: none;
           }
-          .progress-text {
-            margin-top: 10px;
-            font-size: 13px;
-          }
-          .progress-container {
-            width: 100%;
-            max-width: 300px;
-            margin: 15px auto;
-            background: #e8eaed;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 8px;
-          }
-          .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #1a73e8 0%, #34a853 100%);
-            border-radius: 10px;
-            width: 0%;
-            transition: width 0.3s ease;
-          }
           .spinner {
             display: inline-block;
             width: 24px;
@@ -5607,11 +5587,7 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
 
           <div id="loadingIndicator" class="loading">
             <div class="spinner"></div>
-            <div>Processing batch action...</div>
-            <div class="progress-container">
-              <div class="progress-bar" id="progressBar"></div>
-            </div>
-            <div class="progress-text" id="progressText">Starting...</div>
+            <div id="loadingText">Processing...</div>
           </div>
 
           <div id="content" class="content">
@@ -5635,99 +5611,56 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
         </div>
         <script>
           const allEntityIds = ${entityIdsJson};
-          let progressInterval = null;
-          let currentBatchId = null;
-          let expectedCount = 0;
 
           function executeBatchAction(entityType, actionId, specificEntityIds) {
             // Use specific entity IDs if provided (for partial actions), otherwise use all
             const idsToProcess = specificEntityIds || allEntityIds;
-            expectedCount = idsToProcess.length;
+            const itemCount = idsToProcess.length;
 
             // Show confirmation with accurate count
             const confirmed = confirm(
-              'Are you sure you want to perform this action on ' + expectedCount + ' item' + (expectedCount !== 1 ? 's' : '') + '?\\n\\n' +
+              'Are you sure you want to perform this action on ' + itemCount + ' item' + (itemCount !== 1 ? 's' : '') + '?\\n\\n' +
               'This action cannot be undone.'
             );
 
             if (!confirmed) return;
 
-            // Show loading state with progress bar
+            // Show loading state
             document.getElementById('loadingIndicator').classList.add('show');
             document.getElementById('content').classList.add('hidden');
-            updateProgressDisplay(0, expectedCount);
-
-            // Start progress polling (every 500ms)
-            startProgressPolling();
+            document.getElementById('loadingText').textContent = 'Processing ' + itemCount + ' item' + (itemCount !== 1 ? 's' : '') + '...';
 
             google.script.run
               .withSuccessHandler(function(result) {
-                stopProgressPolling();
-                updateProgressDisplay(expectedCount, expectedCount); // Show 100%
-
                 if (result && result.error) {
                   alert('Error: ' + result.error);
                   document.getElementById('loadingIndicator').classList.remove('show');
                   document.getElementById('content').classList.remove('hidden');
                 } else if (result && result.results) {
-                  // Show summary
-                  const successes = result.results.filter(r => r.success).length;
                   const failures = result.results.filter(r => !r.success);
 
-                  let message = 'Batch action completed!\\n\\n';
-                  message += 'Successful: ' + successes + ' of ' + result.results.length + '\\n';
-
+                  // Only show alert if there were failures
                   if (failures.length > 0) {
-                    message += '\\nFailed (' + failures.length + '):\\n';
+                    let message = 'Some items failed:\\n\\n';
                     failures.slice(0, 5).forEach(f => {
                       message += '- ' + f.entityId + ': ' + (f.error || 'Unknown error') + '\\n';
                     });
                     if (failures.length > 5) {
                       message += '... and ' + (failures.length - 5) + ' more\\n';
                     }
+                    alert(message);
                   }
-
-                  alert(message);
                   google.script.host.close();
                 } else {
                   google.script.host.close();
                 }
               })
               .withFailureHandler(function(error) {
-                stopProgressPolling();
                 alert('Error: ' + (error.message || 'Unknown error'));
                 document.getElementById('loadingIndicator').classList.remove('show');
                 document.getElementById('content').classList.remove('hidden');
               })
               .executeBatchActionFromDialog(entityType, idsToProcess, actionId);
-          }
-
-          function updateProgressDisplay(processed, total) {
-            const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-            document.getElementById('progressText').textContent = 'Processing ' + processed + ' of ' + total + ' (' + percent + '%)';
-            document.getElementById('progressBar').style.width = percent + '%';
-          }
-
-          function startProgressPolling() {
-            // Poll for progress every 500ms
-            progressInterval = setInterval(function() {
-              if (currentBatchId) {
-                google.script.run
-                  .withSuccessHandler(function(progress) {
-                    if (progress && progress.processed !== undefined) {
-                      updateProgressDisplay(progress.processed, progress.total);
-                    }
-                  })
-                  .getBatchProgress(currentBatchId);
-              }
-            }, 500);
-          }
-
-          function stopProgressPolling() {
-            if (progressInterval) {
-              clearInterval(progressInterval);
-              progressInterval = null;
-            }
           }
 
           function toggleSelectedItems() {
