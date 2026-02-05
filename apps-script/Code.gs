@@ -12603,9 +12603,8 @@ function getSelectedSubmissionNumber() {
 function getSelectedJobNumbers() {
   const sheet = SpreadsheetApp.getActiveSheet();
   const sheetName = sheet.getName();
-  const range = SpreadsheetApp.getActiveRange();
-  const startRow = range.getRow();
-  const numRows = range.getNumRows();
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  if (!rangeList) return [];
 
   const jobNumbers = [];
   const seen = new Set();
@@ -12620,24 +12619,31 @@ function getSelectedJobNumbers() {
     jobColIndex = getColIndex('ACTIVITY_LOG', 'Job #');
   }
 
-  for (let i = 0; i < numRows; i++) {
-    const row = startRow + i;
-    if (row <= 1) continue; // Skip header row
+  // Process all selected ranges (supports Ctrl+click non-consecutive selection)
+  const ranges = rangeList.getRanges();
+  for (const range of ranges) {
+    const startRow = range.getRow();
+    const numRows = range.getNumRows();
 
-    let jobNumber = null;
+    for (let i = 0; i < numRows; i++) {
+      const row = startRow + i;
+      if (row <= 1) continue; // Skip header row
 
-    // If we have a known column for this sheet, use it
-    if (jobColIndex) {
-      const value = sheet.getRange(row, jobColIndex).getValue();
-      if (value && isJobNumberFormat(value.toString().trim())) {
-        jobNumber = value.toString().trim();
+      let jobNumber = null;
+
+      // If we have a known column for this sheet, use it
+      if (jobColIndex) {
+        const value = sheet.getRange(row, jobColIndex).getValue();
+        if (value && isJobNumberFormat(value.toString().trim())) {
+          jobNumber = value.toString().trim();
+        }
       }
-    }
 
-    // Add to array if valid and not already seen
-    if (jobNumber && !seen.has(jobNumber)) {
-      seen.add(jobNumber);
-      jobNumbers.push(jobNumber);
+      // Add to array if valid and not already seen
+      if (jobNumber && !seen.has(jobNumber)) {
+        seen.add(jobNumber);
+        jobNumbers.push(jobNumber);
+      }
     }
   }
 
@@ -12651,9 +12657,8 @@ function getSelectedJobNumbers() {
 function getSelectedSubmissionNumbers() {
   const sheet = SpreadsheetApp.getActiveSheet();
   const sheetName = sheet.getName();
-  const range = SpreadsheetApp.getActiveRange();
-  const startRow = range.getRow();
-  const numRows = range.getNumRows();
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  if (!rangeList) return [];
 
   const submissionNumbers = [];
   const seen = new Set();
@@ -12666,24 +12671,31 @@ function getSelectedSubmissionNumbers() {
     subColIndex = getColIndex('JOBS', 'Submission #');
   }
 
-  for (let i = 0; i < numRows; i++) {
-    const row = startRow + i;
-    if (row <= 1) continue; // Skip header row
+  // Process all selected ranges (supports Ctrl+click non-consecutive selection)
+  const ranges = rangeList.getRanges();
+  for (const range of ranges) {
+    const startRow = range.getRow();
+    const numRows = range.getNumRows();
 
-    let subNumber = null;
+    for (let i = 0; i < numRows; i++) {
+      const row = startRow + i;
+      if (row <= 1) continue; // Skip header row
 
-    // If we have a known column for this sheet, use it
-    if (subColIndex) {
-      const value = sheet.getRange(row, subColIndex).getValue();
-      if (value && isSubmissionNumberFormat(value.toString().trim())) {
-        subNumber = value.toString().trim();
+      let subNumber = null;
+
+      // If we have a known column for this sheet, use it
+      if (subColIndex) {
+        const value = sheet.getRange(row, subColIndex).getValue();
+        if (value && isSubmissionNumberFormat(value.toString().trim())) {
+          subNumber = value.toString().trim();
+        }
       }
-    }
 
-    // Add to array if valid and not already seen
-    if (subNumber && !seen.has(subNumber)) {
-      seen.add(subNumber);
-      submissionNumbers.push(subNumber);
+      // Add to array if valid and not already seen
+      if (subNumber && !seen.has(subNumber)) {
+        seen.add(subNumber);
+        submissionNumbers.push(subNumber);
+      }
     }
   }
 
@@ -12697,9 +12709,8 @@ function getSelectedSubmissionNumbers() {
 function getSelectedInvoiceNumbers() {
   const sheet = SpreadsheetApp.getActiveSheet();
   const sheetName = sheet.getName();
-  const range = SpreadsheetApp.getActiveRange();
-  const startRow = range.getRow();
-  const numRows = range.getNumRows();
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  if (!rangeList) return [];
 
   const invoiceNumbers = [];
   const seen = new Set();
@@ -12710,24 +12721,31 @@ function getSelectedInvoiceNumbers() {
     invColIndex = getColIndex('INVOICES', 'Invoice #');
   }
 
-  for (let i = 0; i < numRows; i++) {
-    const row = startRow + i;
-    if (row <= 1) continue; // Skip header row
+  // Process all selected ranges (supports Ctrl+click non-consecutive selection)
+  const ranges = rangeList.getRanges();
+  for (const range of ranges) {
+    const startRow = range.getRow();
+    const numRows = range.getNumRows();
 
-    let invNumber = null;
+    for (let i = 0; i < numRows; i++) {
+      const row = startRow + i;
+      if (row <= 1) continue; // Skip header row
 
-    // If we have a known column for this sheet, use it
-    if (invColIndex) {
-      const value = sheet.getRange(row, invColIndex).getValue();
-      if (value && isInvoiceNumberFormat(value.toString().trim())) {
-        invNumber = value.toString().trim();
+      let invNumber = null;
+
+      // If we have a known column for this sheet, use it
+      if (invColIndex) {
+        const value = sheet.getRange(row, invColIndex).getValue();
+        if (value && isInvoiceNumberFormat(value.toString().trim())) {
+          invNumber = value.toString().trim();
+        }
       }
-    }
 
-    // Add to array if valid and not already seen
-    if (invNumber && !seen.has(invNumber)) {
-      seen.add(invNumber);
-      invoiceNumbers.push(invNumber);
+      // Add to array if valid and not already seen
+      if (invNumber && !seen.has(invNumber)) {
+        seen.add(invNumber);
+        invoiceNumbers.push(invNumber);
+      }
     }
   }
 
