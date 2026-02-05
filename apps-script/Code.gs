@@ -4495,15 +4495,23 @@ function setupEditTrigger() {
  * @returns {Array<number>} Array of row numbers
  */
 function getSelectedRows() {
-  const range = SpreadsheetApp.getActiveRange();
-  const startRow = range.getRow();
-  const numRows = range.getNumRows();
-  const rows = [];
-  for (let i = 0; i < numRows; i++) {
-    const row = startRow + i;
-    if (row > 1) rows.push(row); // Skip header row
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  if (!rangeList) return [];
+
+  const rowSet = new Set(); // Use Set to avoid duplicates
+  const ranges = rangeList.getRanges();
+
+  for (const range of ranges) {
+    const startRow = range.getRow();
+    const numRows = range.getNumRows();
+    for (let i = 0; i < numRows; i++) {
+      const row = startRow + i;
+      if (row > 1) rowSet.add(row); // Skip header row
+    }
   }
-  return rows;
+
+  // Convert to sorted array
+  return Array.from(rowSet).sort((a, b) => a - b);
 }
 
 /**
