@@ -893,6 +893,12 @@ function handleQuoteAcceptance(data) {
       timestamp: now.toISOString()
     };
 
+    // Debug logging for deposit invoice issues
+    Logger.log('Quote acceptance taskData - Total (incl GST): ' + job['Total (incl GST)'] +
+               ', Quote Amount (excl GST): ' + job['Quote Amount (excl GST)'] +
+               ', Calculated total: ' + taskData.total +
+               ', requiresDeposit: ' + (taskData.total >= 200));
+
     queueBackgroundTask(taskData);
 
     Logger.log('Quote accepted for ' + jobNumber + ' - background tasks queued');
@@ -1249,6 +1255,7 @@ function processQuoteAcceptanceTask(task) {
   const failures = [];
 
   Logger.log('Processing quote acceptance task for ' + jobNumber + ' (subtasks: ' + pendingSubtasks.join(', ') + ')');
+  Logger.log('Quote acceptance task data - total: ' + total + ', type: ' + typeof total + ', requiresDeposit: ' + (total >= 200));
 
   const requiresDeposit = total >= 200;
 
@@ -1310,9 +1317,11 @@ function processQuoteAcceptanceTask(task) {
 
   // 3. Generate and send deposit invoice if required
   if (pendingSubtasks.includes('depositInvoice') && requiresDeposit) {
+    Logger.log('Deposit invoice required for ' + jobNumber + ' (total: $' + total + ')');
     try {
       const job = getJobByNumber(jobNumber);
       if (job) {
+        Logger.log('Job found for deposit invoice, calling generateAndSendDepositInvoice()');
         const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
         if (invoiceResult.success) {
           Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
@@ -1320,11 +1329,16 @@ function processQuoteAcceptanceTask(task) {
           Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
           failures.push('depositInvoice');
         }
+      } else {
+        Logger.log('Job not found when generating deposit invoice for ' + jobNumber);
+        failures.push('depositInvoice');
       }
     } catch (invoiceError) {
       Logger.log('Error with deposit invoice: ' + invoiceError.message);
       failures.push('depositInvoice');
     }
+  } else if (pendingSubtasks.includes('depositInvoice') && !requiresDeposit) {
+    Logger.log('Deposit invoice NOT required for ' + jobNumber + ' (total: $' + total + ' is below $200 threshold)');
   }
 
   // 4. Send admin notification
@@ -1543,6 +1557,105 @@ function setupBackgroundTaskTrigger() {
 
   Logger.log('Background task trigger created (runs every 1 minute)');
   SpreadsheetApp.getUi().alert('Background Task Trigger', 'Trigger created successfully. Background tasks will now process every 1 minute.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * Diagnostic function to check background task system status
+ * Run this from CartCure > Settings > Diagnose Background Tasks
+ */
+function diagnoseBackgroundTasks() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const triggers = ScriptApp.getProjectTriggers();
+
+  let report = [];
+  report.push('=== BACKGROUND TASK DIAGNOSTICS ===\n');
+
+  // Check for background task trigger
+  let hasBackgroundTrigger = false;
+  let triggerInfo = '';
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'processBackgroundTasks') {
+      hasBackgroundTrigger = true;
+      triggerInfo = 'Found: runs every ' + (trigger.getEventType() === ScriptApp.EventType.CLOCK ? 'minute (time-based)' : 'unknown');
+      break;
+    }
+  }
+  report.push('Background Task Trigger: ' + (hasBackgroundTrigger ? '✅ ' + triggerInfo : '❌ NOT INSTALLED'));
+
+  if (!hasBackgroundTrigger) {
+    report.push('  → Run "Setup Background Tasks" from Settings menu to fix');
+  }
+
+  // Check queue status
+  const queueKey = 'BACKGROUND_TASK_QUEUE';
+  const existingQueue = props.getProperty(queueKey);
+  let queueCount = 0;
+  let queueDetails = '';
+  if (existingQueue) {
+    try {
+      const queue = JSON.parse(existingQueue);
+      queueCount = queue.length;
+      if (queueCount > 0) {
+        queueDetails = queue.map(t => '  - ' + t.type + ' for ' + (t.jobNumber || 'unknown') + ' (queued: ' + t.timestamp + ')').join('\n');
+      }
+    } catch (e) {
+      queueDetails = '  Error parsing queue: ' + e.message;
+    }
+  }
+  report.push('\nPending Tasks in Queue: ' + queueCount);
+  if (queueDetails) {
+    report.push(queueDetails);
+  }
+
+  // Check recent execution
+  report.push('\nTo check execution logs:');
+  report.push('  1. Open Apps Script editor (Extensions > Apps Script)');
+  report.push('  2. Go to Executions in the left sidebar');
+  report.push('  3. Look for "processBackgroundTasks" entries');
+
+  ui.alert('Background Task Diagnostics', report.join('\n'), ui.ButtonSet.OK);
+  Logger.log(report.join('\n'));
+}
+
+/**
+ * Manually process pending background tasks (for debugging)
+ * Run this if tasks are stuck in the queue
+ */
+function manuallyProcessBackgroundTasks() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const queueKey = 'BACKGROUND_TASK_QUEUE';
+  const existingQueue = props.getProperty(queueKey);
+
+  if (!existingQueue) {
+    ui.alert('No Pending Tasks', 'The background task queue is empty.', ui.ButtonSet.OK);
+    return;
+  }
+
+  let queue = [];
+  try {
+    queue = JSON.parse(existingQueue);
+  } catch (e) {
+    ui.alert('Queue Error', 'Failed to parse task queue: ' + e.message, ui.ButtonSet.OK);
+    return;
+  }
+
+  if (queue.length === 0) {
+    ui.alert('No Pending Tasks', 'The background task queue is empty.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const confirm = ui.alert(
+    'Process Tasks',
+    'Found ' + queue.length + ' pending task(s). Process them now?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm === ui.Button.YES) {
+    processBackgroundTasks();
+    ui.alert('Done', 'Background tasks have been processed. Check the Activity Log for results.', ui.ButtonSet.OK);
+  }
 }
 
 /**
@@ -4390,6 +4503,8 @@ function buildMenu() {
         .addItem('🔄 Extend Validation Ranges', 'extendValidationRanges')
         .addSeparator()
         .addItem('⏱️ Setup Background Tasks', 'setupBackgroundTaskTrigger')
+        .addItem('🔍 Diagnose Background Tasks', 'diagnoseBackgroundTasks')
+        .addItem('▶️ Manually Process Tasks', 'manuallyProcessBackgroundTasks')
         .addItem('🔘 Install Edit Trigger', 'setupEditTrigger')
         .addItem('📊 View Archive Stats', 'showArchiveStats'))
       .addSeparator()
