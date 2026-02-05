@@ -233,6 +233,11 @@
         return div.innerHTML;
     }
 
+    // Register service worker for offline caching
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     // Initialize
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadAllTestimonials);

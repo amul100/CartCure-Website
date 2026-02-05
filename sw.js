@@ -3,15 +3,36 @@
  * Provides offline caching and faster repeat visits
  */
 
-const CACHE_NAME = 'cartcure-v4';
+const CACHE_NAME = 'cartcure-v7';
 const STATIC_ASSETS = [
+    // Core pages
     '/',
     '/index.html',
+    '/offline.html',
+    '/testimonials.html',
+    '/how-to.html',
+    '/feedback.html',
+    '/demo.html',
+    '/quote-acceptance.html',
+    '/payment-received.html',
+    '/privacy-policy.html',
+    '/terms-of-service.html',
+    // Service pages
+    '/shopify-bug-fixes.html',
+    '/shopify-checkout-optimization.html',
+    '/shopify-seo-fixes.html',
+    '/shopify-speed-optimization.html',
+    '/shopify-theme-customization.html',
+    // Stylesheets
     '/styles.css',
+    // Scripts
     '/script.js',
+    '/testimonials.js',
     '/security-config.js',
+    // Images
     '/CartCure_fullLogo.webp',
     '/CartCure_fullLogo_compressed.jpg',
+    '/CartCure_Favicon_compressed.webp',
     '/CartCure_Favicon_compressed.png'
 ];
 
@@ -64,14 +85,15 @@ self.addEventListener('fetch', (event) => {
     if (url.hostname === 'script.google.com') return;
 
     // Determine if this is a critical resource that should use network-first
-    // CSS and HTML need fresh content to avoid layout issues
+    // CSS, HTML, and JS need fresh content to avoid layout/functionality issues
     const isCriticalResource = url.pathname.endsWith('.css') ||
                                url.pathname.endsWith('.html') ||
+                               url.pathname.endsWith('.js') ||
                                url.pathname === '/' ||
                                url.pathname === '';
 
     if (isCriticalResource) {
-        // Network-first strategy for CSS/HTML: always try network, fallback to cache
+        // Network-first strategy for CSS/HTML/JS: always try network, fallback to cache
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
@@ -83,9 +105,17 @@ self.addEventListener('fetch', (event) => {
                     }
                     return networkResponse;
                 })
-                .catch(() => {
+                .catch(async () => {
                     // Network failed, try cache as fallback
-                    return caches.match(event.request);
+                    const cachedResponse = await caches.match(event.request);
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+                    // For HTML pages with no cache, show offline page
+                    if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '') {
+                        return caches.match('/offline.html');
+                    }
+                    return cachedResponse;
                 })
         );
     } else {

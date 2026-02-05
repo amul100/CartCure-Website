@@ -39,7 +39,7 @@
     <link rel="canonical" href="https://cartcure.co.nz/">
 
     <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.facebook.com https://www.google-analytics.com; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cdn.jsdelivr.net https://www.google-analytics.com https://analytics.google.com; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.facebook.com https://www.google-analytics.com; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cdn.jsdelivr.net https://www.google-analytics.com https://analytics.google.com; frame-src https://www.facebook.com; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; upgrade-insecure-requests;">
 
     <!-- Google Analytics 4 - Replace G-QCCZDEN8NX with your Measurement ID -->
     <!-- Get your ID at: https://analytics.google.com > Admin > Data Streams > Web -->
@@ -68,6 +68,7 @@
     <noscript><img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
 
+    <link rel="icon" type="image/webp" href="CartCure_Favicon_compressed.webp">
     <link rel="icon" type="image/png" href="CartCure_Favicon_compressed.png" sizes="48x48">
 
     <!-- Resource Hints for Performance -->
@@ -532,9 +533,6 @@
     <!-- Main script -->
     <script src="script.js" defer></script>
 
-    <!-- Tidio Chat Widget - Replace YOUR_TIDIO_PUBLIC_KEY with your key -->
-    <!-- Get your key at: https://www.tidio.com > Settings > Developer > Public Key -->
-    <script src="//code.tidio.co/YOUR_TIDIO_PUBLIC_KEY.js" async></script>
 </body>
 
 </html>

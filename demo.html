@@ -12,6 +12,7 @@
     <meta name="author" content="CartCure NZ">
     <meta name="robots" content="noindex, nofollow">
 
+    <link rel="icon" type="image/webp" href="CartCure_Favicon_compressed.webp">
     <link rel="icon" type="image/png" href="CartCure_Favicon_compressed.png">
     <link rel="stylesheet" href="styles.css">
 
@@ -266,6 +267,9 @@
             <p style="opacity: 0.5; margin-top: 0.8rem; font-size: 0.9rem;">Proudly serving New Zealand small businesses</p>
         </div>
     </footer>
+
+    <!-- Service Worker Registration -->
+    <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
 </body>
 
 </html>
