@@ -4481,14 +4481,31 @@ function setupEditTrigger() {
 }
 
 /**
- * Show actions dialog for the currently selected row
+ * Get all selected rows from the current selection (excluding header)
+ * @returns {Array<number>} Array of row numbers
+ */
+function getSelectedRows() {
+  const range = SpreadsheetApp.getActiveRange();
+  const startRow = range.getRow();
+  const numRows = range.getNumRows();
+  const rows = [];
+  for (let i = 0; i < numRows; i++) {
+    const row = startRow + i;
+    if (row > 1) rows.push(row); // Skip header row
+  }
+  return rows;
+}
+
+/**
+ * Show actions dialog for the currently selected row(s)
  * Called from the CartCure menu
+ * Supports both single-row and multi-row selection
  */
 function showActionsForSelectedRow() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSheet();
   const sheetName = sheet.getName();
-  const row = SpreadsheetApp.getActiveRange().getRow();
+  const selectedRows = getSelectedRows();
 
   // Check if on a supported sheet
   const supportedSheets = [SHEETS.JOBS, SHEETS.SUBMISSIONS, SHEETS.INVOICES, SHEETS.CLIENTS];
@@ -4497,13 +4514,20 @@ function showActionsForSelectedRow() {
     return;
   }
 
-  // Check if on header row
-  if (row < 2) {
+  // Check if any valid rows selected
+  if (selectedRows.length === 0) {
     ui.alert('Select a Row', 'Please select a row (not the header) to see available actions.', ui.ButtonSet.OK);
     return;
   }
 
-  showActionsDialogForRow(sheet, sheetName, row);
+  // Single row - use existing dialog
+  if (selectedRows.length === 1) {
+    showActionsDialogForRow(sheet, sheetName, selectedRows[0]);
+    return;
+  }
+
+  // Multiple rows - use multi-row dialog
+  showMultiRowActionsDialog(sheet, sheetName, selectedRows);
 }
 
 // ============================================================================
@@ -4946,6 +4970,1520 @@ function buildActionsDialogHtml(entityType, entityId, entityLabel, status, actio
       </body>
     </html>
   `;
+}
+
+// ============================================================================
+// MULTI-ROW ACTION SUPPORT
+// ============================================================================
+
+/**
+ * Actions that support batch operations (can be performed on multiple items)
+ * Actions not in this list require individual input and can only work on single items
+ */
+const BATCH_SUPPORTED_ACTIONS = {
+  job: ['sendQuoteReminder', 'markAccepted', 'markDeclined', 'startWork', 'markComplete',
+        'cancel', 'generateInvoice', 'requestTestimonial'],
+  submission: ['createJob', 'markInReview', 'decline', 'markSpam'],
+  invoice: ['sendInvoice', 'sendReminder', 'sendOverdue', 'markNotPaid'],
+  client: ['setStatusActive', 'setStatusInactive', 'setStatusVIP', 'recalculateStats']
+};
+
+/**
+ * Actions that open dialogs requiring user input (not batchable)
+ */
+const NON_BATCH_ACTIONS = {
+  job: ['sendQuote', 'onHold', 'viewActivity', 'addNote'],
+  submission: [],
+  invoice: ['viewInvoice', 'markPaid'],
+  client: ['viewClientHistory']
+};
+
+/**
+ * Get entity information from multiple rows for Jobs sheet
+ * @param {Sheet} sheet - The Jobs sheet
+ * @param {Array<number>} rows - Array of row numbers
+ * @returns {Array<Object>} Array of entity objects
+ */
+function getJobsFromRows(sheet, rows) {
+  const statusCol = getColIndex('JOBS', 'Status');
+  const jobNumCol = getColIndex('JOBS', 'Job #');
+  const clientCol = getColIndex('JOBS', 'Client Name');
+
+  const entities = [];
+  for (const row of rows) {
+    const jobNumber = sheet.getRange(row, jobNumCol).getValue();
+    if (!jobNumber) continue;
+
+    entities.push({
+      row: row,
+      entityId: String(jobNumber).trim(),
+      status: sheet.getRange(row, statusCol).getValue(),
+      label: sheet.getRange(row, clientCol).getValue() || jobNumber
+    });
+  }
+  return entities;
+}
+
+/**
+ * Get entity information from multiple rows for Submissions sheet
+ * @param {Sheet} sheet - The Submissions sheet
+ * @param {Array<number>} rows - Array of row numbers
+ * @returns {Array<Object>} Array of entity objects
+ */
+function getSubmissionsFromRows(sheet, rows) {
+  const statusCol = getColIndex('SUBMISSIONS', 'Status');
+  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #');
+  const nameCol = getColIndex('SUBMISSIONS', 'Name');
+
+  const entities = [];
+  for (const row of rows) {
+    const subNumber = sheet.getRange(row, subNumCol).getValue();
+    if (!subNumber) continue;
+
+    entities.push({
+      row: row,
+      entityId: String(subNumber).trim(),
+      status: sheet.getRange(row, statusCol).getValue(),
+      label: sheet.getRange(row, nameCol).getValue() || subNumber
+    });
+  }
+  return entities;
+}
+
+/**
+ * Get entity information from multiple rows for Invoices sheet
+ * @param {Sheet} sheet - The Invoices sheet
+ * @param {Array<number>} rows - Array of row numbers
+ * @returns {Array<Object>} Array of entity objects
+ */
+function getInvoicesFromRows(sheet, rows) {
+  const statusCol = getColIndex('INVOICES', 'Status');
+  const invNumCol = getColIndex('INVOICES', 'Invoice #');
+  const clientCol = getColIndex('INVOICES', 'Client Name');
+
+  const entities = [];
+  for (const row of rows) {
+    const invNumber = sheet.getRange(row, invNumCol).getValue();
+    if (!invNumber) continue;
+
+    entities.push({
+      row: row,
+      entityId: String(invNumber).trim(),
+      status: sheet.getRange(row, statusCol).getValue(),
+      label: sheet.getRange(row, clientCol).getValue() || invNumber
+    });
+  }
+  return entities;
+}
+
+/**
+ * Get entity information from multiple rows for Clients sheet
+ * @param {Sheet} sheet - The Clients sheet
+ * @param {Array<number>} rows - Array of row numbers
+ * @returns {Array<Object>} Array of entity objects
+ */
+function getClientsFromRows(sheet, rows) {
+  const emailCol = getColIndex('CLIENTS', 'Client Email');
+  const nameCol = getColIndex('CLIENTS', 'Client Name');
+  const statusCol = getColIndex('CLIENTS', 'Client Status');
+
+  const entities = [];
+  for (const row of rows) {
+    const email = sheet.getRange(row, emailCol).getValue();
+    if (!email) continue;
+
+    entities.push({
+      row: row,
+      entityId: String(email).trim(),
+      status: sheet.getRange(row, statusCol).getValue(),
+      label: sheet.getRange(row, nameCol).getValue() || email
+    });
+  }
+  return entities;
+}
+
+/**
+ * Get entities from rows based on sheet type
+ * @param {Sheet} sheet - The active sheet
+ * @param {string} sheetName - Name of the sheet
+ * @param {Array<number>} rows - Array of row numbers
+ * @returns {Object} Object with entityType and entities array
+ */
+function getEntitiesFromRows(sheet, sheetName, rows) {
+  if (sheetName === SHEETS.JOBS) {
+    return { entityType: 'job', entities: getJobsFromRows(sheet, rows) };
+  } else if (sheetName === SHEETS.SUBMISSIONS) {
+    return { entityType: 'submission', entities: getSubmissionsFromRows(sheet, rows) };
+  } else if (sheetName === SHEETS.INVOICES) {
+    return { entityType: 'invoice', entities: getInvoicesFromRows(sheet, rows) };
+  } else if (sheetName === SHEETS.CLIENTS) {
+    return { entityType: 'client', entities: getClientsFromRows(sheet, rows) };
+  }
+  return { entityType: null, entities: [] };
+}
+
+/**
+ * Calculate common actions available for all selected entities
+ * @param {string} entityType - Type of entity (job, submission, invoice, client)
+ * @param {Array<Object>} entities - Array of entity objects with status
+ * @returns {Object} Object with commonActions, partialActions, statusBreakdown, actionEntityMap
+ */
+function getCommonActionsForEntities(entityType, entities) {
+  // Get the appropriate getValidActions function
+  const getValidActions = {
+    'job': getValidJobActions,
+    'submission': getValidSubmissionActions,
+    'invoice': getValidInvoiceActions,
+    'client': getValidClientActions
+  }[entityType];
+
+  if (!getValidActions) {
+    return { commonActions: [], partialActions: [], statusBreakdown: {}, actionEntityMap: {} };
+  }
+
+  // Count entities by status
+  const statusBreakdown = {};
+  entities.forEach(entity => {
+    const status = entity.status || 'Unknown';
+    statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+  });
+
+  // Get valid actions for each entity and track which entities support each action
+  const actionCounts = {};
+  const actionDetails = {};
+  const actionEntityMap = {}; // Maps actionId -> array of entityIds that support it
+
+  entities.forEach(entity => {
+    const actions = getValidActions(entity.status);
+    actions.forEach(action => {
+      if (!actionCounts[action.id]) {
+        actionCounts[action.id] = 0;
+        actionDetails[action.id] = action;
+        actionEntityMap[action.id] = [];
+      }
+      actionCounts[action.id]++;
+      actionEntityMap[action.id].push(entity.entityId);
+    });
+  });
+
+  const totalEntities = entities.length;
+  const batchSupported = BATCH_SUPPORTED_ACTIONS[entityType] || [];
+  const nonBatch = NON_BATCH_ACTIONS[entityType] || [];
+
+  // Separate into common (all entities), partial (some entities), and single-only
+  const commonActions = [];
+  const partialActions = [];
+
+  Object.keys(actionCounts).forEach(actionId => {
+    const count = actionCounts[actionId];
+    const action = { ...actionDetails[actionId] };
+    action.count = count;
+    action.total = totalEntities;
+    action.isBatchable = batchSupported.includes(actionId);
+    action.isNonBatch = nonBatch.includes(actionId);
+    action.validEntityIds = actionEntityMap[actionId]; // Add the list of valid entity IDs
+
+    if (count === totalEntities) {
+      // Available for all selected items
+      if (action.isBatchable) {
+        commonActions.push(action);
+      } else if (action.isNonBatch) {
+        // Non-batchable actions shown with indicator
+        action.label = action.label + ' (single item only)';
+        action.singleOnly = true;
+        partialActions.push(action);
+      }
+    } else if (count > 0 && action.isBatchable) {
+      // Available for some items only - add to partial
+      action.label = action.label + ' (' + count + ' of ' + totalEntities + ')';
+      action.partial = true;
+      partialActions.push(action);
+    }
+  });
+
+  return {
+    commonActions,
+    partialActions,
+    statusBreakdown,
+    totalEntities,
+    actionEntityMap
+  };
+}
+
+/**
+ * Show the multi-row actions dialog
+ * @param {Sheet} sheet - The active sheet
+ * @param {string} sheetName - Name of the sheet
+ * @param {Array<number>} rows - Array of selected row numbers
+ */
+function showMultiRowActionsDialog(sheet, sheetName, rows) {
+  const ui = SpreadsheetApp.getUi();
+
+  // Get entities from rows
+  const { entityType, entities } = getEntitiesFromRows(sheet, sheetName, rows);
+
+  if (entities.length === 0) {
+    ui.alert('No Items', 'No valid items found in the selected rows.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Calculate common actions
+  const { commonActions, partialActions, statusBreakdown, totalEntities, actionEntityMap } =
+    getCommonActionsForEntities(entityType, entities);
+
+  // Check if any actions available
+  if (commonActions.length === 0 && partialActions.length === 0) {
+    ui.alert('No Actions Available',
+      'There are no batch actions available for the selected items. ' +
+      'The selected items may have different statuses that don\'t share any common actions.',
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // Build and show the dialog
+  const entityIds = entities.map(e => e.entityId);
+  const htmlContent = buildMultiRowActionsDialogHtml(
+    entityType, entityIds, entities, statusBreakdown, commonActions, partialActions, actionEntityMap
+  );
+
+  // Calculate height based on content
+  const actionCount = commonActions.length + partialActions.length;
+  const statusCount = Object.keys(statusBreakdown).length;
+  const dialogHeight = 180 + (statusCount * 24) + (actionCount * 65) + 60;
+
+  const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
+    .setWidth(520)
+    .setHeight(Math.min(dialogHeight, 600));
+
+  ui.showModalDialog(htmlOutput, 'Batch Actions - ' + totalEntities + ' Items Selected');
+}
+
+/**
+ * Build HTML for the multi-row actions dialog
+ * @param {string} entityType - Type of entity
+ * @param {Array<string>} entityIds - Array of entity IDs
+ * @param {Array<Object>} entities - Array of entity objects
+ * @param {Object} statusBreakdown - Count of entities by status
+ * @param {Array<Object>} commonActions - Actions available for all
+ * @param {Array<Object>} partialActions - Actions available for some
+ * @param {Object} actionEntityMap - Maps actionId to array of valid entity IDs
+ * @returns {string} HTML content
+ */
+function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusBreakdown, commonActions, partialActions, actionEntityMap) {
+  // Build status breakdown HTML
+  let statusHtml = '';
+  Object.keys(statusBreakdown).forEach(status => {
+    statusHtml += '<div class="status-item"><span class="status-badge">' +
+      escapeHtml(status) + '</span> <span class="status-count">' +
+      statusBreakdown[status] + '</span></div>';
+  });
+
+  // Build common action buttons (use all entity IDs since all support the action)
+  let commonButtonsHtml = '';
+  commonActions.forEach(action => {
+    commonButtonsHtml += `
+      <button class="action-btn" onclick="executeBatchAction('${entityType}', '${action.id}', null)">
+        <span class="action-icon">${action.icon}</span>
+        <span class="action-label">${escapeHtml(action.label)}</span>
+        <span class="action-count">All ${entities.length}</span>
+      </button>
+    `;
+  });
+
+  // Build partial action buttons (use only valid entity IDs for each action)
+  let partialButtonsHtml = '';
+  partialActions.forEach(action => {
+    if (action.singleOnly) {
+      // Non-batchable action - disabled with tooltip
+      partialButtonsHtml += `
+        <button class="action-btn action-disabled" disabled title="This action requires individual input for each item">
+          <span class="action-icon">${action.icon}</span>
+          <span class="action-label">${escapeHtml(action.label)}</span>
+        </button>
+      `;
+    } else {
+      // Partial action - pass only valid entity IDs for this action
+      const validIdsJson = JSON.stringify(action.validEntityIds || []);
+      partialButtonsHtml += `
+        <button class="action-btn action-partial" onclick="executeBatchAction('${entityType}', '${action.id}', ${validIdsJson})">
+          <span class="action-icon">${action.icon}</span>
+          <span class="action-label">${escapeHtml(action.label)}</span>
+        </button>
+      `;
+    }
+  });
+
+  // Serialize entity IDs for JavaScript (all IDs for common actions)
+  const entityIdsJson = JSON.stringify(entityIds);
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <base target="_top">
+        <style>
+          * { box-sizing: border-box; }
+          html, body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+            min-width: 100%;
+          }
+          .container {
+            padding: 16px;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            color: white;
+            padding: 20px;
+            margin: -16px -16px 16px -16px;
+          }
+          .header h3 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            font-weight: 500;
+          }
+          .warning-banner {
+            background: #fef7e0;
+            border: 1px solid #f9ab00;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .warning-banner .icon {
+            font-size: 20px;
+          }
+          .warning-banner .text {
+            color: #b06000;
+            font-size: 13px;
+          }
+          .status-breakdown {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+          }
+          .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+          }
+          .status-badge {
+            opacity: 0.9;
+          }
+          .status-count {
+            font-weight: 600;
+          }
+          .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #5f6368;
+            text-transform: uppercase;
+            margin: 16px 0 10px 0;
+            letter-spacing: 0.5px;
+          }
+          .actions-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            width: 100%;
+          }
+          .action-btn {
+            display: flex;
+            align-items: center;
+            justify-self: stretch;
+            gap: 14px;
+            width: 100%;
+            min-width: 100%;
+            padding: 14px 18px;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.15s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          }
+          .action-btn:hover:not(:disabled) {
+            background: #f1f3f4;
+            border-color: #1a73e8;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .action-btn:active:not(:disabled) {
+            background: #e8f0fe;
+          }
+          .action-btn.action-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+          }
+          .action-btn.action-partial {
+            border-left: 3px solid #f9ab00;
+          }
+          .action-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+          }
+          .action-label {
+            color: #202124;
+            font-weight: 500;
+            flex: 1;
+          }
+          .action-count {
+            color: #5f6368;
+            font-size: 12px;
+            background: #e8f0fe;
+            padding: 2px 8px;
+            border-radius: 10px;
+          }
+          .btn-close {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #f1f3f4;
+            color: #5f6368;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+          }
+          .btn-close:hover {
+            background: #e8eaed;
+          }
+          .loading {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+            color: #5f6368;
+          }
+          .loading.show {
+            display: block;
+          }
+          .content.hidden {
+            display: none;
+          }
+          .progress-text {
+            margin-top: 10px;
+            font-size: 13px;
+          }
+          .progress-container {
+            width: 100%;
+            max-width: 300px;
+            margin: 15px auto;
+            background: #e8eaed;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 8px;
+          }
+          .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #1a73e8 0%, #34a853 100%);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+          }
+          .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e8eaed;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h3>⚡ Batch Actions</h3>
+            <div class="status-breakdown">
+              ${statusHtml}
+            </div>
+          </div>
+
+          <div id="loadingIndicator" class="loading">
+            <div class="spinner"></div>
+            <div>Processing batch action...</div>
+            <div class="progress-container">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">Starting...</div>
+          </div>
+
+          <div id="content" class="content">
+            <div class="warning-banner">
+              <span class="icon">⚠️</span>
+              <span class="text">Actions will be applied to <strong>all ${entities.length} selected items</strong>. This cannot be undone.</span>
+            </div>
+
+            ${commonActions.length > 0 ? '<div class="section-title">Available for All Items</div>' : ''}
+            <div class="actions-list">
+              ${commonButtonsHtml}
+            </div>
+
+            ${partialActions.length > 0 ? '<div class="section-title">Other Actions</div>' : ''}
+            <div class="actions-list">
+              ${partialButtonsHtml}
+            </div>
+
+            <button class="btn-close" onclick="google.script.host.close()">Cancel</button>
+          </div>
+        </div>
+        <script>
+          const allEntityIds = ${entityIdsJson};
+          let progressInterval = null;
+          let currentBatchId = null;
+          let expectedCount = 0;
+
+          function executeBatchAction(entityType, actionId, specificEntityIds) {
+            // Use specific entity IDs if provided (for partial actions), otherwise use all
+            const idsToProcess = specificEntityIds || allEntityIds;
+            expectedCount = idsToProcess.length;
+
+            // Show confirmation with accurate count
+            const confirmed = confirm(
+              'Are you sure you want to perform this action on ' + expectedCount + ' item' + (expectedCount !== 1 ? 's' : '') + '?\\n\\n' +
+              'This action cannot be undone.'
+            );
+
+            if (!confirmed) return;
+
+            // Show loading state with progress bar
+            document.getElementById('loadingIndicator').classList.add('show');
+            document.getElementById('content').classList.add('hidden');
+            updateProgressDisplay(0, expectedCount);
+
+            // Start progress polling (every 500ms)
+            startProgressPolling();
+
+            google.script.run
+              .withSuccessHandler(function(result) {
+                stopProgressPolling();
+                updateProgressDisplay(expectedCount, expectedCount); // Show 100%
+
+                if (result && result.error) {
+                  alert('Error: ' + result.error);
+                  document.getElementById('loadingIndicator').classList.remove('show');
+                  document.getElementById('content').classList.remove('hidden');
+                } else if (result && result.results) {
+                  // Show summary
+                  const successes = result.results.filter(r => r.success).length;
+                  const failures = result.results.filter(r => !r.success);
+
+                  let message = 'Batch action completed!\\n\\n';
+                  message += 'Successful: ' + successes + ' of ' + result.results.length + '\\n';
+
+                  if (failures.length > 0) {
+                    message += '\\nFailed (' + failures.length + '):\\n';
+                    failures.slice(0, 5).forEach(f => {
+                      message += '- ' + f.entityId + ': ' + (f.error || 'Unknown error') + '\\n';
+                    });
+                    if (failures.length > 5) {
+                      message += '... and ' + (failures.length - 5) + ' more\\n';
+                    }
+                  }
+
+                  alert(message);
+                  google.script.host.close();
+                } else {
+                  google.script.host.close();
+                }
+              })
+              .withFailureHandler(function(error) {
+                stopProgressPolling();
+                alert('Error: ' + (error.message || 'Unknown error'));
+                document.getElementById('loadingIndicator').classList.remove('show');
+                document.getElementById('content').classList.remove('hidden');
+              })
+              .executeBatchActionFromDialog(entityType, idsToProcess, actionId);
+          }
+
+          function updateProgressDisplay(processed, total) {
+            const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+            document.getElementById('progressText').textContent = 'Processing ' + processed + ' of ' + total + ' (' + percent + '%)';
+            document.getElementById('progressBar').style.width = percent + '%';
+          }
+
+          function startProgressPolling() {
+            // Poll for progress every 500ms
+            progressInterval = setInterval(function() {
+              if (currentBatchId) {
+                google.script.run
+                  .withSuccessHandler(function(progress) {
+                    if (progress && progress.processed !== undefined) {
+                      updateProgressDisplay(progress.processed, progress.total);
+                    }
+                  })
+                  .getBatchProgress(currentBatchId);
+              }
+            }, 500);
+          }
+
+          function stopProgressPolling() {
+            if (progressInterval) {
+              clearInterval(progressInterval);
+              progressInterval = null;
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `;
+}
+
+/**
+ * Execute a batch action from the multi-row actions dialog
+ * Processes items with chunking to prevent timeouts and stores progress for polling
+ * @param {string} entityType - Type of entity (job, submission, invoice, client)
+ * @param {Array<string>} entityIds - Array of entity IDs to process
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object with results array
+ */
+function executeBatchActionFromDialog(entityType, entityIds, actionId) {
+  const results = [];
+  const totalItems = entityIds.length;
+  const CHUNK_SIZE = 10; // Process in chunks to prevent timeout
+  const DELAY_BETWEEN_ITEMS_MS = 100; // Small delay to prevent rate limiting
+
+  // Generate a unique batch ID for progress tracking
+  const batchId = 'batch_' + new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
+  const cache = CacheService.getUserCache();
+
+  // Store initial progress
+  cache.put(batchId, JSON.stringify({ processed: 0, total: totalItems, status: 'running' }), 300);
+
+  for (let i = 0; i < entityIds.length; i++) {
+    const entityId = entityIds[i];
+
+    try {
+      let result;
+      if (entityType === 'job') {
+        result = executeBatchJobAction(entityId, actionId);
+      } else if (entityType === 'submission') {
+        result = executeBatchSubmissionAction(entityId, actionId);
+      } else if (entityType === 'invoice') {
+        result = executeBatchInvoiceAction(entityId, actionId);
+      } else if (entityType === 'client') {
+        result = executeBatchClientAction(entityId, actionId);
+      } else {
+        result = { success: false, error: 'Unknown entity type' };
+      }
+
+      results.push({
+        entityId: entityId,
+        success: result ? (result.success || false) : false,
+        error: result ? (result.error || null) : 'No result returned'
+      });
+    } catch (error) {
+      results.push({
+        entityId: entityId,
+        success: false,
+        error: error.message || 'Unknown error'
+      });
+    }
+
+    // Update progress in cache every item
+    cache.put(batchId, JSON.stringify({ processed: i + 1, total: totalItems, status: 'running' }), 300);
+
+    // Small delay between items to prevent rate limiting (skip on last item)
+    if (i < entityIds.length - 1 && DELAY_BETWEEN_ITEMS_MS > 0) {
+      Utilities.sleep(DELAY_BETWEEN_ITEMS_MS);
+    }
+
+    // Yield periodically to prevent script timeout on very large batches
+    if ((i + 1) % CHUNK_SIZE === 0 && i < entityIds.length - 1) {
+      // Flush the spreadsheet changes
+      SpreadsheetApp.flush();
+    }
+  }
+
+  // Mark batch as complete
+  cache.put(batchId, JSON.stringify({ processed: totalItems, total: totalItems, status: 'complete' }), 60);
+
+  return { results: results, batchId: batchId };
+}
+
+/**
+ * Get the progress of a batch operation
+ * Called by the client to poll for progress updates
+ * @param {string} batchId - The batch ID from executeBatchActionFromDialog
+ * @returns {Object} Progress object with processed, total, and status
+ */
+function getBatchProgress(batchId) {
+  const cache = CacheService.getUserCache();
+  const progressJson = cache.get(batchId);
+
+  if (!progressJson) {
+    return { processed: 0, total: 0, status: 'unknown' };
+  }
+
+  try {
+    return JSON.parse(progressJson);
+  } catch (e) {
+    return { processed: 0, total: 0, status: 'error' };
+  }
+}
+
+/**
+ * Execute a batch job action (no dialogs, silent operation)
+ * @param {string} jobNumber - The job number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeBatchJobAction(jobNumber, actionId) {
+  switch (actionId) {
+    case 'sendQuoteReminder':
+      return sendQuoteReminderSilent(jobNumber);
+
+    case 'markAccepted':
+      return markQuoteAcceptedSilent(jobNumber);
+
+    case 'markDeclined':
+      return markQuoteDeclinedSilent(jobNumber);
+
+    case 'startWork':
+      return startWorkOnJobSilent(jobNumber);
+
+    case 'markComplete':
+      return markJobCompleteSilent(jobNumber);
+
+    case 'cancel':
+      return cancelJobSilent(jobNumber, 'Batch cancelled');
+
+    case 'generateInvoice':
+      return generateInvoiceForJobSilent(jobNumber);
+
+    case 'requestTestimonial':
+      return sendTestimonialRequestSilent(jobNumber);
+
+    default:
+      return { success: false, error: 'Action not supported for batch: ' + actionId };
+  }
+}
+
+/**
+ * Execute a batch submission action (no dialogs, silent operation)
+ * @param {string} submissionNumber - The submission number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeBatchSubmissionAction(submissionNumber, actionId) {
+  switch (actionId) {
+    case 'createJob':
+      return createJobFromSubmissionSilent(submissionNumber);
+
+    case 'markInReview':
+      updateSubmissionStatus(submissionNumber, 'In Review');
+      return { success: true };
+
+    case 'decline':
+      updateSubmissionStatus(submissionNumber, 'Declined');
+      return { success: true };
+
+    case 'markSpam':
+      updateSubmissionStatus(submissionNumber, 'Spam');
+      return { success: true };
+
+    default:
+      return { success: false, error: 'Action not supported for batch: ' + actionId };
+  }
+}
+
+/**
+ * Execute a batch invoice action (no dialogs, silent operation)
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeBatchInvoiceAction(invoiceNumber, actionId) {
+  switch (actionId) {
+    case 'sendInvoice':
+      return sendInvoiceEmailSilent(invoiceNumber);
+
+    case 'sendReminder':
+      return sendInvoiceReminderSilent(invoiceNumber);
+
+    case 'sendOverdue':
+      return sendOverdueInvoiceSilent(invoiceNumber);
+
+    case 'markNotPaid':
+      return markInvoiceAsNotPaidSilent(invoiceNumber);
+
+    default:
+      return { success: false, error: 'Action not supported for batch: ' + actionId };
+  }
+}
+
+/**
+ * Execute a batch client action (no dialogs, silent operation)
+ * @param {string} clientEmail - The client's email
+ * @param {string} actionId - The action to execute
+ * @returns {Object} Result object
+ */
+function executeBatchClientAction(clientEmail, actionId) {
+  try {
+    // Verify client exists before any operation
+    const client = findClientByEmail(clientEmail);
+    if (!client) {
+      return { success: false, error: 'Client not found' };
+    }
+
+    switch (actionId) {
+      case 'setStatusActive':
+        updateClientStatus(clientEmail, CLIENT_STATUS.ACTIVE);
+        return { success: true };
+
+      case 'setStatusInactive':
+        updateClientStatus(clientEmail, CLIENT_STATUS.INACTIVE);
+        return { success: true };
+
+      case 'setStatusVIP':
+        updateClientStatus(clientEmail, CLIENT_STATUS.VIP);
+        return { success: true };
+
+      case 'recalculateStats':
+        updateClientStatistics(clientEmail);
+        return { success: true };
+
+      default:
+        return { success: false, error: 'Action not supported for batch: ' + actionId };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================================================================
+// SILENT BATCH ACTION HELPERS
+// These are versions of existing functions that don't show UI dialogs
+// ============================================================================
+
+/**
+ * Send quote reminder silently (for batch operations)
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object with success boolean and error message if failed
+ */
+function sendQuoteReminderSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    // Check status - sendQuoteReminderAuto only works for QUOTED status
+    const status = job['Status'];
+    if (status !== JOB_STATUS.QUOTED) {
+      return { success: false, error: 'Job must be in Quoted status (current: ' + status + ')' };
+    }
+
+    // Call the auto version which doesn't show dialogs
+    const result = sendQuoteReminderAuto(jobNumber);
+    if (result === false) {
+      return { success: false, error: 'Failed to send quote reminder' };
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Mark quote accepted silently (for batch operations)
+ * Handles both deposit-required ($200+) and direct-start jobs
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object
+ */
+function markQuoteAcceptedSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    const status = job['Status'];
+    if (status !== JOB_STATUS.QUOTED && status !== JOB_STATUS.QUOTE_REMINDED) {
+      return { success: false, error: 'Job status must be Quoted or Quote Reminded' };
+    }
+
+    // Check if job requires deposit ($200+)
+    const total = parseFloat(job['Total (incl GST)']) || parseFloat(job['Quote Amount (excl GST)']) || 0;
+    const requiresDeposit = total >= 200;
+
+    const now = new Date();
+    const turnaround = parseInt(job['Estimated Turnaround']) || JOB_CONFIG.DEFAULT_SLA_DAYS;
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + turnaround);
+
+    // For jobs under $200: Start work immediately (status = In Progress)
+    // For jobs $200+: Set to Accepted (work starts after deposit is paid)
+    const newStatus = requiresDeposit ? JOB_STATUS.ACCEPTED : JOB_STATUS.IN_PROGRESS;
+
+    // Build fields to update
+    const fieldsToUpdate = {
+      'Status': newStatus,
+      'Quote Accepted Date': formatNZDate(now),
+      'Days Since Accepted': 0,
+      'Days Remaining': turnaround,
+      'SLA Status': 'On Track',
+      'Due Date': formatNZDate(dueDate)
+    };
+
+    // If starting work immediately (no deposit), also set Actual Start Date
+    if (!requiresDeposit) {
+      fieldsToUpdate['Actual Start Date'] = formatNZDate(now);
+    }
+
+    updateJobFields(jobNumber, fieldsToUpdate);
+
+    // Update client record
+    if (job['Client Email']) {
+      try {
+        ensureClientExistsAndUpdate(job['Client Email'], {
+          name: job['Client Name'],
+          phone: job['Client Phone'],
+          storeUrl: job['Store URL']
+        });
+      } catch (e) {
+        Logger.log('Error updating client record: ' + e.message);
+      }
+    }
+
+    // Generate and send deposit invoice for $200+ jobs
+    if (requiresDeposit) {
+      generateAndSendDepositInvoice(jobNumber, job);
+    } else {
+      // For non-deposit jobs, send status update email
+      sendStatusUpdateEmail(jobNumber, JOB_STATUS.IN_PROGRESS, {
+        wasOnHold: false,
+        daysOnHold: 0
+      });
+    }
+
+    logJobActivity(jobNumber, 'Quote Accepted', 'Quote accepted via batch action' + (requiresDeposit ? ' (deposit invoice sent)' : ' (work started)'));
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Mark quote declined silently (for batch operations)
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object with success boolean and error message if failed
+ */
+function markQuoteDeclinedSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    // Validate status - can only decline jobs that have been quoted
+    const status = job['Status'];
+    if (status !== JOB_STATUS.QUOTED && status !== JOB_STATUS.QUOTE_REMINDED) {
+      return { success: false, error: 'Job must be in Quoted or Quote Reminded status (current: ' + status + ')' };
+    }
+
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.DECLINED
+    });
+
+    // Also update submission if exists
+    const submissionNumber = job['Submission #'];
+    if (submissionNumber) {
+      updateSubmissionStatus(submissionNumber, 'Declined');
+    }
+
+    logJobActivity(jobNumber, 'Quote Declined', 'Quote declined via batch action');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Start work on job silently (for batch operations)
+ * Checks for unpaid deposit invoices before allowing work to start
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object
+ */
+function startWorkOnJobSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    const status = job['Status'];
+    if (status !== JOB_STATUS.ACCEPTED && status !== JOB_STATUS.ON_HOLD) {
+      return { success: false, error: 'Job must be Accepted or On Hold' };
+    }
+
+    // Check for unpaid deposit invoice (for jobs that require deposit)
+    const invoices = getInvoicesByJobNumber(jobNumber);
+    const depositInvoice = invoices.find(inv => inv['Invoice Type'] === 'Deposit');
+
+    if (depositInvoice && depositInvoice['Status'] !== 'Paid') {
+      return { success: false, error: 'Deposit not yet paid' };
+    }
+
+    // Capture current status to detect if resuming from On Hold
+    const wasOnHold = status === JOB_STATUS.ON_HOLD;
+    let daysOnHold = 0;
+    if (wasOnHold && job['Last Updated']) {
+      try {
+        const onHoldDate = new Date(job['Last Updated']);
+        const now = new Date();
+        daysOnHold = Math.floor((now - onHoldDate) / (1000 * 60 * 60 * 24));
+      } catch (e) {
+        Logger.log('Error calculating days on hold: ' + e.message);
+      }
+    }
+
+    // Start the work
+    const now = new Date();
+
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.IN_PROGRESS,
+      'Actual Start Date': formatNZDate(now)
+    });
+
+    logJobActivity(jobNumber, 'Work Started', 'Work started via batch action');
+
+    // Send status update email
+    sendStatusUpdateEmail(jobNumber, JOB_STATUS.IN_PROGRESS, {
+      wasOnHold: wasOnHold,
+      daysOnHold: daysOnHold
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Mark job complete silently (for batch operations)
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object
+ */
+function markJobCompleteSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    if (job['Status'] !== JOB_STATUS.IN_PROGRESS) {
+      return { success: false, error: 'Job must be In Progress' };
+    }
+
+    const now = new Date();
+
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.COMPLETED,
+      'Actual Completion Date': formatNZDate(now),
+      'SLA Status': '',
+      'Days Remaining': ''
+    });
+
+    logJobActivity(jobNumber, 'Job Completed', 'Job completed via batch action');
+    sendStatusUpdateEmail(jobNumber, JOB_STATUS.COMPLETED, {});
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Cancel job silently (for batch operations)
+ * @param {string} jobNumber - The job number
+ * @param {string} reason - Cancellation reason
+ * @returns {Object} Result object with success boolean and error message if failed
+ */
+function cancelJobSilent(jobNumber, reason) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    // Check if job can be cancelled (not already completed or cancelled)
+    const status = job['Status'];
+    if (status === JOB_STATUS.COMPLETED) {
+      return { success: false, error: 'Cannot cancel a completed job' };
+    }
+    if (status === JOB_STATUS.CANCELLED) {
+      return { success: false, error: 'Job is already cancelled' };
+    }
+
+    updateJobFields(jobNumber, {
+      'Status': JOB_STATUS.CANCELLED
+    });
+    logJobActivity(jobNumber, 'Job Cancelled', reason || 'Cancelled via batch action');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate invoice for job silently (for batch operations)
+ * Automatically determines invoice type (Full, Deposit, or Balance)
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object
+ */
+function generateInvoiceForJobSilent(jobNumber) {
+  try {
+    const ss = getSpreadsheet();
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    if (!invoiceSheet) {
+      return { success: false, error: 'Invoice Log sheet not found' };
+    }
+
+    // Get existing invoices and analyze state
+    const existingInvoices = getInvoicesByJobNumber(jobNumber);
+    const hasDeposit = existingInvoices.some(inv => inv['Invoice Type'] === 'Deposit');
+    const hasBalance = existingInvoices.some(inv => inv['Invoice Type'] === 'Balance');
+    const depositInvoice = existingInvoices.find(inv => inv['Invoice Type'] === 'Deposit');
+
+    // Calculate amounts
+    const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+    const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+    const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
+    const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
+    const projectSize = getProjectSize(total);
+
+    // Calculate remaining balance
+    const paidAmount = calculatePaidAmount(jobNumber);
+    const remainingBalance = total - paidAmount;
+
+    // Decision tree for invoice type
+    let invoiceType, invoiceAmount, invoiceGst, invoiceTotal;
+
+    if (existingInvoices.length === 0) {
+      // NO INVOICES: Create Full or Deposit based on project size
+      if (projectSize === PROJECT_SIZE.SMALL) {
+        invoiceType = 'Full';
+        invoiceAmount = amount;
+        invoiceGst = gst;
+        invoiceTotal = total;
+      } else {
+        // Medium or Large: Create 50% Deposit
+        invoiceType = 'Deposit';
+        invoiceAmount = amount * 0.5;
+        invoiceGst = gst * 0.5;
+        invoiceTotal = total * 0.5;
+      }
+    } else if (hasDeposit && !hasBalance) {
+      // HAS DEPOSIT, NO BALANCE: Create Balance invoice
+      const depositAmount = parseFloat(depositInvoice['Amount (excl GST)']) || 0;
+      const depositGst = parseFloat(depositInvoice['GST']) || 0;
+
+      invoiceType = 'Balance';
+      invoiceAmount = amount - depositAmount;
+      invoiceGst = gst - depositGst;
+      invoiceTotal = invoiceAmount + invoiceGst;
+    } else if (remainingBalance > 0.01) {
+      // Has invoices but remaining balance - create Additional invoice
+      invoiceType = 'Additional';
+      if (isGSTRegistered) {
+        invoiceTotal = remainingBalance;
+        invoiceAmount = remainingBalance / 1.15;
+        invoiceGst = remainingBalance - invoiceAmount;
+      } else {
+        invoiceAmount = remainingBalance;
+        invoiceGst = 0;
+        invoiceTotal = remainingBalance;
+      }
+    } else {
+      return { success: false, error: 'Job is already fully invoiced' };
+    }
+
+    // Generate invoice number and dates
+    const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices.length);
+    const now = new Date();
+    const paymentTerms = parseInt(getSetting('Default Payment Terms')) || JOB_CONFIG.PAYMENT_TERMS_DAYS;
+    const dueDate = new Date(now);
+    if (invoiceType !== 'Deposit') {
+      dueDate.setDate(dueDate.getDate() + paymentTerms);
+    }
+
+    // Create invoice row
+    const invoiceRow = buildRowFromConfig('INVOICES', {
+      'Invoice #': invoiceNumber,
+      'Job #': jobNumber,
+      'Client Name': job['Client Name'],
+      'Client Email': job['Client Email'],
+      'Client Phone': job['Client Phone'] || '',
+      'Invoice Date': formatNZDate(now),
+      'Due Date': formatNZDate(dueDate),
+      'Amount (excl GST)': invoiceAmount.toFixed(2),
+      'GST': invoiceGst.toFixed(2),
+      'Total': invoiceTotal.toFixed(2),
+      'Status': 'Draft',
+      'Total With Fees': invoiceTotal.toFixed(2),
+      'Invoice Type': invoiceType
+    });
+
+    // Insert at top
+    insertAtTopSafe(invoiceSheet, invoiceRow, false); // false = no toast for batch
+
+    // Update job with latest invoice number
+    updateJobField(jobNumber, 'Invoice #', invoiceNumber);
+
+    Logger.log('Invoice ' + invoiceNumber + ' (' + invoiceType + ') generated for ' + jobNumber + ' (batch)');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send testimonial request silently (for batch operations)
+ * @param {string} jobNumber - The job number
+ * @returns {Object} Result object
+ */
+function sendTestimonialRequestSilent(jobNumber) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      return { success: false, error: 'Job not found' };
+    }
+
+    if (job['Status'] !== JOB_STATUS.COMPLETED) {
+      return { success: false, error: 'Job must be Completed' };
+    }
+
+    const clientEmail = job['Client Email'];
+    if (!clientEmail) {
+      return { success: false, error: 'No client email' };
+    }
+
+    // Send the testimonial request email (uses existing sendTestimonialRequest logic)
+    const clientName = job['Client Name'];
+    const businessName = getSetting('Business Name') || 'CartCure';
+    const feedbackUrl = 'https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(jobNumber);
+    const subject = 'How was your experience with CartCure?';
+
+    // Use a simplified email for batch operations
+    const body = `
+      <p>Hi ${escapeHtml(clientName)},</p>
+      <p>We hope you're enjoying your updated Shopify store!</p>
+      <p>We'd love to hear about your experience working with CartCure. Your feedback helps us improve and helps other store owners find reliable help.</p>
+      <p><a href="${feedbackUrl}" style="display:inline-block;padding:12px 24px;background:#2d5d3f;color:white;text-decoration:none;border-radius:6px;">Share Your Feedback</a></p>
+      <p>Thank you for choosing CartCure!</p>
+      <p>Best regards,<br>${businessName}</p>
+    `;
+
+    MailApp.sendEmail({
+      to: clientEmail,
+      subject: subject,
+      htmlBody: body,
+      name: businessName
+    });
+
+    // Mark testimonial as requested
+    updateJobField(jobNumber, 'Testimonial Requested', 'Yes');
+    logJobActivity(jobNumber, 'Testimonial Requested', 'Testimonial request sent via batch action');
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Create job from submission silently (for batch operations)
+ * @param {string} submissionNumber - The submission number
+ * @returns {Object} Result object
+ */
+function createJobFromSubmissionSilent(submissionNumber) {
+  try {
+    const ss = getSpreadsheet();
+    const submissionsSheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
+    const jobsSheet = ss.getSheetByName(SHEETS.JOBS);
+
+    if (!submissionsSheet || !jobsSheet) {
+      return { success: false, error: 'Required sheets not found' };
+    }
+
+    // Find the submission
+    const submissionsData = submissionsSheet.getDataRange().getValues();
+    const submissionNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
+    const statusCol = getColIndex('SUBMISSIONS', 'Status') - 1;
+
+    let submissionRow = null;
+    let submissionRowIndex = -1;
+
+    for (let i = 1; i < submissionsData.length; i++) {
+      if (String(submissionsData[i][submissionNumCol]).trim().toUpperCase() === submissionNumber.toUpperCase()) {
+        submissionRow = submissionsData[i];
+        submissionRowIndex = i + 1; // 1-indexed for sheet operations
+        break;
+      }
+    }
+
+    if (!submissionRow) {
+      return { success: false, error: 'Submission not found' };
+    }
+
+    // Check if already has a job
+    const currentStatus = submissionRow[statusCol];
+    if (currentStatus === 'Job Created') {
+      return { success: false, error: 'Job already created from this submission' };
+    }
+
+    // Count existing jobs for this submission (to handle additional jobs)
+    const jobsData = jobsSheet.getDataRange().getValues();
+    const jobSubNumColIdx = getColIndex('JOBS', 'Submission #') - 1;
+    let existingJobCount = 0;
+    for (let i = 1; i < jobsData.length; i++) {
+      if (String(jobsData[i][jobSubNumColIdx]).trim().toUpperCase() === submissionNumber.toUpperCase()) {
+        existingJobCount++;
+      }
+    }
+
+    // Generate job number
+    let jobNumber;
+    if (existingJobCount === 0) {
+      jobNumber = submissionNumber.replace(/^CC-/i, 'J-');
+    } else {
+      jobNumber = submissionNumber.replace(/^CC-/i, 'J-') + '-' + (existingJobCount + 1);
+    }
+
+    // Extract submission data using COLUMN_CONFIG
+    const name = submissionRow[getColIndex('SUBMISSIONS', 'Name') - 1] || '';
+    const email = submissionRow[getColIndex('SUBMISSIONS', 'Email') - 1] || '';
+    const phone = submissionRow[getColIndex('SUBMISSIONS', 'Phone') - 1] || '';
+    const storeUrl = submissionRow[getColIndex('SUBMISSIONS', 'Store URL') - 1] || '';
+    const message = submissionRow[getColIndex('SUBMISSIONS', 'Message') - 1] || '';
+
+    // Create job row
+    const now = new Date();
+    const jobRow = buildRowFromConfig('JOBS', {
+      'Job #': jobNumber,
+      'Created Date': formatNZDate(now),
+      'Client Name': name,
+      'Client Email': email,
+      'Client Phone': phone,
+      'Store URL': storeUrl,
+      'Job Description': message,
+      'Submission #': submissionNumber,
+      'Last Updated': formatNZDate(now)
+    });
+
+    // Add to Jobs sheet at top
+    insertAtTopSafe(jobsSheet, jobRow, false); // false = no toast for batch
+
+    // Update submission status
+    const statusColumnIndex = getColIndex('SUBMISSIONS', 'Status');
+    submissionsSheet.getRange(submissionRowIndex, statusColumnIndex).setValue('Job Created');
+
+    // Log activity
+    logJobActivity(jobNumber, 'Job Created', 'Job created from submission ' + submissionNumber + ' (batch)', '', '', 'Auto');
+
+    // Add/update client in Clients sheet
+    if (email) {
+      try {
+        ensureClientExistsAndUpdate(email, { name: name, phone: phone, storeUrl: storeUrl });
+      } catch (e) {
+        Logger.log('Warning: Could not update client record: ' + e.message);
+      }
+    }
+
+    Logger.log('Job ' + jobNumber + ' created from submission ' + submissionNumber + ' (batch)');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send invoice reminder silently (for batch operations)
+ * Uses existing sendInvoiceReminderAuto which doesn't show UI
+ * @param {string} invoiceNumber - The invoice number
+ * @returns {Object} Result object
+ */
+function sendInvoiceReminderSilent(invoiceNumber) {
+  try {
+    sendInvoiceReminderAuto(invoiceNumber);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send overdue invoice silently (for batch operations)
+ * @param {string} invoiceNumber - The invoice number
+ * @returns {Object} Result object
+ */
+function sendOverdueInvoiceSilent(invoiceNumber) {
+  try {
+    sendOverdueInvoice(invoiceNumber, true); // true = auto/silent mode
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Mark invoice as not paid silently (for batch operations)
+ * Reverts status to Sent or Overdue based on due date
+ * @param {string} invoiceNumber - The invoice number
+ * @returns {Object} Result object
+ */
+function markInvoiceAsNotPaidSilent(invoiceNumber) {
+  try {
+    const invoice = getInvoiceByNumber(invoiceNumber);
+    if (!invoice) {
+      return { success: false, error: 'Invoice not found' };
+    }
+
+    // Determine new status based on due date
+    const dueDate = new Date(invoice['Due Date']);
+    const now = new Date();
+    const newStatus = (now > dueDate) ? 'Overdue' : 'Sent';
+
+    updateInvoiceFields(invoiceNumber, {
+      'Status': newStatus
+    });
+
+    const jobNumber = invoice['Job #'];
+    if (jobNumber) {
+      logJobActivity(jobNumber, 'Invoice Updated', 'Invoice ' + invoiceNumber + ' marked as Not Paid (batch action)');
+    }
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 /**

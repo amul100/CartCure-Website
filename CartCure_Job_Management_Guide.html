@@ -231,7 +231,7 @@
         Complete workflow management with SLA tracking,<br>
         professional quotes, and payment management
     </p>
-    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.1</p>
+    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.2</p>
 </div>
 
 <div class="toc">
@@ -338,7 +338,75 @@
     <strong>Activity Log Enhancement:</strong> When viewing the Activity Log, you can now add notes directly from the dialog using the "Add Note" button - no need to close and use the menu!
 </div>
 
-<h2>4. Enhanced Submission Form</h2>
+<h2>4. Multi-Row Batch Actions (New!)</h2>
+
+<p><strong>Process Multiple Items at Once:</strong> Select multiple rows in any supported sheet and perform actions on all of them simultaneously</p>
+
+<ul>
+    <li><strong>How It Works:</strong>
+        <ol>
+            <li>Select multiple rows by clicking and dragging, or using Shift+Click</li>
+            <li>Use <strong>CartCure &gt; Actions</strong> or the ☰ icon</li>
+            <li>A batch actions dialog appears showing:
+                <ul>
+                    <li>Number of items selected</li>
+                    <li>Breakdown by current status</li>
+                    <li>Actions available for all selected items</li>
+                </ul>
+            </li>
+            <li>Click an action to apply it to all selected items</li>
+            <li>Confirm the batch operation</li>
+            <li>View results summary showing successes and any failures</li>
+        </ol>
+    </li>
+    <li><strong>Available Batch Actions by Sheet:</strong>
+        <ul>
+            <li><strong>Submissions:</strong> Create Job, Mark In Review, Decline, Mark as Spam</li>
+            <li><strong>Jobs:</strong> Send Quote Reminder, Mark Accepted/Declined, Start Work, Mark Complete, Cancel, Generate Invoice, Request Testimonial</li>
+            <li><strong>Invoices:</strong> Send Invoice, Send Reminder, Send Overdue Notice, Mark Not Paid</li>
+            <li><strong>Clients:</strong> Set Active/Inactive/VIP Status, Recalculate Stats</li>
+        </ul>
+    </li>
+    <li><strong>Smart Status Handling:</strong>
+        <ul>
+            <li>Only shows actions valid for the selected items' statuses</li>
+            <li>Mixed status selections show common actions available to all</li>
+            <li>Partial actions show how many items support each action (e.g., "Mark Complete (3 of 5)")</li>
+            <li>Partial actions only process the items that support the action (not all selected items)</li>
+            <li>Items that can't be processed are skipped with a detailed reason shown in results</li>
+        </ul>
+    </li>
+    <li><strong>Progress Tracking:</strong>
+        <ul>
+            <li>Visual progress bar shows completion percentage during batch operations</li>
+            <li>Spinner animation indicates processing is in progress</li>
+            <li>Real-time count updates (e.g., "Processing 5 of 10 (50%)")</li>
+            <li>Detailed results summary upon completion showing successes and failures</li>
+        </ul>
+    </li>
+    <li><strong>Reliability Features:</strong>
+        <ul>
+            <li>Automatic chunking for large batch operations to prevent timeouts</li>
+            <li>Rate limiting protection with small delays between items</li>
+            <li>Proper error handling with detailed failure messages per item</li>
+            <li>Status validation before each action to prevent invalid operations</li>
+        </ul>
+    </li>
+    <li><strong>Actions Requiring Individual Input:</strong> Some actions cannot be batched:
+        <ul>
+            <li>Send Quote (requires amount per job)</li>
+            <li>Put On Hold (requires reason per job)</li>
+            <li>Mark as Paid (requires payment details per invoice)</li>
+            <li>View actions (Activity Log, Invoice Preview, Client History)</li>
+        </ul>
+    </li>
+</ul>
+
+<div class="alert">
+    <strong>Important:</strong> Batch actions cannot be undone! Always review the confirmation dialog carefully before proceeding. The system will warn you when processing multiple items.
+</div>
+
+<h2>5. Enhanced Submission Form</h2>
 
 <p><strong>Better Information Collection:</strong> Form now encourages users to provide more detailed information</p>
 
@@ -349,7 +417,7 @@
     <li><strong>Result:</strong> Better quality submissions = more accurate quotes = less back-and-forth</li>
 </ul>
 
-<h2>5. Visual Analytics Charts</h2>
+<h2>6. Visual Analytics Charts</h2>
 
 <p><strong>New Charts Section:</strong> Analytics sheet now includes visual graphs for at-a-glance insights</p>
 
@@ -361,7 +429,7 @@
     <li><strong>Auto-Update:</strong> Charts refresh automatically when you refresh analytics data</li>
 </ul>
 
-<h2>6. Dashboard Formatting Consistency</h2>
+<h2>7. Dashboard Formatting Consistency</h2>
 
 <p><strong>Visual Polish:</strong> Improved consistency across Dashboard and Analytics sheets</p>
 
@@ -370,6 +438,23 @@
     <li>Proper vertical alignment throughout</li>
     <li>Consistent font sizes and spacing</li>
     <li>Better visual hierarchy and readability</li>
+</ul>
+
+<hr>
+
+<div class="info">
+    <strong>Version 2.2 Updates (February 2025)</strong>
+</div>
+
+<h2>Multi-Row Batch Actions</h2>
+
+<p>Major new feature allowing you to perform actions on multiple selected items at once:</p>
+
+<ul>
+    <li><strong>Batch Processing:</strong> Select multiple rows and apply actions to all of them simultaneously</li>
+    <li><strong>Smart Status Handling:</strong> Only shows actions valid for all selected items based on their statuses</li>
+    <li><strong>Results Tracking:</strong> Detailed summary showing successes and failures after batch operations</li>
+    <li><strong>Supported Sheets:</strong> Jobs, Submissions, Invoices, and Clients</li>
 </ul>
 
 <hr>
