@@ -5288,6 +5288,16 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
       statusBreakdown[status] + '</span></div>';
   });
 
+  // Build selected items list HTML
+  let selectedItemsHtml = '';
+  entities.forEach(entity => {
+    const statusClass = (entity.status || '').toLowerCase().replace(/[^a-z]/g, '-');
+    selectedItemsHtml += '<div class="selected-item">' +
+      '<span class="item-id">' + escapeHtml(entity.entityId) + '</span>' +
+      '<span class="item-label">' + escapeHtml(entity.label || '') + '</span>' +
+      '</div>';
+  });
+
   // Build common action buttons (use all entity IDs since all support the action)
   let commonButtonsHtml = '';
   commonActions.forEach(action => {
@@ -5393,6 +5403,56 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
           }
           .status-count {
             font-weight: 600;
+          }
+          .selected-items-toggle {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .selected-items-toggle:hover {
+            background: rgba(255,255,255,0.2);
+          }
+          .selected-items-list {
+            display: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+          }
+          .selected-items-list.show {
+            display: block;
+          }
+          .selected-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+          }
+          .selected-item:last-child {
+            border-bottom: none;
+          }
+          .item-id {
+            font-weight: 600;
+            opacity: 0.9;
+          }
+          .item-label {
+            opacity: 0.8;
+            text-align: right;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
           .section-title {
             font-size: 12px;
@@ -5528,6 +5588,13 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
             <div class="status-breakdown">
               ${statusHtml}
             </div>
+            <button class="selected-items-toggle" onclick="toggleSelectedItems()">
+              <span>📋</span> View Selected Items (${entities.length})
+              <span id="toggleArrow">▼</span>
+            </button>
+            <div id="selectedItemsList" class="selected-items-list">
+              ${selectedItemsHtml}
+            </div>
           </div>
 
           <div id="loadingIndicator" class="loading">
@@ -5652,6 +5719,18 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
             if (progressInterval) {
               clearInterval(progressInterval);
               progressInterval = null;
+            }
+          }
+
+          function toggleSelectedItems() {
+            const list = document.getElementById('selectedItemsList');
+            const arrow = document.getElementById('toggleArrow');
+            if (list.classList.contains('show')) {
+              list.classList.remove('show');
+              arrow.textContent = '▼';
+            } else {
+              list.classList.add('show');
+              arrow.textContent = '▲';
             }
           }
         </script>
