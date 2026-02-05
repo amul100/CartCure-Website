@@ -51,6 +51,8 @@ When adding a new email type:
 | email-quote-accepted.html | handleQuoteAcceptance() | Client confirmation after accepting quote |
 | email-quote-reminder.html | sendQuoteReminder() | Quote reminder with Accept Quote button |
 | email-client-paid-notification.html | sendPaymentClaimedNotification() | Admin notification when client clicks "I Have Paid" |
+| invoice-pdf.html | generateInvoicePDF(), renderInvoicePDFHtml() | Print-optimized invoice PDF template |
+| receipt-pdf.html | generateReceiptPDF(), renderReceiptPDFHtml() | Print-optimized payment receipt PDF template |
 
 ## Column Configuration System
 **IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object at the top of Code.gs. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.

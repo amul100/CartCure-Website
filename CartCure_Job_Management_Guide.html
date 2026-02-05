@@ -321,7 +321,7 @@
         <ul>
             <li><strong>Jobs:</strong> Shows actions like "Send Quote", "Start Work", "Mark Complete" based on job status</li>
             <li><strong>Submissions:</strong> Shows "Create Job", "Decline", or "Mark as Spam" for new submissions</li>
-            <li><strong>Invoices:</strong> Shows "View", "Send", "Send Reminder", "Mark as Paid", or "Mark as Not Paid" based on invoice status. "Paid?" status invoices show both "Confirm Payment" and "Mark as Not Paid" options</li>
+            <li><strong>Invoices:</strong> Shows "View", "Send", "Send Reminder", "Mark as Paid", "Mark as Not Paid", or "Cancel" based on invoice status. Draft invoices can be cancelled; "Paid?" status invoices show both "Confirm Payment" and "Mark as Not Paid" options</li>
         </ul>
     </li>
     <li><strong>Always Available Actions:</strong> "View Activity Log" and "Add Note" are always available for jobs</li>
@@ -363,7 +363,7 @@
         <ul>
             <li><strong>Submissions:</strong> Create Job, Mark In Review, Decline, Mark as Spam</li>
             <li><strong>Jobs:</strong> Send Quote Reminder, Mark Accepted/Declined, Start Work, Mark Complete, Cancel, Generate Invoice, Request Testimonial</li>
-            <li><strong>Invoices:</strong> Send Invoice, Send Reminder, Send Overdue Notice, Mark Not Paid</li>
+            <li><strong>Invoices:</strong> Send Invoice, Send Reminder, Send Overdue Notice, Mark Not Paid, Cancel Invoice (Draft only)</li>
             <li><strong>Clients:</strong> Set Active/Inactive/VIP Status, Recalculate Stats</li>
         </ul>
     </li>
@@ -471,7 +471,7 @@
     <li><strong>9 Sheets:</strong> Updated to reflect all sheets (Dashboard, Submissions, Jobs, Invoice Log, Testimonials, Analytics, Activity Log, Clients, Settings)</li>
     <li><strong>Complete Settings Table:</strong> Documented all 13 configurable settings including Archive, Confirm Selection, and Header Protection options</li>
     <li><strong>Full Menu Reference:</strong> Complete menu structure with all items organized by category (Dashboard, Jobs, Quotes, Invoices, Clients, Setup, Maintenance)</li>
-    <li><strong>Accurate Invoice Log:</strong> Updated to show all 20 columns including Actions column</li>
+    <li><strong>Accurate Invoice Log:</strong> Updated to show all 22 columns including Actions, Receipt #, PDF Link, and Receipt PDF Link columns</li>
     <li><strong>Submissions Sheet:</strong> Updated to show 11 columns with Actions column</li>
     <li><strong>Payment Status Flow:</strong> Added Overdue and Refunded states</li>
     <li><strong>Job Status Flow:</strong> Improved diagram showing all state transitions</li>
@@ -1059,6 +1059,29 @@
     <li>Client receives professional invoice email (CC: info@cartcure.co.nz)</li>
 </ol>
 
+<h3>Cancel a Draft Invoice</h3>
+<p>If you need to cancel an invoice <strong>before</strong> it's sent to the client:</p>
+<ol>
+    <li>Select the invoice row in the Invoice Log sheet</li>
+    <li>Click the ☰ Actions button, or use <strong>🛒 CartCure &gt; ⚡ Actions</strong></li>
+    <li>Click <strong>🗑️ Cancel Invoice</strong></li>
+    <li>Confirm the cancellation in the dialog</li>
+</ol>
+
+<div class="warning">
+    <strong>Accounting Safeguard:</strong> Only <strong>Draft</strong> invoices can be cancelled. Once an invoice is sent to a client, it cannot be cancelled - this protects the audit trail and ensures clients aren't confused by disappearing invoices. If you need to void a sent invoice, consult with an accountant about proper write-off procedures.
+</div>
+
+<div class="info">
+    <strong>What happens when you cancel:</strong>
+    <ul>
+        <li>Invoice status changes to "Cancelled" (preserved in Invoice Log for audit trail)</li>
+        <li>The invoice number is kept (not reused) for accounting compliance</li>
+        <li>Job payment status is automatically recalculated based on remaining active invoices</li>
+        <li>Action is logged to the Activity Log</li>
+    </ul>
+</div>
+
 <h3>Record Payment</h3>
 <ol>
     <li>Go to <strong>🛒 CartCure &gt; 🧾 Invoices &gt; Mark as Paid</strong></li>
@@ -1073,9 +1096,10 @@
         <li>Payment confirmation with invoice and job details</li>
         <li>Payment method and reference</li>
         <li>Complete pricing breakdown (with GST if registered)</li>
+        <li><strong>PDF Receipt attached</strong> - Professional PDF copy for client records</li>
         <li><strong>"Leave a Review" button</strong> - Links to the feedback form with job number pre-filled</li>
     </ul>
-    This encourages satisfied customers to leave testimonials while the positive experience is fresh!
+    The PDF receipt is also saved to the "CartCure Receipts" folder in Google Drive, with the link stored in the Invoice Log's "Receipt PDF Link" column.
 </div>
 
 <h4>Client-Reported Payments ("I Have Paid" Button)</h4>
@@ -1199,7 +1223,7 @@
 </div>
 
 <div class="info">
-    <strong>Invoice Log Columns (20 columns):</strong> The Invoice Log sheet includes:
+    <strong>Invoice Log Columns (22 columns):</strong> The Invoice Log sheet includes:
     <ul>
         <li><strong>Actions</strong> - Click ☰ for quick actions</li>
         <li><strong>Status</strong> - Draft, Sent, Paid, Paid?, Overdue, or Cancelled</li>
@@ -1210,11 +1234,14 @@
         <li><strong>Amount (excl GST), GST, Total</strong> - Financial breakdown</li>
         <li><strong>Sent Date, Paid Date</strong> - Transaction dates</li>
         <li><strong>Payment Reference</strong> - Bank reference number</li>
+        <li><strong>Receipt #</strong> - Sequential receipt number (REC-001, etc.)</li>
         <li><strong>Days Overdue</strong> - Number of days past due date</li>
         <li><strong>Late Fee</strong> - Calculated late fee amount</li>
         <li><strong>Total With Fees</strong> - Original amount plus late fees</li>
         <li><strong>Invoice Type</strong> - Full, Deposit, Balance, or Additional</li>
         <li><strong>Notes</strong> - Internal notes</li>
+        <li><strong>PDF Link</strong> - Link to invoice PDF copy in Google Drive</li>
+        <li><strong>Receipt PDF Link</strong> - Link to payment receipt PDF in Google Drive</li>
     </ul>
 </div>
 
@@ -1302,7 +1329,61 @@
     <li><strong>CC to Company Email:</strong> All client emails are automatically CC'd to info@cartcure.co.nz</li>
     <li><strong>Client Name Personalization:</strong> Each email addresses the client by name</li>
     <li><strong>Mobile-Friendly:</strong> Professional HTML design with plain text fallback</li>
+    <li><strong>PDF Attachment:</strong> Invoice emails automatically include a PDF copy as an attachment</li>
 </ul>
+
+<h2>Invoice PDF Generation</h2>
+
+<p>The system automatically generates professional PDF copies of all invoices. PDFs are attached to invoice emails and saved to Google Drive for your records.</p>
+
+<h3>Automatic PDF Attachment</h3>
+<p>When you send an invoice (via menu or Actions dialog), the system:</p>
+<ol>
+    <li>Generates a professional PDF of the invoice</li>
+    <li>Attaches the PDF to the email sent to the client</li>
+    <li>Saves the PDF to the "CartCure Invoices" folder in Google Drive</li>
+    <li>Records the PDF link in the Invoice Log "PDF Link" column</li>
+</ol>
+
+<h3>Manual PDF Download</h3>
+<p>To generate or download a PDF for any invoice:</p>
+<ol>
+    <li>Select the invoice row in the Invoice Log sheet</li>
+    <li>Go to <strong>CartCure &gt; Invoices &gt; Download PDF</strong></li>
+    <li>Or click the Actions button (☰) and select "Download PDF"</li>
+</ol>
+
+<div class="info">
+    <strong>PDF Storage:</strong> All invoice PDFs are automatically saved to a "CartCure Invoices" folder in your Google Drive. The link to each PDF is stored in the Invoice Log's "PDF Link" column for easy access later.
+</div>
+
+<h2>Receipt PDF Generation</h2>
+
+<p>When a payment is marked as paid, the system automatically generates a professional PDF receipt and emails it to the client.</p>
+
+<h3>What's Included in the Receipt PDF</h3>
+<ul>
+    <li><strong>Receipt number</strong> - Unique sequential number (REC-001, REC-002, etc.) prominently displayed</li>
+    <li><strong>Payment date and method</strong> - When and how the payment was made</li>
+    <li><strong>Payment reference</strong> - Bank reference number (if provided)</li>
+    <li><strong>Invoice reference</strong> - Original invoice number and date</li>
+    <li><strong>Amount breakdown</strong> - Subtotal, GST (if applicable), and total paid</li>
+    <li><strong>Business details</strong> - Company name and GST number (if registered)</li>
+    <li><strong>"Paid in Full" stamp</strong> - Visual confirmation of payment</li>
+</ul>
+
+<h3>Automatic Receipt PDF Attachment</h3>
+<p>When you mark an invoice as paid (via menu or Actions dialog), the system:</p>
+<ol>
+    <li>Generates a professional PDF receipt</li>
+    <li>Attaches the PDF to the payment confirmation email sent to the client</li>
+    <li>Saves the PDF to the "CartCure Receipts" folder in Google Drive</li>
+    <li>Records the PDF link in the Invoice Log "Receipt PDF Link" column</li>
+</ol>
+
+<div class="info">
+    <strong>Receipt Storage:</strong> All receipt PDFs are automatically saved to a "CartCure Receipts" folder in your Google Drive (separate from invoices). The link to each receipt PDF is stored in the Invoice Log's "Receipt PDF Link" column for easy access later.
+</div>
 
 <h2>Special Case: Putting Jobs On Hold</h2>
 
@@ -1589,6 +1670,21 @@
     <li>Jobs Completed</li>
     <li>Revenue Collected</li>
 </ul>
+
+<h3>Reconciliation Check</h3>
+<p><strong>🛒 CartCure &gt; 📊 Reports &gt; Reconciliation Check</strong></p>
+<p>Verifies data integrity between Invoice Log and Clients sheet:</p>
+<ul>
+    <li>Compares paid invoice totals against client revenue records</li>
+    <li>Flags revenue mismatches requiring attention</li>
+    <li>Detects date anomalies (e.g., payment before invoice sent)</li>
+    <li>Identifies orphaned records (invoices without clients, clients without invoices)</li>
+    <li>Provides recommended actions to fix issues</li>
+</ul>
+
+<div class="info">
+    <strong>When to Run:</strong> Run the reconciliation check monthly or whenever you suspect data discrepancies. If errors are found, follow the recommended actions in the report (typically "Recalculate All Stats" or "Sync Clients from Jobs").
+</div>
 
 <div class="page-break"></div>
 

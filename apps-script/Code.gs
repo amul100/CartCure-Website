@@ -3460,7 +3460,7 @@ const COLUMN_CONFIG = {
   ],
 
   // -------------------------------------------------------------------------
-  // INVOICE LOG SHEET (20 columns)
+  // INVOICE LOG SHEET (21 columns)
   // -------------------------------------------------------------------------
   INVOICES: [
     {
@@ -3490,6 +3490,7 @@ const COLUMN_CONFIG = {
     { name: 'Sent Date', width: 110 },
     { name: 'Paid Date', width: 110 },
     { name: 'Payment Reference', width: 160 },
+    { name: 'Receipt #', width: 120 },
     { name: 'Days Overdue', width: 130 },
     { name: 'Late Fee', width: 100, format: { numberFormat: '$#,##0.00' } },
     { name: 'Total With Fees', width: 140, format: { numberFormat: '$#,##0.00' } },
@@ -3498,7 +3499,9 @@ const COLUMN_CONFIG = {
       width: 120,
       validation: { type: 'list', values: ['Full', 'Deposit', 'Balance', 'Additional'], allowInvalid: false }
     },
-    { name: 'Notes', width: 180 }
+    { name: 'Notes', width: 180 },
+    { name: 'PDF Link', width: 100 },
+    { name: 'Receipt PDF Link', width: 130 }
   ],
 
   // -------------------------------------------------------------------------
@@ -4331,6 +4334,7 @@ function buildMenu() {
       .addItem('✔️ Mark Job Complete', 'showCompleteJobDialog')
       .addItem('⏸️ Put Job On Hold', 'showOnHoldDialog')
       .addItem('❌ Cancel Job', 'showCancelJobDialog')
+      .addItem('💸 Process Refund', 'showProcessRefundDialog')
       .addSeparator()
       .addItem('📜 View Activity Log', 'viewJobActivityLog')
       .addItem('📝 Add Activity Note', 'addManualActivityNote')
@@ -4345,6 +4349,7 @@ function buildMenu() {
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('➕ Generate Invoice', 'showGenerateInvoiceDialog')
       .addItem('👁️ View Invoice', 'showViewInvoiceDialog')
+      .addItem('📄 Download PDF', 'showDownloadInvoicePDFDialog')
       .addItem('📤 Send Invoice', 'showSendInvoiceDialog')
       .addItem('🔔 Send Invoice Reminder', 'showSendInvoiceReminderDialog')
       .addItem('✅ Mark as Paid', 'showMarkPaidDialog')
@@ -4363,6 +4368,12 @@ function buildMenu() {
       .addSeparator()
       .addItem('🔄 Sync Clients from Jobs', 'syncClientsFromJobs')
       .addItem('📈 Recalculate All Stats', 'recalculateAllClientStats'))
+    .addSubMenu(ui.createMenu('📊 Reports')
+      .addItem('📅 Monthly Report', 'showMonthlyReportDialog')
+      .addItem('⏰ Aging Report', 'generateAgingReport')
+      .addItem('🧾 GST Summary', 'showGSTSummaryDialog')
+      .addSeparator()
+      .addItem('🔍 Reconciliation Check', 'runReconciliationCheck'))
     .addSeparator()
     .addSubMenu(ui.createMenu('⚙️ Setup')
       .addItem('⚙️ Settings', 'showSettingsDialog')
@@ -4451,6 +4462,61 @@ function onEditHandler(e) {
     if (e.value === 'TRUE' || range.getValue() === true) {
       range.setValue(false);
       try { scanSentEmailsForJobs(); } catch (err) { Logger.log('Email scan error: ' + err.message); }
+    }
+  }
+
+  // =========================================================================
+  // INVOICE AMOUNT PROTECTION (P0 FIX)
+  // Prevent editing of financial columns on non-Draft invoices
+  // =========================================================================
+  if (sheetName === SHEETS.INVOICES) {
+    const row = range.getRow();
+
+    // Skip header row
+    if (row === 1) return;
+
+    // Protected columns that cannot be edited on sent invoices
+    const protectedColumns = ['Amount (excl GST)', 'GST', 'Total'];
+    const editedCol = range.getColumn();
+
+    // Check if the edited column is one of the protected columns
+    let editedColumnName = null;
+    for (const colName of protectedColumns) {
+      if (getColIndex('INVOICES', colName) === editedCol) {
+        editedColumnName = colName;
+        break;
+      }
+    }
+
+    // If not a protected column, allow the edit
+    if (!editedColumnName) return;
+
+    // Get the invoice status from column 1 (Status column)
+    const statusCol = getColIndex('INVOICES', 'Status');
+    const status = sheet.getRange(row, statusCol).getValue();
+
+    // Only Draft invoices can have amounts edited
+    if (status && status !== 'Draft') {
+      // Revert the change
+      const oldValue = e.oldValue !== undefined ? e.oldValue : '';
+      range.setValue(oldValue);
+
+      // Show warning to user (only works with installable trigger)
+      try {
+        SpreadsheetApp.getUi().alert(
+          '⚠️ Protected Field',
+          'Invoice amounts cannot be edited after the invoice has been sent.\n\n' +
+          'Status: ' + status + '\n' +
+          'Column: ' + editedColumnName + '\n\n' +
+          'To modify amounts, either:\n' +
+          '• Change status back to "Draft" first (if appropriate)\n' +
+          '• Cancel this invoice and create a new one',
+          SpreadsheetApp.getUi().ButtonSet.OK
+        );
+      } catch (uiError) {
+        // Simple triggers can't show UI - the revert still happened
+        Logger.log('Invoice edit blocked: ' + editedColumnName + ' on row ' + row + ' (status: ' + status + ')');
+      }
     }
   }
 }
@@ -4560,24 +4626,22 @@ function getValidJobActions(status) {
   const actions = {
     [JOB_STATUS.PENDING_QUOTE]: [
       { id: 'sendQuote', label: 'Send Quote', icon: '📤' },
+      { id: 'markDeclined', label: 'Mark Quote Declined', icon: '👎' },
       { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
-      { id: 'addNote', label: 'Add Note', icon: '📝' },
-      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
     ],
     [JOB_STATUS.QUOTED]: [
       { id: 'sendQuoteReminder', label: 'Send Quote Reminder', icon: '🔔' },
       { id: 'markAccepted', label: 'Mark Quote Accepted', icon: '✅' },
       { id: 'markDeclined', label: 'Mark Quote Declined', icon: '👎' },
       { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
-      { id: 'addNote', label: 'Add Note', icon: '📝' },
-      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
     ],
     [JOB_STATUS.QUOTE_REMINDED]: [
       { id: 'markAccepted', label: 'Mark Quote Accepted', icon: '✅' },
       { id: 'markDeclined', label: 'Mark Quote Declined', icon: '👎' },
       { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
-      { id: 'addNote', label: 'Add Note', icon: '📝' },
-      { id: 'cancel', label: 'Cancel Job', icon: '❌' }
+      { id: 'addNote', label: 'Add Note', icon: '📝' }
     ],
     [JOB_STATUS.ACCEPTED]: [
       { id: 'startWork', label: 'Start Work', icon: '▶️' },
@@ -4598,6 +4662,7 @@ function getValidJobActions(status) {
     [JOB_STATUS.COMPLETED]: [
       { id: 'generateInvoice', label: 'Generate Invoice', icon: '🧾' },
       { id: 'requestTestimonial', label: 'Request Testimonial', icon: '⭐' },
+      { id: 'processRefund', label: 'Process Refund', icon: '💸' },
       { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
       { id: 'addNote', label: 'Add Note', icon: '📝' }
     ],
@@ -4608,6 +4673,7 @@ function getValidJobActions(status) {
       { id: 'cancel', label: 'Cancel Job', icon: '❌' }
     ],
     [JOB_STATUS.CANCELLED]: [
+      { id: 'processRefund', label: 'Process Refund', icon: '💸' },
       { id: 'viewActivity', label: 'View Activity Log', icon: '📜' },
       { id: 'addNote', label: 'Add Note', icon: '📝' }
     ],
@@ -4642,8 +4708,12 @@ function getValidSubmissionActions(status) {
       { id: 'markSpam', label: 'Mark as Spam', icon: '🚫' }
     ],
     'Job Created': [],
-    'Declined': [],
-    'Spam': []
+    'Declined': [
+      { id: 'createJob', label: 'Create Job', icon: '➕' }
+    ],
+    'Spam': [
+      { id: 'createJob', label: 'Create Job', icon: '➕' }
+    ]
   };
 
   return actions[status] || [];
@@ -4658,28 +4728,36 @@ function getValidInvoiceActions(status) {
   const actions = {
     'Draft': [
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
-      { id: 'sendInvoice', label: 'Send Invoice', icon: '📤' }
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' },
+      { id: 'sendInvoice', label: 'Send Invoice', icon: '📤' },
+      { id: 'cancelInvoice', label: 'Cancel Invoice', icon: '🗑️' }
     ],
     'Sent': [
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' },
       { id: 'sendReminder', label: 'Send Reminder', icon: '🔔' },
       { id: 'markPaid', label: 'Mark as Paid', icon: '✅' }
     ],
     'Overdue': [
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' },
+      { id: 'sendReminder', label: 'Send Reminder', icon: '🔔' },
       { id: 'sendOverdue', label: 'Send Overdue Notice', icon: '⚠️' },
       { id: 'markPaid', label: 'Mark as Paid', icon: '✅' }
     ],
     'Paid?': [
       { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' },
       { id: 'markPaid', label: 'Confirm Payment', icon: '✅' },
       { id: 'markNotPaid', label: 'Mark as Not Paid', icon: '❌' }
     ],
     'Paid': [
-      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' }
     ],
     'Cancelled': [
-      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' }
+      { id: 'viewInvoice', label: 'View Invoice', icon: '👁️' },
+      { id: 'downloadPDF', label: 'Download PDF', icon: '📄' }
     ]
   };
 
@@ -5889,6 +5967,9 @@ function executeBatchInvoiceAction(invoiceNumber, actionId) {
     case 'markNotPaid':
       return markInvoiceAsNotPaidSilent(invoiceNumber);
 
+    case 'cancelInvoice':
+      return cancelDraftInvoiceSilent(invoiceNumber);
+
     default:
       return { success: false, error: 'Action not supported for batch: ' + actionId };
   }
@@ -6470,6 +6551,13 @@ function generateInvoiceForJobSilent(jobNumber) {
 
     // Calculate amounts
     const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+
+    // Validate invoice amount (P1 FIX)
+    const amountValidation = validateInvoiceAmount(amount, 'Quote Amount');
+    if (!amountValidation.valid) {
+      return { success: false, error: amountValidation.error };
+    }
+
     const isGSTRegistered = getSetting('GST Registered') === 'Yes';
     const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
     const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
@@ -6866,6 +6954,10 @@ function executeJobAction(jobNumber, actionId) {
       sendTestimonialRequest(jobNumber);
       return { success: true };
 
+    case 'processRefund':
+      processRefund(jobNumber);
+      return { keepOpen: true };
+
     default:
       return { error: 'Unknown action: ' + actionId };
   }
@@ -6918,6 +7010,22 @@ function executeInvoiceAction(invoiceNumber, actionId) {
       previewInvoiceEmail(invoiceNumber);
       return { keepOpen: true };
 
+    case 'downloadPDF':
+      const pdfResult = downloadInvoicePDF(invoiceNumber);
+      if (pdfResult.success) {
+        SpreadsheetApp.getUi().alert(
+          'PDF Ready',
+          'Invoice PDF has been generated and saved to Google Drive.\n\n' +
+          'Location: CartCure Invoices folder\n' +
+          (pdfResult.cached ? '(Using existing PDF)' : '(New PDF generated)') +
+          '\n\nThe PDF link is also saved in the Invoice Log.',
+          SpreadsheetApp.getUi().ButtonSet.OK
+        );
+        return { success: true };
+      } else {
+        return { error: pdfResult.error };
+      }
+
     case 'sendInvoice':
       sendInvoiceEmail(invoiceNumber);
       return { success: true };
@@ -6936,6 +7044,10 @@ function executeInvoiceAction(invoiceNumber, actionId) {
 
     case 'markNotPaid':
       markInvoiceAsNotPaid(invoiceNumber);
+      return { success: true };
+
+    case 'cancelInvoice':
+      cancelDraftInvoice(invoiceNumber);
       return { success: true };
 
     default:
@@ -9758,6 +9870,618 @@ function refreshAnalytics() {
   Logger.log('Analytics refreshed');
 }
 
+// ============================================================================
+// FINANCIAL REPORTS (P2 FIX)
+// ============================================================================
+
+/**
+ * Show dialog to generate monthly financial report
+ */
+function showMonthlyReportDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const now = new Date();
+
+  // Default to previous month
+  const defaultMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+  const defaultYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+  const response = ui.prompt(
+    '📊 Generate Monthly Report',
+    'Enter month and year (MM/YYYY format):\n\n' +
+    'Example: ' + String(defaultMonth).padStart(2, '0') + '/' + defaultYear,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  const input = response.getResponseText().trim();
+  const match = input.match(/^(\d{1,2})\/(\d{4})$/);
+
+  if (!match) {
+    ui.alert('Invalid Format', 'Please enter date in MM/YYYY format (e.g., 01/2026)', ui.ButtonSet.OK);
+    return;
+  }
+
+  const month = parseInt(match[1]);
+  const year = parseInt(match[2]);
+
+  if (month < 1 || month > 12) {
+    ui.alert('Invalid Month', 'Month must be between 1 and 12', ui.ButtonSet.OK);
+    return;
+  }
+
+  generateMonthlyReport(month, year);
+}
+
+/**
+ * Generate a monthly financial report
+ * @param {number} month - Month (1-12)
+ * @param {number} year - Year (e.g., 2026)
+ */
+function generateMonthlyReport(month, year) {
+  const ui = SpreadsheetApp.getUi();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthName = monthNames[month - 1];
+
+  // Calculate date range
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0); // Last day of month
+
+  // Get all jobs and invoices
+  const jobs = getAllJobs();
+  const invoices = getAllInvoices();
+
+  // Filter data for the month
+  let jobsCreated = 0;
+  let jobsCompleted = 0;
+  let totalQuoted = 0;
+  let quotesAccepted = 0;
+  let quotesDeclined = 0;
+
+  jobs.forEach(job => {
+    const createdDate = job['Created Date'] ? new Date(job['Created Date']) : null;
+    const completedDate = job['Actual Completion Date'] ? new Date(job['Actual Completion Date']) : null;
+
+    if (createdDate && createdDate >= startDate && createdDate <= endDate) {
+      jobsCreated++;
+      totalQuoted += parseFloat(job['Quote Amount (excl GST)']) || 0;
+    }
+
+    if (completedDate && completedDate >= startDate && completedDate <= endDate) {
+      jobsCompleted++;
+    }
+
+    // Count quote outcomes for jobs created this month
+    if (createdDate && createdDate >= startDate && createdDate <= endDate) {
+      const status = job['Status'];
+      if (status === JOB_STATUS.DECLINED) quotesDeclined++;
+      else if (status !== JOB_STATUS.PENDING_QUOTE && status !== JOB_STATUS.QUOTED) quotesAccepted++;
+    }
+  });
+
+  // Invoice analysis
+  let invoicesSent = 0;
+  let invoicesPaid = 0;
+  let totalInvoiced = 0;
+  let totalCollected = 0;
+  let totalGSTCollected = 0;
+
+  invoices.forEach(inv => {
+    const sentDate = inv['Sent Date'] ? new Date(inv['Sent Date']) : null;
+    const paidDate = inv['Paid Date'] ? new Date(inv['Paid Date']) : null;
+    const amount = parseFloat(inv['Amount (excl GST)']) || 0;
+    const gst = parseFloat(inv['GST']) || 0;
+    const total = parseFloat(inv['Total']) || 0;
+
+    if (sentDate && sentDate >= startDate && sentDate <= endDate) {
+      invoicesSent++;
+      totalInvoiced += total;
+    }
+
+    if (paidDate && paidDate >= startDate && paidDate <= endDate && inv['Status'] === 'Paid') {
+      invoicesPaid++;
+      totalCollected += total;
+      totalGSTCollected += gst;
+    }
+  });
+
+  // Build report
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const report = [
+    '═══════════════════════════════════════════════════════════════',
+    '  ' + businessName.toUpperCase() + ' - MONTHLY FINANCIAL REPORT',
+    '  ' + monthName + ' ' + year,
+    '  Generated: ' + new Date().toLocaleString('en-NZ'),
+    '═══════════════════════════════════════════════════════════════',
+    '',
+    '📋 JOB ACTIVITY',
+    '───────────────────────────────────────────────────────────────',
+    '  New Jobs Created:     ' + jobsCreated,
+    '  Jobs Completed:       ' + jobsCompleted,
+    '  Total Quoted:         ' + formatCurrency(totalQuoted),
+    '  Quotes Accepted:      ' + quotesAccepted,
+    '  Quotes Declined:      ' + quotesDeclined,
+    '',
+    '🧾 INVOICING',
+    '───────────────────────────────────────────────────────────────',
+    '  Invoices Sent:        ' + invoicesSent,
+    '  Total Invoiced:       ' + formatCurrency(totalInvoiced),
+    '  Invoices Paid:        ' + invoicesPaid,
+    '',
+    '💰 REVENUE',
+    '───────────────────────────────────────────────────────────────',
+    '  Total Collected:      ' + formatCurrency(totalCollected),
+    '  GST Collected:        ' + formatCurrency(totalGSTCollected),
+    '  Net Revenue:          ' + formatCurrency(totalCollected - totalGSTCollected),
+    '',
+    '═══════════════════════════════════════════════════════════════'
+  ].join('\n');
+
+  // Show report in dialog
+  const htmlOutput = HtmlService.createHtmlOutput(
+    '<pre style="font-family: Consolas, monospace; font-size: 12px; padding: 10px; background: #f5f5f5; white-space: pre-wrap;">' +
+    report +
+    '</pre>'
+  ).setWidth(500).setHeight(500);
+
+  ui.showModalDialog(htmlOutput, '📊 Monthly Report - ' + monthName + ' ' + year);
+}
+
+/**
+ * Generate aging report for outstanding invoices
+ */
+function generateAgingReport() {
+  const ui = SpreadsheetApp.getUi();
+  const now = new Date();
+  const invoices = getAllInvoices();
+
+  // Filter to unpaid/overdue invoices
+  const outstandingInvoices = invoices.filter(inv => {
+    const status = inv['Status'];
+    return status === 'Sent' || status === 'Overdue' || status === 'Paid?';
+  });
+
+  if (outstandingInvoices.length === 0) {
+    ui.alert('✅ No Outstanding Invoices', 'All invoices have been paid!', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Age buckets
+  const buckets = {
+    current: { label: 'Current (0-30 days)', invoices: [], total: 0 },
+    days30: { label: '31-60 days', invoices: [], total: 0 },
+    days60: { label: '61-90 days', invoices: [], total: 0 },
+    days90: { label: '90+ days', invoices: [], total: 0 }
+  };
+
+  outstandingInvoices.forEach(inv => {
+    const dueDate = inv['Due Date'] ? new Date(inv['Due Date']) : now;
+    const daysOverdue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+    const total = parseFloat(inv['Total']) || parseFloat(inv['Amount (excl GST)']) || 0;
+
+    const entry = {
+      invoice: inv['Invoice #'],
+      client: inv['Client Name'],
+      amount: total,
+      dueDate: inv['Due Date'],
+      daysOverdue: Math.max(0, daysOverdue)
+    };
+
+    if (daysOverdue <= 30) {
+      buckets.current.invoices.push(entry);
+      buckets.current.total += total;
+    } else if (daysOverdue <= 60) {
+      buckets.days30.invoices.push(entry);
+      buckets.days30.total += total;
+    } else if (daysOverdue <= 90) {
+      buckets.days60.invoices.push(entry);
+      buckets.days60.total += total;
+    } else {
+      buckets.days90.invoices.push(entry);
+      buckets.days90.total += total;
+    }
+  });
+
+  const grandTotal = buckets.current.total + buckets.days30.total + buckets.days60.total + buckets.days90.total;
+
+  // Build report
+  const businessName = getSetting('Business Name') || 'CartCure';
+  let report = [
+    '═══════════════════════════════════════════════════════════════',
+    '  ' + businessName.toUpperCase() + ' - AGING REPORT',
+    '  As of: ' + now.toLocaleDateString('en-NZ'),
+    '═══════════════════════════════════════════════════════════════',
+    '',
+    '📊 SUMMARY',
+    '───────────────────────────────────────────────────────────────',
+    '  Total Outstanding:    ' + formatCurrency(grandTotal),
+    '  Number of Invoices:   ' + outstandingInvoices.length,
+    ''
+  ];
+
+  Object.values(buckets).forEach(bucket => {
+    report.push('');
+    report.push('📁 ' + bucket.label + ' - ' + formatCurrency(bucket.total));
+    report.push('───────────────────────────────────────────────────────────────');
+    if (bucket.invoices.length === 0) {
+      report.push('  (none)');
+    } else {
+      bucket.invoices.forEach(inv => {
+        report.push('  ' + inv.invoice + ' | ' + inv.client.substring(0, 20).padEnd(20) +
+                    ' | ' + formatCurrency(inv.amount).padStart(12) +
+                    ' | ' + (inv.daysOverdue > 0 ? inv.daysOverdue + ' days overdue' : 'Due: ' + inv.dueDate));
+      });
+    }
+  });
+
+  report.push('');
+  report.push('═══════════════════════════════════════════════════════════════');
+
+  // Show report
+  const htmlOutput = HtmlService.createHtmlOutput(
+    '<pre style="font-family: Consolas, monospace; font-size: 11px; padding: 10px; background: #f5f5f5; white-space: pre-wrap;">' +
+    report.join('\n') +
+    '</pre>'
+  ).setWidth(650).setHeight(550);
+
+  ui.showModalDialog(htmlOutput, '📊 Aging Report - Outstanding Invoices');
+}
+
+/**
+ * Run automated reconciliation check between invoices and client revenue
+ * Flags any discrepancies for review
+ */
+function runReconciliationCheck() {
+  const ui = SpreadsheetApp.getUi();
+  const issues = [];
+
+  // Get all paid invoices
+  const invoices = getAllInvoices();
+  const paidInvoices = invoices.filter(inv => inv['Status'] === 'Paid');
+
+  // Calculate total from paid invoices
+  let invoiceTotal = 0;
+  const invoicesByClient = {};
+  paidInvoices.forEach(inv => {
+    const total = parseFloat(inv['Total']) || parseFloat(inv['Amount (excl GST)']) || 0;
+    invoiceTotal += total;
+
+    const clientEmail = (inv['Client Email'] || '').toLowerCase().trim();
+    if (clientEmail) {
+      if (!invoicesByClient[clientEmail]) {
+        invoicesByClient[clientEmail] = { total: 0, invoices: [] };
+      }
+      invoicesByClient[clientEmail].total += total;
+      invoicesByClient[clientEmail].invoices.push(inv);
+    }
+
+    // Check for payment date before sent date
+    const sentDate = inv['Sent Date'] ? new Date(inv['Sent Date']) : null;
+    const paidDate = inv['Paid Date'] ? new Date(inv['Paid Date']) : null;
+    if (sentDate && paidDate && paidDate < sentDate) {
+      issues.push({
+        type: 'DATE_ANOMALY',
+        severity: 'Warning',
+        description: 'Invoice ' + inv['Invoice #'] + ' has Paid Date (' +
+          formatNZDate(paidDate) + ') before Sent Date (' + formatNZDate(sentDate) + ')'
+      });
+    }
+  });
+
+  // Get all client revenue totals
+  const clientsSheet = getSheet(SHEETS.CLIENTS);
+  if (clientsSheet && clientsSheet.getLastRow() > 1) {
+    const clientData = clientsSheet.getDataRange().getValues();
+    const headers = clientData[0];
+    const emailCol = headers.indexOf('Client Email');
+    const revenueCol = headers.indexOf('Total Revenue');
+
+    let clientRevenueTotal = 0;
+    for (let i = 1; i < clientData.length; i++) {
+      const row = clientData[i];
+      const clientEmail = (row[emailCol] || '').toLowerCase().trim();
+      const clientRevenue = parseFloat(row[revenueCol]) || 0;
+      clientRevenueTotal += clientRevenue;
+
+      // Compare client revenue with their paid invoices
+      if (clientEmail && invoicesByClient[clientEmail]) {
+        const invoiceRevenue = invoicesByClient[clientEmail].total;
+        const diff = Math.abs(clientRevenue - invoiceRevenue);
+
+        // Allow $0.01 tolerance for rounding
+        if (diff > 0.01) {
+          issues.push({
+            type: 'REVENUE_MISMATCH',
+            severity: 'Error',
+            description: 'Client ' + clientEmail + ': Revenue ($' + clientRevenue.toFixed(2) +
+              ') does not match paid invoices ($' + invoiceRevenue.toFixed(2) +
+              '). Difference: $' + diff.toFixed(2)
+          });
+        }
+      } else if (clientEmail && clientRevenue > 0 && !invoicesByClient[clientEmail]) {
+        issues.push({
+          type: 'REVENUE_NO_INVOICES',
+          severity: 'Warning',
+          description: 'Client ' + clientEmail + ' has revenue ($' + clientRevenue.toFixed(2) +
+            ') but no paid invoices found'
+        });
+      }
+    }
+
+    // Check for paid invoices with no matching client record
+    for (const [clientEmail, data] of Object.entries(invoicesByClient)) {
+      const clientExists = clientData.some((row, idx) =>
+        idx > 0 && (row[emailCol] || '').toLowerCase().trim() === clientEmail
+      );
+      if (!clientExists) {
+        issues.push({
+          type: 'INVOICE_NO_CLIENT',
+          severity: 'Warning',
+          description: 'Paid invoices for ' + clientEmail + ' ($' + data.total.toFixed(2) +
+            ') but no client record found'
+        });
+      }
+    }
+  }
+
+  // Build report
+  const report = [];
+  report.push('═══════════════════════════════════════════════════════════════');
+  report.push('       RECONCILIATION CHECK - ' + formatNZDate(new Date()));
+  report.push('═══════════════════════════════════════════════════════════════');
+  report.push('');
+  report.push('SUMMARY');
+  report.push('───────────────────────────────────────────────────────────────');
+  report.push('Total Paid Invoices:     ' + paidInvoices.length);
+  report.push('Total Invoice Amount:    $' + invoiceTotal.toFixed(2));
+  report.push('');
+
+  if (issues.length === 0) {
+    report.push('✅ NO ISSUES FOUND');
+    report.push('');
+    report.push('All paid invoices reconcile with client revenue records.');
+  } else {
+    const errors = issues.filter(i => i.severity === 'Error');
+    const warnings = issues.filter(i => i.severity === 'Warning');
+
+    report.push('⚠️ ISSUES FOUND: ' + issues.length);
+    report.push('   Errors: ' + errors.length + '  |  Warnings: ' + warnings.length);
+    report.push('');
+
+    if (errors.length > 0) {
+      report.push('ERRORS (require attention)');
+      report.push('───────────────────────────────────────────────────────────────');
+      errors.forEach(issue => {
+        report.push('❌ ' + issue.description);
+      });
+      report.push('');
+    }
+
+    if (warnings.length > 0) {
+      report.push('WARNINGS (review recommended)');
+      report.push('───────────────────────────────────────────────────────────────');
+      warnings.forEach(issue => {
+        report.push('⚠️ ' + issue.description);
+      });
+      report.push('');
+    }
+
+    report.push('───────────────────────────────────────────────────────────────');
+    report.push('RECOMMENDED ACTIONS:');
+    if (errors.length > 0) {
+      report.push('• Run "Clients > Recalculate All Stats" to fix revenue mismatches');
+    }
+    if (warnings.some(w => w.type === 'DATE_ANOMALY')) {
+      report.push('• Review date anomalies in Invoice Log manually');
+    }
+    if (warnings.some(w => w.type === 'INVOICE_NO_CLIENT')) {
+      report.push('• Run "Clients > Sync Clients from Jobs" to create missing client records');
+    }
+  }
+
+  const htmlOutput = HtmlService.createHtmlOutput(
+    '<pre style="font-family: Consolas, monospace; font-size: 11px; padding: 10px; background: #f5f5f5; white-space: pre-wrap;">' +
+    report.join('\n') +
+    '</pre>'
+  ).setWidth(700).setHeight(500);
+
+  ui.showModalDialog(htmlOutput, '🔍 Reconciliation Check');
+}
+
+/**
+ * Show dialog to generate GST summary
+ */
+function showGSTSummaryDialog() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Check if GST registered
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  if (!isGSTRegistered) {
+    ui.alert('Not GST Registered',
+      'GST Summary is not available because the business is not marked as GST Registered.\n\n' +
+      'To enable: Go to Settings and set "GST Registered" to "Yes".',
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  const response = ui.prompt(
+    '🧾 Generate GST Summary',
+    'Enter period (Q1/Q2/Q3/Q4 YYYY or MM/YYYY for monthly):\n\n' +
+    'Examples:\n' +
+    '  Q1 ' + currentYear + ' (Jan-Mar)\n' +
+    '  Q2 ' + currentYear + ' (Apr-Jun)\n' +
+    '  01/' + currentYear + ' (January only)',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  const input = response.getResponseText().trim().toUpperCase();
+
+  // Parse quarter format (Q1 2026)
+  const quarterMatch = input.match(/^Q([1-4])\s*(\d{4})$/);
+  if (quarterMatch) {
+    const quarter = parseInt(quarterMatch[1]);
+    const year = parseInt(quarterMatch[2]);
+    generateGSTSummary('Q' + quarter, year);
+    return;
+  }
+
+  // Parse month format (01/2026)
+  const monthMatch = input.match(/^(\d{1,2})\/(\d{4})$/);
+  if (monthMatch) {
+    const month = parseInt(monthMatch[1]);
+    const year = parseInt(monthMatch[2]);
+    if (month < 1 || month > 12) {
+      ui.alert('Invalid Month', 'Month must be between 1 and 12', ui.ButtonSet.OK);
+      return;
+    }
+    generateGSTSummary(month, year);
+    return;
+  }
+
+  ui.alert('Invalid Format', 'Please use Q1/Q2/Q3/Q4 YYYY or MM/YYYY format', ui.ButtonSet.OK);
+}
+
+/**
+ * Generate GST summary for a period
+ * @param {string|number} period - Quarter ('Q1'-'Q4') or month (1-12)
+ * @param {number} year - Year
+ */
+function generateGSTSummary(period, year) {
+  const ui = SpreadsheetApp.getUi();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+
+  let startDate, endDate, periodLabel;
+
+  if (typeof period === 'string' && period.startsWith('Q')) {
+    // Quarterly
+    const quarter = parseInt(period.substring(1));
+    const startMonth = (quarter - 1) * 3;
+    startDate = new Date(year, startMonth, 1);
+    endDate = new Date(year, startMonth + 3, 0);
+    periodLabel = period + ' ' + year + ' (' + monthNames[startMonth] + ' - ' + monthNames[startMonth + 2] + ')';
+  } else {
+    // Monthly
+    const month = parseInt(period);
+    startDate = new Date(year, month - 1, 1);
+    endDate = new Date(year, month, 0);
+    periodLabel = monthNames[month - 1] + ' ' + year;
+  }
+
+  // Get all paid invoices in period
+  const invoices = getAllInvoices();
+
+  let totalSales = 0;
+  let totalGSTCollected = 0;
+  let invoiceCount = 0;
+  const invoiceDetails = [];
+
+  invoices.forEach(inv => {
+    if (inv['Status'] !== 'Paid') return;
+
+    const paidDate = inv['Paid Date'] ? new Date(inv['Paid Date']) : null;
+    if (!paidDate || paidDate < startDate || paidDate > endDate) return;
+
+    const amount = parseFloat(inv['Amount (excl GST)']) || 0;
+    const gst = parseFloat(inv['GST']) || 0;
+    const total = parseFloat(inv['Total']) || 0;
+
+    totalSales += amount;
+    totalGSTCollected += gst;
+    invoiceCount++;
+
+    invoiceDetails.push({
+      date: inv['Paid Date'],
+      invoice: inv['Invoice #'],
+      client: inv['Client Name'],
+      amount: amount,
+      gst: gst,
+      total: total
+    });
+  });
+
+  // Sort by date
+  invoiceDetails.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Build report
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const gstNumber = getSetting('GST Number') || 'Not Set';
+
+  let report = [
+    '═══════════════════════════════════════════════════════════════',
+    '  ' + businessName.toUpperCase() + ' - GST SUMMARY',
+    '  Period: ' + periodLabel,
+    '  GST Number: ' + gstNumber,
+    '  Generated: ' + new Date().toLocaleString('en-NZ'),
+    '═══════════════════════════════════════════════════════════════',
+    '',
+    '📊 GST SUMMARY',
+    '───────────────────────────────────────────────────────────────',
+    '  Total Sales (excl GST):   ' + formatCurrency(totalSales),
+    '  GST Collected (15%):      ' + formatCurrency(totalGSTCollected),
+    '  Total (incl GST):         ' + formatCurrency(totalSales + totalGSTCollected),
+    '  Number of Invoices:       ' + invoiceCount,
+    '',
+    '📝 INVOICE DETAILS',
+    '───────────────────────────────────────────────────────────────'
+  ];
+
+  if (invoiceDetails.length === 0) {
+    report.push('  (No paid invoices in this period)');
+  } else {
+    report.push('  Date       | Invoice #      | Amount      | GST         | Total');
+    report.push('  -----------|----------------|-------------|-------------|------------');
+    invoiceDetails.forEach(inv => {
+      report.push('  ' + (inv.date || '').substring(0, 10).padEnd(10) + ' | ' +
+                  inv.invoice.padEnd(14) + ' | ' +
+                  formatCurrency(inv.amount).padStart(11) + ' | ' +
+                  formatCurrency(inv.gst).padStart(11) + ' | ' +
+                  formatCurrency(inv.total).padStart(11));
+    });
+  }
+
+  report.push('');
+  report.push('═══════════════════════════════════════════════════════════════');
+  report.push('');
+  report.push('Note: This summary is for reference only. Please verify');
+  report.push('against your accounting records before filing GST returns.');
+
+  // Show report
+  const htmlOutput = HtmlService.createHtmlOutput(
+    '<pre style="font-family: Consolas, monospace; font-size: 11px; padding: 10px; background: #f5f5f5; white-space: pre-wrap;">' +
+    report.join('\n') +
+    '</pre>'
+  ).setWidth(650).setHeight(550);
+
+  ui.showModalDialog(htmlOutput, '🧾 GST Summary - ' + periodLabel);
+}
+
+/**
+ * Get all invoices from Invoice Log sheet
+ * @returns {Array<Object>} Array of invoice objects
+ */
+function getAllInvoices() {
+  const sheet = getSheet(SHEETS.INVOICES);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  return data.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((header, i) => {
+      obj[header] = row[i];
+    });
+    return obj;
+  }).filter(inv => inv['Invoice #']); // Filter out empty rows
+}
+
 /**
  * Setup the Submissions sheet with professional formatting and status tracking
  */
@@ -10571,12 +11295,14 @@ function setupActivityLogSheet(ss, clearData) {
 
 /**
  * Log an activity to the Activity Log sheet
+ * P2 FIX: Now captures actual user email for audit trail when loggedBy is "Manual"
+ *
  * @param {string} jobNumber - The job number (e.g., "J-001")
  * @param {string} activityType - Type of activity (e.g., "Email Sent", "Status Change")
  * @param {string} summary - Brief description or email subject
  * @param {string} details - Full details (optional)
  * @param {string} fromTo - Email addresses or parties involved (optional)
- * @param {string} loggedBy - "Auto" or "Manual" (defaults to "Auto")
+ * @param {string} loggedBy - "Auto", "Manual", or specific identifier (defaults to "Auto")
  */
 function logJobActivity(jobNumber, activityType, summary, details, fromTo, loggedBy) {
   try {
@@ -10591,6 +11317,21 @@ function logJobActivity(jobNumber, activityType, summary, details, fromTo, logge
 
     const timestamp = new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' });
 
+    // P2 FIX: Capture actual user identity for audit trail
+    let actualLoggedBy = loggedBy || 'Auto';
+    if (loggedBy === 'Manual' || !loggedBy) {
+      try {
+        const userEmail = Session.getActiveUser().getEmail();
+        if (userEmail) {
+          actualLoggedBy = userEmail;
+        }
+      } catch (e) {
+        // Session.getActiveUser() may not work in some trigger contexts
+        // Fall back to provided value or 'Auto'
+        actualLoggedBy = loggedBy || 'Auto';
+      }
+    }
+
     const rowData = [
       timestamp,
       jobNumber || '',
@@ -10598,13 +11339,13 @@ function logJobActivity(jobNumber, activityType, summary, details, fromTo, logge
       summary || '',
       details || '',
       fromTo || '',
-      loggedBy || 'Auto'
+      actualLoggedBy
     ];
 
     // Insert at top (row 2) so newest activity appears first
     insertAtTopSafe(sheet, rowData, false); // false = no toast (secondary operation)
 
-    Logger.log('Activity logged for job ' + jobNumber + ': ' + activityType);
+    Logger.log('Activity logged for job ' + jobNumber + ': ' + activityType + ' by ' + actualLoggedBy);
     return true;
   } catch (error) {
     Logger.log('Error logging activity: ' + error.message);
@@ -11679,20 +12420,168 @@ function updateSetting(settingName, value) {
  * Format mirrors job number (J-WORD-XXX becomes INV-WORD-XXX)
  * For multiple invoices per job, adds suffix: INV-WORD-XXX-2, INV-WORD-XXX-3, etc.
  *
+ * P0 FIX: Now validates uniqueness against existing invoice numbers to prevent duplicates
+ * from manual entry, data corruption, or race conditions.
+ *
  * @param {string} jobNumber - The job number (e.g., "J-MAPLE-001")
  * @param {number} invoiceCount - Number of existing invoices for this job
  * @returns {string} Invoice number (e.g., "INV-MAPLE-001" or "INV-MAPLE-001-2")
  */
 function generateInvoiceNumber(jobNumber, invoiceCount) {
   // Replace J- prefix with INV-
-  let invoiceNumber = jobNumber.replace(/^J-/, 'INV-');
+  let baseInvoiceNumber = jobNumber.replace(/^J-/, 'INV-');
+  let invoiceNumber = baseInvoiceNumber;
 
   // If this is the 2nd, 3rd, etc. invoice, add suffix
   if (invoiceCount > 0) {
-    invoiceNumber += '-' + (invoiceCount + 1);
+    invoiceNumber = baseInvoiceNumber + '-' + (invoiceCount + 1);
+  }
+
+  // Get all existing invoice numbers to check for duplicates
+  const existingNumbers = getExistingInvoiceNumbers();
+
+  // If duplicate found, increment suffix until unique
+  let suffix = invoiceCount > 0 ? invoiceCount + 1 : 1;
+  while (existingNumbers.has(invoiceNumber)) {
+    suffix++;
+    invoiceNumber = baseInvoiceNumber + '-' + suffix;
   }
 
   return invoiceNumber;
+}
+
+/**
+ * Get a Set of all existing invoice numbers for duplicate checking
+ * @returns {Set<string>} Set of existing invoice numbers
+ */
+function getExistingInvoiceNumbers() {
+  const sheet = getSheet(SHEETS.INVOICES);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return new Set();
+  }
+
+  const invoiceNumCol = getColIndex('INVOICES', 'Invoice #');
+  const data = sheet.getRange(2, invoiceNumCol, sheet.getLastRow() - 1, 1).getValues();
+
+  const numbers = new Set();
+  data.forEach(row => {
+    if (row[0]) {
+      numbers.add(String(row[0]).trim());
+    }
+  });
+
+  return numbers;
+}
+
+/**
+ * Generate a unique receipt number (REC-001, REC-002, etc.)
+ * Receipt numbers are sequential and unique across all payments
+ * @returns {string} The generated receipt number
+ */
+function generateReceiptNumber() {
+  const existingReceipts = getExistingReceiptNumbers();
+
+  // Start at 1 and find the next available number
+  let receiptNum = 1;
+  let receiptNumber = 'REC-' + String(receiptNum).padStart(3, '0');
+
+  // Find next available number
+  while (existingReceipts.has(receiptNumber)) {
+    receiptNum++;
+    receiptNumber = 'REC-' + String(receiptNum).padStart(3, '0');
+  }
+
+  return receiptNumber;
+}
+
+/**
+ * Get a Set of all existing receipt numbers for duplicate checking
+ * @returns {Set<string>} Set of existing receipt numbers
+ */
+function getExistingReceiptNumbers() {
+  const sheet = getSheet(SHEETS.INVOICES);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return new Set();
+  }
+
+  const receiptCol = getColIndex('INVOICES', 'Receipt #');
+  if (receiptCol === -1) {
+    return new Set();
+  }
+
+  const data = sheet.getRange(2, receiptCol, sheet.getLastRow() - 1, 1).getValues();
+
+  const numbers = new Set();
+  data.forEach(row => {
+    if (row[0]) {
+      numbers.add(String(row[0]).trim());
+    }
+  });
+
+  return numbers;
+}
+
+/**
+ * Update the Receipt # column in the Invoice Log
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} receiptNumber - The receipt number to set
+ */
+function updateInvoiceReceiptNumber(invoiceNumber, receiptNumber) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    if (!invoiceSheet) return;
+
+    const data = invoiceSheet.getDataRange().getValues();
+    const invoiceCol = getColIndex('INVOICES', 'Invoice #');
+    const receiptCol = getColIndex('INVOICES', 'Receipt #');
+
+    if (invoiceCol === -1 || receiptCol === -1) return;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][invoiceCol - 1] === invoiceNumber) {
+        invoiceSheet.getRange(i + 1, receiptCol).setValue(receiptNumber);
+        break;
+      }
+    }
+  } catch (e) {
+    Logger.log('Failed to update receipt number: ' + e.message);
+  }
+}
+
+/**
+ * Validate invoice amount before creating invoice (P1 FIX)
+ * Ensures amount is valid, positive, and within reasonable bounds
+ * @param {number} amount - The invoice amount to validate
+ * @param {string} context - Context for error messages (e.g., 'Quote Amount')
+ * @returns {Object} { valid: boolean, error: string|null }
+ */
+function validateInvoiceAmount(amount, context) {
+  context = context || 'Amount';
+
+  // Check if it's a valid number
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return { valid: false, error: context + ' is not a valid number.' };
+  }
+
+  // Check if amount is positive
+  if (amount <= 0) {
+    return { valid: false, error: context + ' must be greater than $0. Current value: $' + amount.toFixed(2) };
+  }
+
+  // Sanity check: maximum reasonable invoice amount ($1,000,000)
+  // This catches typos like entering 50000 instead of 500.00
+  const MAX_INVOICE_AMOUNT = 1000000;
+  if (amount > MAX_INVOICE_AMOUNT) {
+    return {
+      valid: false,
+      error: context + ' exceeds maximum allowed ($' + MAX_INVOICE_AMOUNT.toLocaleString() + ').\n' +
+             'Current value: $' + amount.toLocaleString() + '\n\n' +
+             'If this is correct, please contact support.'
+    };
+  }
+
+  return { valid: true, error: null };
 }
 
 /**
@@ -14019,16 +14908,42 @@ cartcure.co.nz`;
 
     const plainText = plainTextBody;
 
-    // Send the email
-    GmailApp.sendEmail(clientEmail, subject, plainText, {
+    // Generate PDF for attachment
+    let pdfBlob = null;
+    let pdfUrl = null;
+    try {
+      const pdfResult = generateInvoicePDF(invoiceNumber, true);
+      if (pdfResult.success && pdfResult.pdfBlob) {
+        pdfBlob = pdfResult.pdfBlob;
+
+        // Also save to Drive and get URL
+        const folder = getOrCreateInvoicesFolder();
+        const pdfFile = folder.createFile(pdfBlob);
+        pdfUrl = pdfFile.getUrl();
+      }
+    } catch (pdfError) {
+      Logger.log('PDF generation failed (continuing without attachment): ' + pdfError.message);
+    }
+
+    // Send the email (with PDF attachment if available)
+    const emailOptions = {
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
-    });
+    };
+    if (pdfBlob) {
+      emailOptions.attachments = [pdfBlob];
+    }
+    GmailApp.sendEmail(clientEmail, subject, plainText, emailOptions);
 
     // Update invoice status to Sent
     updateInvoiceField(invoiceNumber, 'Status', 'Sent');
     updateInvoiceField(invoiceNumber, 'Sent Date', formatNZDate(new Date()));
+
+    // Update PDF Link if we generated one
+    if (pdfUrl) {
+      updateInvoicePDFLink(invoiceNumber, pdfUrl);
+    }
 
     // Update job payment status to Invoiced
     const jobNumber2 = invoice['Job #'];
@@ -14723,6 +15638,293 @@ function showCancelJobConfirmation(jobNumber) {
   // Refresh dashboard and analytics to show updated data
   refreshDashboard(true);
   refreshAnalytics();
+}
+
+// ============================================================================
+// REFUND PROCESSING (P1 FIX)
+// ============================================================================
+
+/**
+ * Show dialog to select a job for refund processing
+ * Shows jobs that are eligible for refunds (Paid or Invoiced payment status)
+ */
+function showProcessRefundDialog() {
+  const ui = SpreadsheetApp.getUi();
+
+  // Check if user has selected a specific job
+  const selectedJob = getSelectedJobNumber();
+
+  // Get jobs that can be refunded (Paid or Invoiced status)
+  const allJobs = getAllJobs();
+  const refundableJobs = allJobs.filter(job => {
+    const paymentStatus = job['Payment Status'];
+    return paymentStatus === PAYMENT_STATUS.PAID || paymentStatus === PAYMENT_STATUS.INVOICED;
+  });
+
+  if (refundableJobs.length === 0) {
+    ui.alert('No Jobs to Refund', 'There are no jobs with Paid or Invoiced payment status that can be refunded.', ui.ButtonSet.OK);
+    return;
+  }
+
+  showContextAwareDialog(
+    'Process Refund',
+    refundableJobs,
+    'Job',
+    'processRefund',
+    selectedJob
+  );
+}
+
+/**
+ * Process a refund for a job (P1 FIX)
+ * Records refund amount, updates payment status, logs activity, and optionally sends credit note
+ * @param {string} jobNumber - The job number to process refund for
+ */
+function processRefund(jobNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const job = getJobByNumber(jobNumber);
+
+  if (!job) {
+    ui.alert('Not Found', 'Job ' + jobNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const clientName = job['Client Name'] || 'Unknown';
+  const clientEmail = job['Client Email'] || '';
+  const paymentStatus = job['Payment Status'];
+  const total = parseFloat(job['Total (incl GST)']) || 0;
+  const existingRefund = parseFloat(job['Refund Amount']) || 0;
+
+  // Validate that job can be refunded
+  if (paymentStatus !== PAYMENT_STATUS.PAID && paymentStatus !== PAYMENT_STATUS.INVOICED) {
+    ui.alert('Cannot Refund',
+      'This job cannot be refunded.\n\n' +
+      'Current payment status: ' + paymentStatus + '\n\n' +
+      'Only jobs with "Paid" or "Invoiced" payment status can be refunded.',
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // Check if already partially refunded
+  let maxRefundable = total;
+  let alreadyRefundedMsg = '';
+  if (existingRefund > 0) {
+    maxRefundable = total - existingRefund;
+    alreadyRefundedMsg = '\n\nNote: This job already has a refund of ' + formatCurrency(existingRefund) + ' recorded.';
+    if (maxRefundable <= 0) {
+      ui.alert('Already Fully Refunded',
+        'This job has already been fully refunded.\n\n' +
+        'Total: ' + formatCurrency(total) + '\n' +
+        'Already Refunded: ' + formatCurrency(existingRefund),
+        ui.ButtonSet.OK);
+      return;
+    }
+  }
+
+  // Step 1: Confirm refund
+  const confirmResponse = ui.alert(
+    '💸 Process Refund',
+    'Process refund for job ' + jobNumber + '?\n\n' +
+    'Client: ' + clientName + '\n' +
+    'Total Amount: ' + formatCurrency(total) + '\n' +
+    'Payment Status: ' + paymentStatus +
+    alreadyRefundedMsg,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirmResponse !== ui.Button.YES) {
+    return;
+  }
+
+  // Step 2: Get refund amount
+  const amountResponse = ui.prompt(
+    'Refund Amount',
+    'Enter the refund amount (numbers only):\n\n' +
+    'Maximum refundable: ' + formatCurrency(maxRefundable) + '\n' +
+    '(Enter amount without $ sign, e.g., 150.00)',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (amountResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const refundAmount = parseFloat(amountResponse.getResponseText().replace(/[$,]/g, ''));
+
+  // Validate refund amount
+  const amountValidation = validateInvoiceAmount(refundAmount, 'Refund amount');
+  if (!amountValidation.valid) {
+    ui.alert('Invalid Amount', amountValidation.error, ui.ButtonSet.OK);
+    return;
+  }
+
+  if (refundAmount > maxRefundable) {
+    ui.alert('Amount Too High',
+      'Refund amount cannot exceed the maximum refundable amount.\n\n' +
+      'Requested: ' + formatCurrency(refundAmount) + '\n' +
+      'Maximum: ' + formatCurrency(maxRefundable),
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  // Step 3: Get refund reason
+  const reasonResponse = ui.prompt(
+    'Refund Reason',
+    'Enter the reason for this refund:\n\n' +
+    '(This will be recorded in the activity log)',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (reasonResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const reason = reasonResponse.getResponseText().trim() || 'No reason provided';
+
+  // Step 4: Determine if this is a full or partial refund
+  const totalRefund = existingRefund + refundAmount;
+  const isFullRefund = Math.abs(totalRefund - total) < 0.01; // Full refund within 1 cent
+
+  // Step 5: Update job fields
+  const updates = {
+    'Refund Amount': totalRefund,
+    'Last Updated': formatNZDate(new Date())
+  };
+
+  // Only change payment status to Refunded if full refund
+  if (isFullRefund) {
+    updates['Payment Status'] = PAYMENT_STATUS.REFUNDED;
+  }
+
+  updateJobFields(jobNumber, updates);
+
+  // Step 6: Log the refund activity
+  const refundDetails = [
+    'Amount: ' + formatCurrency(refundAmount),
+    isFullRefund ? 'Type: Full Refund' : 'Type: Partial Refund',
+    existingRefund > 0 ? 'Previous refund: ' + formatCurrency(existingRefund) : '',
+    'Total refunded: ' + formatCurrency(totalRefund),
+    'Reason: ' + reason
+  ].filter(Boolean).join(' | ');
+
+  logJobActivity(jobNumber, 'Refund Processed', 'Refund issued to client', refundDetails, clientEmail, 'Manual');
+
+  // Step 7: Ask about sending credit note email
+  const sendEmailResponse = ui.alert(
+    'Send Credit Note?',
+    'Would you like to send a credit note email to the client?\n\n' +
+    'Client: ' + clientName + '\n' +
+    'Email: ' + clientEmail + '\n' +
+    'Refund Amount: ' + formatCurrency(refundAmount),
+    ui.ButtonSet.YES_NO
+  );
+
+  if (sendEmailResponse === ui.Button.YES && clientEmail) {
+    sendCreditNoteEmail(jobNumber, refundAmount, reason);
+  }
+
+  // Step 8: Show success message
+  let successMsg = 'Refund processed successfully!\n\n' +
+    'Job: ' + jobNumber + '\n' +
+    'Client: ' + clientName + '\n' +
+    'Refund Amount: ' + formatCurrency(refundAmount) + '\n' +
+    'Type: ' + (isFullRefund ? 'Full Refund' : 'Partial Refund');
+
+  if (!isFullRefund) {
+    successMsg += '\n\nNote: Payment status unchanged (partial refund).\n' +
+      'Total refunded so far: ' + formatCurrency(totalRefund) + ' of ' + formatCurrency(total);
+  } else {
+    successMsg += '\n\nPayment status updated to: Refunded';
+  }
+
+  ui.alert('✅ Refund Processed', successMsg, ui.ButtonSet.OK);
+
+  // Refresh dashboard
+  refreshDashboard(true);
+  refreshAnalytics();
+}
+
+/**
+ * Send a credit note email to the client
+ * @param {string} jobNumber - The job number
+ * @param {number} refundAmount - The refund amount
+ * @param {string} reason - The refund reason
+ */
+function sendCreditNoteEmail(jobNumber, refundAmount, reason) {
+  try {
+    const job = getJobByNumber(jobNumber);
+    if (!job) {
+      Logger.log('sendCreditNoteEmail: Job not found: ' + jobNumber);
+      return false;
+    }
+
+    const clientEmail = job['Client Email'];
+    const clientName = job['Client Name'] || 'Valued Customer';
+    const businessName = getSetting('Business Name') || 'CartCure';
+    const total = parseFloat(job['Total (incl GST)']) || 0;
+
+    if (!clientEmail) {
+      Logger.log('sendCreditNoteEmail: No client email for job: ' + jobNumber);
+      return false;
+    }
+
+    // Generate credit note number based on job number
+    const creditNoteNumber = jobNumber.replace(/^J-/, 'CN-');
+
+    const subject = 'Credit Note ' + creditNoteNumber + ' - ' + businessName;
+
+    // Build simple HTML email
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #2e7d32;">Credit Note</h2>
+        <p>Dear ${clientName},</p>
+        <p>This email confirms that a refund has been processed for your order.</p>
+
+        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Credit Note #:</strong> ${creditNoteNumber}</p>
+          <p style="margin: 5px 0;"><strong>Job Reference:</strong> ${jobNumber}</p>
+          <p style="margin: 5px 0;"><strong>Refund Amount:</strong> ${formatCurrency(refundAmount)}</p>
+          <p style="margin: 5px 0;"><strong>Original Total:</strong> ${formatCurrency(total)}</p>
+          ${reason && reason !== 'No reason provided' ? `<p style="margin: 5px 0;"><strong>Reason:</strong> ${reason}</p>` : ''}
+        </div>
+
+        <p>The refund will be processed to your original payment method within 5-10 business days.</p>
+
+        <p>If you have any questions about this refund, please don't hesitate to contact us.</p>
+
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>${businessName}</strong>
+        </p>
+      </div>
+    `;
+
+    // Send email
+    MailApp.sendEmail({
+      to: clientEmail,
+      subject: subject,
+      htmlBody: htmlBody
+    });
+
+    // Log the email
+    logJobActivity(jobNumber, 'Credit Note Sent', 'Credit note email sent to client',
+      'Amount: ' + formatCurrency(refundAmount) + ' | Credit Note: ' + creditNoteNumber,
+      clientEmail, 'Auto');
+
+    Logger.log('Credit note email sent to ' + clientEmail + ' for job ' + jobNumber);
+    return true;
+
+  } catch (error) {
+    Logger.log('Error sending credit note email: ' + error.message);
+    try {
+      SpreadsheetApp.getUi().alert('Email Error',
+        'Failed to send credit note email: ' + error.message,
+        SpreadsheetApp.getUi().ButtonSet.OK);
+    } catch (uiError) {
+      // UI not available
+    }
+    return false;
+  }
 }
 
 // ============================================================================
@@ -15967,7 +17169,7 @@ function showSendQuoteDialog() {
     'Send Quote',
     jobs,
     'Job',
-    'sendQuoteEmail',
+    'showSendQuoteWithAmountDialog',
     selectedJob
   );
 }
@@ -17075,6 +18277,14 @@ function generateInvoiceForJob(jobNumber) {
 
   // Calculate amounts
   const amount = parseFloat(job['Quote Amount (excl GST)']) || 0;
+
+  // Validate invoice amount (P1 FIX)
+  const amountValidation = validateInvoiceAmount(amount, 'Quote Amount');
+  if (!amountValidation.valid) {
+    ui.alert('Invalid Amount', amountValidation.error + '\n\nPlease update the Quote Amount in the Jobs sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
   const isGSTRegistered = getSetting('GST Registered') === 'Yes';
   const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
   const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
@@ -17661,14 +18871,36 @@ function sendInvoiceEmail(invoiceNumber) {
   const htmlBody = wrapEmailHtml(bodyContent);
 
   try {
-    MailApp.sendEmail({
+    // Generate PDF for attachment
+    let pdfBlob = null;
+    let pdfUrl = null;
+    try {
+      const pdfResult = generateInvoicePDF(invoiceNumber, true);
+      if (pdfResult.success && pdfResult.pdfBlob) {
+        pdfBlob = pdfResult.pdfBlob;
+
+        // Also save to Drive and get URL
+        const folder = getOrCreateInvoicesFolder();
+        const pdfFile = folder.createFile(pdfBlob);
+        pdfUrl = pdfFile.getUrl();
+      }
+    } catch (pdfError) {
+      Logger.log('PDF generation failed (continuing without attachment): ' + pdfError.message);
+    }
+
+    // Build email options
+    const emailOptions = {
       to: clientEmail,
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
-    });
+    };
+    if (pdfBlob) {
+      emailOptions.attachments = [pdfBlob];
+    }
+    MailApp.sendEmail(emailOptions);
 
     // Log activity
     const invoiceTypeLabel = invoiceType === 'Balance' ? 'Balance invoice' : 'Invoice';
@@ -17676,7 +18908,7 @@ function sendInvoiceEmail(invoiceNumber) {
       jobNumber,
       'Email Sent',
       subject,
-      invoiceTypeLabel + ' sent: ' + formatCurrency(displayTotal),
+      invoiceTypeLabel + ' sent: ' + formatCurrency(displayTotal) + (pdfBlob ? ' (with PDF)' : ''),
       'To: ' + clientEmail,
       'Auto'
     );
@@ -17687,10 +18919,15 @@ function sendInvoiceEmail(invoiceNumber) {
       'Sent Date': formatNZDate(new Date())
     });
 
+    // Update PDF Link if we generated one
+    if (pdfUrl) {
+      updateInvoicePDFLink(invoiceNumber, pdfUrl);
+    }
+
     // Update job payment status
     updateJobField(jobNumber, 'Payment Status', PAYMENT_STATUS.INVOICED);
 
-    ui.alert(invoiceTypeLabel + ' Sent', invoiceTypeLabel + ' sent to ' + clientEmail, ui.ButtonSet.OK);
+    ui.alert(invoiceTypeLabel + ' Sent', invoiceTypeLabel + ' sent to ' + clientEmail + (pdfBlob ? '\n\nPDF attached and saved to Drive.' : ''), ui.ButtonSet.OK);
     Logger.log('Invoice ' + invoiceNumber + ' sent to ' + clientEmail);
   } catch (error) {
     Logger.log('Error sending invoice: ' + error.message);
@@ -17862,6 +19099,471 @@ function renderInvoiceEmailPreview(invoiceNumber) {
     clientName: clientName,
     total: displayTotal
   };
+}
+
+// ============================================================================
+// INVOICE PDF GENERATION
+// ============================================================================
+
+/**
+ * Get or create the CartCure Invoices folder in Google Drive
+ * @returns {Folder} The invoices folder
+ */
+function getOrCreateInvoicesFolder() {
+  const folderName = 'CartCure Invoices';
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create the folder if it doesn't exist
+  return DriveApp.createFolder(folderName);
+}
+
+/**
+ * Get or create the CartCure Receipts folder in Google Drive
+ * @returns {Folder} The receipts folder
+ */
+function getOrCreateReceiptsFolder() {
+  const folderName = 'CartCure Receipts';
+  const folders = DriveApp.getFoldersByName(folderName);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // Create the folder if it doesn't exist
+  return DriveApp.createFolder(folderName);
+}
+
+/**
+ * Render receipt HTML optimized for PDF generation
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} receiptNumber - The receipt number
+ * @param {string} paymentMethod - The payment method used
+ * @param {string} paymentReference - Optional payment reference
+ * @returns {Object} - {success, html, receiptData} or {success: false, error}
+ */
+function renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, paymentReference) {
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    return { success: false, error: 'Invoice ' + invoiceNumber + ' not found.' };
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const jobNumber = invoice['Job #'];
+  const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+  const gst = Number(invoice['GST'] || 0).toFixed(2);
+  const total = Number(invoice['Total'] || 0).toFixed(2);
+  const invoiceDate = invoice['Invoice Date'];
+  const paidDate = invoice['Paid Date'] || formatNZDate(new Date());
+
+  // Build pricing rows HTML (PDF-optimized)
+  const gstValue = parseFloat(gst);
+  const displayTotal = isGSTRegistered ? total : amount;
+
+  let pricingRowsHtml = '';
+  if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
+    pricingRowsHtml = `
+      <tr>
+        <td class="pricing-label">Subtotal (excl. GST)</td>
+        <td class="pricing-value">$${amount}</td>
+      </tr>
+      <tr>
+        <td class="pricing-label">GST (15%)</td>
+        <td class="pricing-value">$${gst}</td>
+      </tr>
+      <tr class="pricing-total">
+        <td>TOTAL PAID (incl. GST)</td>
+        <td class="pricing-value">$${total}</td>
+      </tr>
+    `;
+  } else {
+    pricingRowsHtml = `
+      <tr class="pricing-total">
+        <td>TOTAL PAID</td>
+        <td class="pricing-value">$${displayTotal}</td>
+      </tr>
+    `;
+  }
+
+  // GST footer line
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+  // Payment reference section (only show if reference provided)
+  let paymentReferenceHtml = '';
+  if (paymentReference) {
+    paymentReferenceHtml = `
+      <div class="payment-reference">
+        <p class="payment-reference-title">Payment Reference:</p>
+        <p class="payment-reference-info">${paymentReference}</p>
+      </div>
+    `;
+  }
+
+  // Render the PDF template
+  const bodyContent = renderEmailTemplate('receipt-pdf', {
+    receiptNumber: receiptNumber,
+    invoiceNumber: invoiceNumber,
+    jobNumber: jobNumber,
+    clientName: clientName,
+    paidDate: paidDate,
+    paymentMethod: paymentMethod || 'Bank Transfer',
+    invoiceDate: formatNZDate(invoiceDate) || paidDate,
+    pricingRowsHtml: pricingRowsHtml,
+    paymentReferenceHtml: paymentReferenceHtml,
+    gstFooterLine: gstFooterLine,
+    businessName: businessName
+  });
+
+  return {
+    success: true,
+    html: bodyContent,
+    receiptData: {
+      receiptNumber: receiptNumber,
+      invoiceNumber: invoiceNumber,
+      clientName: clientName,
+      total: displayTotal
+    }
+  };
+}
+
+/**
+ * Generate a PDF for a payment receipt and save it to Google Drive
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} receiptNumber - The receipt number
+ * @param {string} paymentMethod - The payment method used
+ * @param {string} paymentReference - Optional payment reference
+ * @param {boolean} returnBlob - If true, returns the PDF blob for email attachment; if false, saves to Drive
+ * @returns {Object} - {success, pdfUrl, pdfBlob, error}
+ */
+function generateReceiptPDF(invoiceNumber, receiptNumber, paymentMethod, paymentReference, returnBlob) {
+  try {
+    // 1. Render the PDF HTML
+    const htmlResult = renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, paymentReference);
+    if (!htmlResult.success) {
+      return { success: false, error: htmlResult.error };
+    }
+
+    // 2. Convert HTML to PDF using HtmlService
+    const htmlOutput = HtmlService.createHtmlOutput(htmlResult.html);
+    const pdfBlob = htmlOutput.getBlob().setName('Receipt_' + receiptNumber + '.pdf');
+
+    // If only blob is needed (for email attachment), return it
+    if (returnBlob) {
+      return {
+        success: true,
+        pdfBlob: pdfBlob,
+        receiptData: htmlResult.receiptData
+      };
+    }
+
+    // 3. Save to Drive folder
+    const folder = getOrCreateReceiptsFolder();
+    const pdfFile = folder.createFile(pdfBlob);
+    const pdfUrl = pdfFile.getUrl();
+
+    // 4. Update the Invoice Log with the Receipt PDF link
+    updateReceiptPDFLink(invoiceNumber, pdfUrl);
+
+    return {
+      success: true,
+      pdfUrl: pdfUrl,
+      pdfId: pdfFile.getId(),
+      receiptData: htmlResult.receiptData
+    };
+  } catch (error) {
+    return { success: false, error: 'Receipt PDF generation failed: ' + error.message };
+  }
+}
+
+/**
+ * Update the Receipt PDF Link column in the Invoice Log
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} pdfUrl - The Google Drive URL of the Receipt PDF
+ */
+function updateReceiptPDFLink(invoiceNumber, pdfUrl) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    if (!invoiceSheet) return;
+
+    const data = invoiceSheet.getDataRange().getValues();
+    const invoiceCol = getColIndex('INVOICES', 'Invoice #');
+    const receiptPdfLinkCol = getColIndex('INVOICES', 'Receipt PDF Link');
+
+    if (invoiceCol === -1 || receiptPdfLinkCol === -1) return;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][invoiceCol - 1] === invoiceNumber) {
+        invoiceSheet.getRange(i + 1, receiptPdfLinkCol).setValue(pdfUrl);
+        break;
+      }
+    }
+  } catch (e) {
+    Logger.log('Failed to update Receipt PDF link: ' + e.message);
+  }
+}
+
+/**
+ * Render invoice HTML optimized for PDF generation (without interactive elements)
+ * @param {string} invoiceNumber - The invoice number
+ * @returns {Object} - {success, html, invoiceData} or {success: false, error}
+ */
+function renderInvoicePDFHtml(invoiceNumber) {
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    return { success: false, error: 'Invoice ' + invoiceNumber + ' not found.' };
+  }
+
+  const businessName = getSetting('Business Name') || 'CartCure';
+  const bankName = getSetting('Bank Name') || '';
+  const bankAccount = getSetting('Bank Account') || '';
+  const isGSTRegistered = getSetting('GST Registered') === 'Yes';
+  const gstNumber = getSetting('GST Number') || '';
+
+  const clientName = invoice['Client Name'];
+  const jobNumber = invoice['Job #'];
+  const amount = Number(invoice['Amount (excl GST)'] || 0).toFixed(2);
+  const gst = Number(invoice['GST'] || 0).toFixed(2);
+  const total = Number(invoice['Total'] || 0).toFixed(2);
+  const dueDate = invoice['Due Date'];
+  const invoiceType = invoice['Invoice Type'] || 'Full';
+
+  // Determine heading based on invoice type
+  let headingTitle = 'Invoice';
+  if (invoiceType === 'Deposit') {
+    headingTitle = 'Deposit Invoice';
+  } else if (invoiceType === 'Balance') {
+    headingTitle = 'Balance Invoice';
+  }
+
+  // Build pricing section
+  const gstValue = parseFloat(gst);
+  const displayTotal = isGSTRegistered ? total : amount;
+
+  // Build pricing rows HTML (PDF-optimized)
+  let pricingRowsHtml = '';
+  if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
+    pricingRowsHtml = `
+      <tr>
+        <td class="pricing-label">Subtotal (excl. GST)</td>
+        <td class="pricing-value">$${amount}</td>
+      </tr>
+      <tr>
+        <td class="pricing-label">GST (15%)</td>
+        <td class="pricing-value">$${gst}</td>
+      </tr>
+      <tr class="pricing-total">
+        <td>TOTAL DUE (incl. GST)</td>
+        <td class="pricing-value">$${total}</td>
+      </tr>
+    `;
+  } else {
+    pricingRowsHtml = `
+      <tr class="pricing-total">
+        <td>TOTAL DUE</td>
+        <td class="pricing-value">$${displayTotal}</td>
+      </tr>
+    `;
+  }
+
+  // Build bank details HTML
+  let bankDetailsHtml = '';
+  if (bankName) bankDetailsHtml += '<strong>Bank:</strong> ' + bankName + '<br>';
+  if (bankAccount) bankDetailsHtml += '<strong>Account:</strong> ' + bankAccount + '<br>';
+
+  // GST footer line
+  const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
+
+  // Deposit notice for deposit invoices
+  let depositNoticeHtml = '';
+  if (invoiceType === 'Deposit') {
+    depositNoticeHtml = `
+      <div class="deposit-notice">
+        <strong>50% Deposit Invoice</strong> - Balance due upon project completion
+      </div>
+    `;
+  }
+
+  // Greeting text
+  const greetingText = invoiceType === 'Deposit'
+    ? 'Thank you for choosing CartCure! Please find your deposit invoice below. The remaining balance will be invoiced upon project completion.'
+    : 'Thank you for choosing CartCure! Please find your invoice below for the completed work.';
+
+  // Render the PDF template
+  const bodyContent = renderEmailTemplate('invoice-pdf', {
+    headingTitle: headingTitle,
+    invoiceNumber: invoiceNumber,
+    jobNumber: jobNumber,
+    clientName: clientName,
+    greetingText: greetingText,
+    invoiceDate: formatNZDate(invoice['Invoice Date'] || new Date()),
+    dueDate: formatDueDate(dueDate),
+    pricingRowsHtml: pricingRowsHtml,
+    depositNoticeHtml: depositNoticeHtml,
+    bankDetailsHtml: bankDetailsHtml,
+    gstFooterLine: gstFooterLine,
+    businessName: businessName
+  });
+
+  return {
+    success: true,
+    html: bodyContent,
+    invoiceData: {
+      invoiceNumber: invoiceNumber,
+      clientName: clientName,
+      total: displayTotal
+    }
+  };
+}
+
+/**
+ * Generate a PDF for an invoice and save it to Google Drive
+ * @param {string} invoiceNumber - The invoice number
+ * @param {boolean} returnBlob - If true, returns the PDF blob for email attachment; if false, saves to Drive
+ * @returns {Object} - {success, pdfUrl, pdfBlob, error}
+ */
+function generateInvoicePDF(invoiceNumber, returnBlob) {
+  try {
+    // 1. Render the PDF HTML
+    const htmlResult = renderInvoicePDFHtml(invoiceNumber);
+    if (!htmlResult.success) {
+      return { success: false, error: htmlResult.error };
+    }
+
+    // 2. Convert HTML to PDF using HtmlService
+    const htmlOutput = HtmlService.createHtmlOutput(htmlResult.html);
+    const pdfBlob = htmlOutput.getBlob().setName('Invoice_' + invoiceNumber + '.pdf');
+
+    // If only blob is needed (for email attachment), return it
+    if (returnBlob) {
+      return {
+        success: true,
+        pdfBlob: pdfBlob,
+        invoiceData: htmlResult.invoiceData
+      };
+    }
+
+    // 3. Save to Drive folder
+    const folder = getOrCreateInvoicesFolder();
+    const pdfFile = folder.createFile(pdfBlob);
+    const pdfUrl = pdfFile.getUrl();
+
+    // 4. Update the Invoice Log with the PDF link
+    updateInvoicePDFLink(invoiceNumber, pdfUrl);
+
+    return {
+      success: true,
+      pdfUrl: pdfUrl,
+      pdfId: pdfFile.getId(),
+      invoiceData: htmlResult.invoiceData
+    };
+  } catch (error) {
+    return { success: false, error: 'PDF generation failed: ' + error.message };
+  }
+}
+
+/**
+ * Update the PDF Link column in the Invoice Log
+ * @param {string} invoiceNumber - The invoice number
+ * @param {string} pdfUrl - The Google Drive URL of the PDF
+ */
+function updateInvoicePDFLink(invoiceNumber, pdfUrl) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    if (!invoiceSheet) return;
+
+    const data = invoiceSheet.getDataRange().getValues();
+    const invoiceCol = getColIndex('INVOICES', 'Invoice #');
+    const pdfLinkCol = getColIndex('INVOICES', 'PDF Link');
+
+    if (invoiceCol === -1 || pdfLinkCol === -1) return;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][invoiceCol - 1] === invoiceNumber) {
+        invoiceSheet.getRange(i + 1, pdfLinkCol).setValue(pdfUrl);
+        break;
+      }
+    }
+  } catch (e) {
+    Logger.log('Failed to update PDF link: ' + e.message);
+  }
+}
+
+/**
+ * Show dialog to download/generate invoice PDF
+ * Called from menu: Invoices > Download Invoice PDF
+ */
+function showDownloadInvoicePDFDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // Check if we're on the Invoices sheet
+  if (sheet.getName() !== SHEETS.INVOICES) {
+    ui.alert('Wrong Sheet', 'Please select an invoice on the Invoice Log sheet.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const row = sheet.getActiveRange().getRow();
+  if (row <= 1) {
+    ui.alert('No Selection', 'Please select an invoice row.', ui.ButtonSet.OK);
+    return;
+  }
+
+  const invoiceCol = getColIndex('INVOICES', 'Invoice #');
+  const invoiceNumber = sheet.getRange(row, invoiceCol).getValue();
+
+  if (!invoiceNumber) {
+    ui.alert('No Invoice', 'Could not find invoice number in selected row.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Generate the PDF
+  const result = generateInvoicePDF(invoiceNumber, false);
+
+  if (result.success) {
+    ui.alert(
+      'PDF Generated',
+      'Invoice PDF has been created and saved to Google Drive.\n\n' +
+      'Invoice: ' + invoiceNumber + '\n' +
+      'Client: ' + result.invoiceData.clientName + '\n\n' +
+      'The PDF link has been saved to the Invoice Log.\n' +
+      'You can find the PDF in the "CartCure Invoices" folder in Google Drive.',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert('Error', result.error, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Download invoice PDF directly (opens PDF URL)
+ * @param {string} invoiceNumber - The invoice number
+ * @returns {Object} - Result with success/error and URL
+ */
+function downloadInvoicePDF(invoiceNumber) {
+  // Check if PDF already exists in the PDF Link column
+  const invoice = getInvoiceByNumber(invoiceNumber);
+  if (!invoice) {
+    return { success: false, error: 'Invoice not found.' };
+  }
+
+  const existingPdfLink = invoice['PDF Link'];
+  if (existingPdfLink) {
+    return { success: true, pdfUrl: existingPdfLink, cached: true };
+  }
+
+  // Generate new PDF
+  return generateInvoicePDF(invoiceNumber, false);
 }
 
 /**
@@ -19353,6 +21055,9 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
     return false;
   }
 
+  // Generate unique receipt number
+  const receiptNumber = generateReceiptNumber();
+
   const businessName = getSetting('Business Name') || 'CartCure';
   const adminEmail = getSetting('Admin Email') || CONFIG.ADMIN_EMAIL;
   const isGSTRegistered = getSetting('GST Registered') === 'Yes';
@@ -19371,7 +21076,7 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
     return false;
   }
 
-  const subject = 'Payment Receipt - ' + invoiceNumber + ' from CartCure';
+  const subject = 'Payment Receipt ' + receiptNumber + ' - ' + invoiceNumber + ' from CartCure';
 
   // Build pricing section - validate GST is a number
   // When GST is not registered, use amount (excl GST) as the total
@@ -19408,8 +21113,25 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
   // Build feedback URL
   const feedbackUrl = 'https://cartcure.co.nz/feedback.html?job=' + encodeURIComponent(jobNumber);
 
+  // Generate Receipt PDF
+  let pdfBlob = null;
+  let pdfUrl = null;
+  try {
+    const pdfResult = generateReceiptPDF(invoiceNumber, receiptNumber, method, reference, true);
+    if (pdfResult.success && pdfResult.pdfBlob) {
+      pdfBlob = pdfResult.pdfBlob;
+      // Also save to Drive folder
+      const folder = getOrCreateReceiptsFolder();
+      const pdfFile = folder.createFile(pdfBlob);
+      pdfUrl = pdfFile.getUrl();
+    }
+  } catch (pdfError) {
+    Logger.log('Receipt PDF generation failed (continuing without attachment): ' + pdfError.message);
+  }
+
   // Render the template
   const bodyContent = renderEmailTemplate('email-payment-receipt', {
+    receiptNumber: receiptNumber,
     invoiceNumber: invoiceNumber,
     clientName: clientName,
     paidDate: paidDate,
@@ -19423,26 +21145,39 @@ function sendPaymentReceiptEmail(invoiceNumber, method, reference) {
   const htmlBody = wrapEmailHtml(bodyContent);
 
   try {
-    MailApp.sendEmail({
+    // Build email options
+    const emailOptions = {
       to: clientEmail,
       bcc: 'cartcuredrive@gmail.com',
       subject: subject,
       htmlBody: htmlBody,
       name: businessName,
       replyTo: adminEmail
-    });
+    };
+    if (pdfBlob) {
+      emailOptions.attachments = [pdfBlob];
+    }
+    MailApp.sendEmail(emailOptions);
 
     // Log activity
     logJobActivity(
       jobNumber,
       'Email Sent',
       subject,
-      'Payment receipt sent: ' + formatCurrency(total),
+      'Payment receipt ' + receiptNumber + ' sent: ' + formatCurrency(total) + (pdfBlob ? ' (PDF attached)' : ''),
       'To: ' + clientEmail,
       'Auto'
     );
 
-    Logger.log('Payment receipt sent to ' + clientEmail + ' for invoice ' + invoiceNumber);
+    // Save receipt number to Invoice Log
+    updateInvoiceReceiptNumber(invoiceNumber, receiptNumber);
+
+    // Save Receipt PDF link to Invoice Log
+    if (pdfUrl) {
+      updateReceiptPDFLink(invoiceNumber, pdfUrl);
+    }
+
+    Logger.log('Payment receipt ' + receiptNumber + ' sent to ' + clientEmail + ' for invoice ' + invoiceNumber);
     return true;
   } catch (error) {
     Logger.log('Error sending payment receipt: ' + error.message);
@@ -19603,6 +21338,242 @@ function markInvoiceAsNotPaid(invoiceNumber) {
 
   // Refresh dashboard
   refreshDashboard(true);
+}
+
+/**
+ * Cancel a draft invoice
+ * ACCOUNTING SAFEGUARD: Only Draft invoices can be cancelled
+ * - Invoice number is preserved (marked as Cancelled, not deleted) for audit trail
+ * - Job payment status is recalculated based on remaining active invoices
+ * - Activity is logged for full audit trail
+ *
+ * @param {string} invoiceNumber - The invoice number to cancel
+ */
+function cancelDraftInvoice(invoiceNumber) {
+  const ui = SpreadsheetApp.getUi();
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    ui.alert('Not Found', 'Invoice ' + invoiceNumber + ' not found.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // CRITICAL SAFEGUARD: Only allow cancellation of Draft invoices
+  // Once an invoice is sent, the client has an expectation of payment
+  const status = invoice['Status'];
+  if (status !== 'Draft') {
+    let reason = '';
+    switch (status) {
+      case 'Sent':
+        reason = 'This invoice has been sent to the client. Sent invoices cannot be cancelled as the client has received it and may have already initiated payment.';
+        break;
+      case 'Overdue':
+        reason = 'This invoice is overdue. Overdue invoices cannot be cancelled. If the client will not pay, consult with an accountant about proper write-off procedures.';
+        break;
+      case 'Paid':
+        reason = 'This invoice has been paid. Paid invoices cannot be cancelled. If a refund is needed, use the proper refund process.';
+        break;
+      case 'Paid?':
+        reason = 'This invoice has a pending payment verification. Verify the payment status first before taking any action.';
+        break;
+      case 'Cancelled':
+        reason = 'This invoice is already cancelled.';
+        break;
+      default:
+        reason = 'Only Draft invoices can be cancelled.';
+    }
+    ui.alert('Cannot Cancel Invoice',
+      'Invoice ' + invoiceNumber + ' cannot be cancelled.\n\n' +
+      'Current Status: ' + status + '\n\n' +
+      reason,
+      ui.ButtonSet.OK);
+    return;
+  }
+
+  const jobNumber = invoice['Job #'];
+  const clientName = invoice['Client Name'] || 'Unknown';
+  const amount = parseFloat(invoice['Total']) || parseFloat(invoice['Amount (excl GST)']) || 0;
+  const invoiceType = invoice['Type'] || 'Invoice';
+
+  // Show confirmation dialog with details
+  const response = ui.alert('Cancel Draft Invoice?',
+    'Are you sure you want to cancel this draft invoice?\n\n' +
+    'Invoice: ' + invoiceNumber + '\n' +
+    'Type: ' + invoiceType + '\n' +
+    'Client: ' + clientName + '\n' +
+    'Amount: ' + formatCurrency(amount) + '\n' +
+    'Job: ' + jobNumber + '\n\n' +
+    'This action will:\n' +
+    '• Mark the invoice as Cancelled (preserved for audit trail)\n' +
+    '• Update the job\'s payment status if needed\n' +
+    '• Log this action to the Activity Log\n\n' +
+    'This cannot be undone.',
+    ui.ButtonSet.YES_NO);
+
+  if (response !== ui.Button.YES) {
+    return; // User cancelled
+  }
+
+  // Cancel the invoice
+  const result = cancelDraftInvoiceInternal(invoiceNumber, invoice);
+
+  if (result.success) {
+    ui.alert('Invoice Cancelled',
+      'Invoice ' + invoiceNumber + ' has been cancelled.\n\n' +
+      (result.paymentStatusChanged ?
+        'Job ' + jobNumber + ' payment status updated to: ' + result.newPaymentStatus :
+        'Job payment status unchanged.'),
+      ui.ButtonSet.OK);
+  } else {
+    ui.alert('Error', 'Failed to cancel invoice: ' + result.error, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Cancel a draft invoice silently (no dialogs) - for batch operations
+ * @param {string} invoiceNumber - The invoice number to cancel
+ * @returns {Object} Result object with success boolean and optional error message
+ */
+function cancelDraftInvoiceSilent(invoiceNumber) {
+  const invoice = getInvoiceByNumber(invoiceNumber);
+
+  if (!invoice) {
+    return { success: false, error: 'Invoice not found' };
+  }
+
+  // Only allow cancellation of Draft invoices
+  if (invoice['Status'] !== 'Draft') {
+    return { success: false, error: 'Only Draft invoices can be cancelled. Current status: ' + invoice['Status'] };
+  }
+
+  return cancelDraftInvoiceInternal(invoiceNumber, invoice);
+}
+
+/**
+ * Internal function to cancel a draft invoice
+ * Handles the actual cancellation logic, payment status update, and logging
+ *
+ * @param {string} invoiceNumber - The invoice number
+ * @param {Object} invoice - The invoice object (already validated as Draft)
+ * @returns {Object} Result object
+ */
+function cancelDraftInvoiceInternal(invoiceNumber, invoice) {
+  try {
+    const jobNumber = invoice['Job #'];
+    const clientName = invoice['Client Name'] || 'Unknown';
+    const amount = parseFloat(invoice['Total']) || parseFloat(invoice['Amount (excl GST)']) || 0;
+    const invoiceType = invoice['Type'] || 'Invoice';
+    const now = new Date();
+
+    // 1. Update invoice status to Cancelled
+    updateInvoiceFields(invoiceNumber, {
+      'Status': 'Cancelled',
+      'Notes': (invoice['Notes'] || '') + (invoice['Notes'] ? '\n' : '') +
+               'Cancelled on ' + formatNZDate(now) + ' - Draft invoice cancelled before sending.'
+    });
+
+    // 2. Recalculate job payment status based on remaining active invoices
+    let paymentStatusChanged = false;
+    let newPaymentStatus = '';
+
+    if (jobNumber) {
+      const result = recalculateJobPaymentStatus(jobNumber);
+      paymentStatusChanged = result.changed;
+      newPaymentStatus = result.newStatus;
+    }
+
+    // 3. Log to Activity Log for audit trail
+    const details = [
+      'Invoice: ' + invoiceNumber,
+      'Type: ' + invoiceType,
+      'Amount: ' + formatCurrency(amount),
+      'Client: ' + clientName,
+      paymentStatusChanged ? 'Payment Status Updated: ' + newPaymentStatus : 'Payment Status: Unchanged'
+    ].join(', ');
+
+    logJobActivity(
+      jobNumber || '',
+      'Invoice Cancelled',
+      'Draft invoice cancelled before sending',
+      details,
+      '',
+      'Manual'
+    );
+
+    Logger.log('Invoice ' + invoiceNumber + ' cancelled successfully');
+
+    // Refresh dashboard
+    refreshDashboard(true);
+
+    return {
+      success: true,
+      paymentStatusChanged: paymentStatusChanged,
+      newPaymentStatus: newPaymentStatus
+    };
+
+  } catch (error) {
+    Logger.log('Error cancelling invoice ' + invoiceNumber + ': ' + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Recalculate a job's payment status based on its active invoices
+ * Called after cancelling an invoice to ensure payment status reflects reality
+ *
+ * Logic:
+ * - If no active invoices (all cancelled or none exist) → Unpaid
+ * - If any invoice is Overdue → Overdue
+ * - If any invoice is Sent or Draft → Invoiced
+ * - If all invoices are Paid → Paid
+ *
+ * @param {string} jobNumber - The job number to recalculate
+ * @returns {Object} Result with changed boolean and newStatus
+ */
+function recalculateJobPaymentStatus(jobNumber) {
+  const job = getJobByNumber(jobNumber);
+  if (!job) {
+    return { changed: false, newStatus: '', error: 'Job not found' };
+  }
+
+  const currentStatus = job['Payment Status'] || PAYMENT_STATUS.UNPAID;
+  const invoices = getInvoicesByJobNumber(jobNumber);
+
+  // Filter out cancelled invoices - they don't count for payment status
+  const activeInvoices = invoices.filter(inv => inv['Status'] !== 'Cancelled');
+
+  let newStatus = PAYMENT_STATUS.UNPAID;
+
+  if (activeInvoices.length === 0) {
+    // No active invoices - status is Unpaid
+    newStatus = PAYMENT_STATUS.UNPAID;
+  } else {
+    // Check invoice statuses in priority order
+    const hasOverdue = activeInvoices.some(inv => inv['Status'] === 'Overdue');
+    const hasSentOrDraft = activeInvoices.some(inv => inv['Status'] === 'Sent' || inv['Status'] === 'Draft');
+    const hasPaidPending = activeInvoices.some(inv => inv['Status'] === 'Paid?');
+    const allPaid = activeInvoices.every(inv => inv['Status'] === 'Paid');
+
+    if (hasOverdue) {
+      newStatus = PAYMENT_STATUS.OVERDUE;
+    } else if (hasPaidPending) {
+      // If payment verification is pending, keep current invoiced status
+      newStatus = PAYMENT_STATUS.INVOICED;
+    } else if (allPaid) {
+      newStatus = PAYMENT_STATUS.PAID;
+    } else if (hasSentOrDraft) {
+      newStatus = PAYMENT_STATUS.INVOICED;
+    }
+  }
+
+  // Only update if status actually changed
+  if (newStatus !== currentStatus) {
+    updateJobField(jobNumber, 'Payment Status', newStatus);
+    Logger.log('Job ' + jobNumber + ' payment status updated from ' + currentStatus + ' to ' + newStatus);
+    return { changed: true, newStatus: newStatus };
+  }
+
+  return { changed: false, newStatus: currentStatus };
 }
 
 // ============================================================================
@@ -20050,21 +22021,33 @@ function showMonthlySummary() {
 
 /**
  * Show hard reset confirmation dialog
+ * P2 FIX: Enhanced with mandatory backup and stronger confirmation requirements
  */
 function showHardResetDialog() {
   const ui = SpreadsheetApp.getUi();
 
-  // First warning dialog
+  // Count current data to show in warning
+  const jobsSheet = getSheet(SHEETS.JOBS);
+  const invoiceSheet = getSheet(SHEETS.INVOICES);
+  const submissionsSheet = getSheet(SHEETS.SUBMISSIONS);
+
+  const jobCount = jobsSheet ? Math.max(0, jobsSheet.getLastRow() - 1) : 0;
+  const invoiceCount = invoiceSheet ? Math.max(0, invoiceSheet.getLastRow() - 1) : 0;
+  const submissionCount = submissionsSheet ? Math.max(0, submissionsSheet.getLastRow() - 1) : 0;
+
+  // First warning dialog with data counts
   const firstWarning = ui.alert(
-    '⚠️ HARD RESET - PERMANENT DATA DELETION',
-    '⚠️ WARNING: This will PERMANENTLY DELETE ALL:\n\n' +
-    '• All Jobs\n' +
-    '• All Invoices\n' +
-    '• All Submissions/Enquiries\n' +
+    '⛔ HARD RESET - PERMANENT DATA DELETION',
+    '⚠️ DANGER: This will PERMANENTLY DELETE:\n\n' +
+    '• ' + jobCount + ' Jobs\n' +
+    '• ' + invoiceCount + ' Invoices\n' +
+    '• ' + submissionCount + ' Submissions\n' +
     '• Dashboard data\n' +
-    '• Settings (reset to defaults)\n\n' +
-    '❌ THIS CANNOT BE UNDONE!\n\n' +
-    'Are you absolutely sure you want to continue?',
+    '• All Settings (reset to defaults)\n\n' +
+    '❌ THIS CANNOT BE UNDONE!\n' +
+    '❌ NO RECOVERY IS POSSIBLE!\n\n' +
+    'A backup will be required before proceeding.\n\n' +
+    'Do you want to continue?',
     ui.ButtonSet.YES_NO
   );
 
@@ -20073,29 +22056,72 @@ function showHardResetDialog() {
     return;
   }
 
-  // Second confirmation - must type RESET
+  // P2 FIX: Mandatory backup step
+  const backupConfirm = ui.alert(
+    '💾 MANDATORY BACKUP REQUIRED',
+    'Before deleting all data, you MUST create a backup.\n\n' +
+    'Click YES to create a backup copy of this spreadsheet now.\n' +
+    '(A copy will be created in your Google Drive)\n\n' +
+    'Click NO to cancel the reset.',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (backupConfirm === ui.Button.NO) {
+    ui.alert('Hard Reset Cancelled', 'No data was deleted. No backup was created.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Create backup
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const timestamp = Utilities.formatDate(new Date(), 'Pacific/Auckland', 'yyyy-MM-dd_HH-mm');
+    const backupName = ss.getName() + ' - BACKUP - ' + timestamp;
+    const backupFile = DriveApp.getFileById(ss.getId()).makeCopy(backupName);
+
+    ui.alert(
+      '✅ Backup Created',
+      'Backup saved as:\n"' + backupName + '"\n\n' +
+      'Location: Your Google Drive\n' +
+      'File ID: ' + backupFile.getId() + '\n\n' +
+      'You can access this backup if you need to recover any data.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    ui.alert(
+      '❌ Backup Failed',
+      'Could not create backup: ' + error.message + '\n\n' +
+      'Hard reset has been cancelled for your safety.\n' +
+      'Please create a manual backup before trying again.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // P2 FIX: Stronger confirmation phrase
   const confirmText = ui.prompt(
-    '⚠️ FINAL CONFIRMATION REQUIRED',
+    '⛔ FINAL CONFIRMATION REQUIRED',
     '⚠️ THIS IS YOUR LAST CHANCE TO CANCEL!\n\n' +
-    'All jobs, invoices, and enquiries will be PERMANENTLY DELETED.\n\n' +
-    'To proceed, type exactly: RESET\n\n' +
+    'All ' + jobCount + ' jobs, ' + invoiceCount + ' invoices, and ' +
+    submissionCount + ' submissions will be PERMANENTLY DELETED.\n\n' +
+    'A backup has been created, but the original data will be gone forever.\n\n' +
+    'To proceed, type exactly:\n\nDELETE ALL DATA\n\n' +
     '(Type anything else to cancel)',
     ui.ButtonSet.OK_CANCEL
   );
 
   if (confirmText.getSelectedButton() === ui.Button.CANCEL) {
-    ui.alert('Hard Reset Cancelled', 'No data was deleted.', ui.ButtonSet.OK);
+    ui.alert('Hard Reset Cancelled', 'No data was deleted. Your backup was still created.', ui.ButtonSet.OK);
     return;
   }
 
   const userInput = confirmText.getResponseText().trim();
 
-  if (userInput !== 'RESET') {
+  if (userInput !== 'DELETE ALL DATA') {
     ui.alert(
       'Hard Reset Cancelled',
       'You typed: "' + userInput + '"\n\n' +
-      'Expected: "RESET"\n\n' +
-      'No data was deleted.',
+      'Expected: "DELETE ALL DATA"\n\n' +
+      'No data was deleted. Your backup was still created.',
       ui.ButtonSet.OK
     );
     return;
@@ -20104,6 +22130,12 @@ function showHardResetDialog() {
   // Execute the hard reset using combined setup function
   try {
     setupSheets(true); // true = clear all data
+    ui.alert(
+      '✅ Hard Reset Complete',
+      'All data has been deleted and sheets have been reset.\n\n' +
+      'Your backup is still available in Google Drive if needed.',
+      ui.ButtonSet.OK
+    );
   } catch (error) {
     ui.alert('Error During Hard Reset', 'An error occurred: ' + error.toString(), ui.ButtonSet.OK);
     Logger.log('Hard Reset Error: ' + error);
