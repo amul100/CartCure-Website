@@ -139,8 +139,10 @@
         }
 
         .check-icon {
-            font-size: 3rem;
+            width: 80px;
+            height: 80px;
             margin-bottom: 1rem;
+            object-fit: contain;
         }
 
         /* Tablet Styles */
@@ -204,7 +206,7 @@
 
             <!-- Success State -->
             <div class="message-box success-box" id="successBox" style="display: none;">
-                <div class="check-icon">&#10004;</div>
+                <img src="Cartcure_Tick.webp" alt="Success" class="check-icon">
                 <h1>Thank You!</h1>
                 <p>We've received your payment notification for:</p>
                 <div class="invoice-ref" id="invoiceRef"></div>
@@ -213,7 +215,7 @@
 
             <!-- Already Marked State -->
             <div class="message-box info-box" id="alreadyMarkedBox" style="display: none;">
-                <div class="check-icon">&#128276;</div>
+                <img src="Cartcure_Tick.webp" alt="Already Received" class="check-icon">
                 <h1>Already Received</h1>
                 <p>We already have your payment notification for this invoice.</p>
                 <div class="invoice-ref" id="invoiceRefAlready"></div>
@@ -222,7 +224,7 @@
 
             <!-- Already Paid State -->
             <div class="message-box success-box" id="alreadyPaidBox" style="display: none;">
-                <div class="check-icon">&#10004;</div>
+                <img src="Cartcure_Tick.webp" alt="Payment Confirmed" class="check-icon">
                 <h1>Payment Confirmed</h1>
                 <p>Great news! This invoice has already been marked as paid in our system.</p>
                 <div class="invoice-ref" id="invoiceRefPaid"></div>
@@ -231,7 +233,7 @@
 
             <!-- Error State -->
             <div class="message-box error-box" id="errorBox" style="display: none;">
-                <div class="check-icon">&#10060;</div>
+                <img src="Cartcure_Cross.webp" alt="Error" class="check-icon">
                 <h1>Something Went Wrong</h1>
                 <p id="errorMessage">We couldn't process your request. Please try again or contact us directly.</p>
                 <p style="margin-top: 1.5rem;">
