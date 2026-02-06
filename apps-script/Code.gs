@@ -19497,9 +19497,8 @@ function generateReceiptPDF(invoiceNumber, receiptNumber, paymentMethod, payment
       return { success: false, error: htmlResult.error };
     }
 
-    // 2. Convert HTML to PDF using HtmlService
-    const htmlOutput = HtmlService.createHtmlOutput(htmlResult.html);
-    const pdfBlob = htmlOutput.getBlob().setName('Receipt_' + receiptNumber + '.pdf');
+    // 2. Convert HTML to PDF via Google Drive API (produces valid PDF structure)
+    const pdfBlob = convertHtmlToPdf(htmlResult.html, 'Receipt_' + receiptNumber);
 
     // If only blob is needed (for email attachment), return it
     if (returnBlob) {
@@ -19554,6 +19553,67 @@ function updateReceiptPDFLink(invoiceNumber, pdfUrl) {
     }
   } catch (e) {
     Logger.log('Failed to update Receipt PDF link: ' + e.message);
+  }
+}
+
+/**
+ * Convert HTML content to a valid PDF blob using Google Drive API.
+ * Uploads HTML as a Google Doc (triggering conversion), exports as PDF, then cleans up.
+ * This is more reliable than HtmlService.getBlob() which can produce invalid PDFs.
+ * @param {string} html - Complete HTML document string
+ * @param {string} fileName - Name for the PDF file (without .pdf extension)
+ * @returns {Blob} PDF blob
+ */
+function convertHtmlToPdf(html, fileName) {
+  var token = ScriptApp.getOAuthToken();
+  var boundary = 'pdf_convert_' + new Date().getTime();
+  var metadata = JSON.stringify({
+    name: 'temp_pdf_' + new Date().getTime(),
+    mimeType: 'application/vnd.google-apps.document'
+  });
+
+  var payload =
+    '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    metadata + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: text/html; charset=UTF-8\r\n\r\n' +
+    html + '\r\n' +
+    '--' + boundary + '--';
+
+  var uploadResponse = UrlFetchApp.fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      contentType: 'multipart/related; boundary=' + boundary,
+      payload: Utilities.newBlob(payload).getBytes(),
+      muteHttpExceptions: true
+    }
+  );
+
+  if (uploadResponse.getResponseCode() !== 200) {
+    throw new Error('Drive upload failed: ' + uploadResponse.getContentText());
+  }
+
+  var docId = JSON.parse(uploadResponse.getContentText()).id;
+
+  try {
+    var pdfResponse = UrlFetchApp.fetch(
+      'https://www.googleapis.com/drive/v3/files/' + docId + '/export?mimeType=application/pdf',
+      {
+        headers: { 'Authorization': 'Bearer ' + token },
+        muteHttpExceptions: true
+      }
+    );
+
+    if (pdfResponse.getResponseCode() !== 200) {
+      throw new Error('PDF export failed: ' + pdfResponse.getContentText());
+    }
+
+    return pdfResponse.getBlob().setName(fileName + '.pdf');
+  } finally {
+    try { DriveApp.getFileById(docId).setTrashed(true); } catch (e) { /* ignore cleanup errors */ }
   }
 }
 
@@ -19685,9 +19745,8 @@ function generateInvoicePDF(invoiceNumber, returnBlob) {
       return { success: false, error: htmlResult.error };
     }
 
-    // 2. Convert HTML to PDF using HtmlService
-    const htmlOutput = HtmlService.createHtmlOutput(htmlResult.html);
-    const pdfBlob = htmlOutput.getBlob().setName('Invoice_' + invoiceNumber + '.pdf');
+    // 2. Convert HTML to PDF via Google Drive API (produces valid PDF structure)
+    const pdfBlob = convertHtmlToPdf(htmlResult.html, 'Invoice_' + invoiceNumber);
 
     // If only blob is needed (for email attachment), return it
     if (returnBlob) {
