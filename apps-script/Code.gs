@@ -14772,10 +14772,29 @@ function generateAndSendDepositInvoice(jobNumber, job) {
  */
 function sendInvoiceEmailSilent(invoiceNumber) {
   try {
-    const invoice = getInvoiceByNumber(invoiceNumber);
+    // Retry logic to handle timing issue where TextFinder doesn't see newly inserted rows
+    // even after SpreadsheetApp.flush() - see BUG-01 in AUTOMATED_TEST_RESULTS.md
+    let invoice = null;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 500;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      invoice = getInvoiceByNumber(invoiceNumber);
+      if (invoice) {
+        if (attempt > 1) {
+          Logger.log('Invoice ' + invoiceNumber + ' found on attempt ' + attempt);
+        }
+        break;
+      }
+      if (attempt < MAX_RETRIES) {
+        Logger.log('Invoice ' + invoiceNumber + ' not found on attempt ' + attempt + ', retrying...');
+        Utilities.sleep(RETRY_DELAY_MS);
+      }
+    }
 
     if (!invoice) {
-      return { success: false, error: 'Invoice not found' };
+      Logger.log('Invoice ' + invoiceNumber + ' not found after ' + MAX_RETRIES + ' attempts');
+      return { success: false, error: 'Invoice not found after ' + MAX_RETRIES + ' attempts' };
     }
 
     const businessName = getSetting('Business Name') || 'CartCure';
