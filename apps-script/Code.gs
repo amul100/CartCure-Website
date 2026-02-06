@@ -3756,6 +3756,46 @@ const COLUMN_CONFIG = {
 };
 
 // ============================================================================
+// EDITABLE COLUMNS - Columns the admin can freely edit in the spreadsheet
+// Any column NOT listed here will be reverted with a warning when edited.
+// Toggle this protection via: CartCure > Setup > Column Protection
+// ============================================================================
+const EDITABLE_COLUMNS = {
+  JOBS: [
+    'Status', 'Total (incl GST)', 'Client Name', 'Client Email', 'Client Phone',
+    'Store URL', 'Job Description', 'Category', 'Quote Amount (excl GST)', 'GST',
+    'Quote Valid Until', 'Estimated Turnaround', 'Actual Start Date',
+    'Actual Completion Date', 'Payment Status', 'Refund Amount', 'Payment Date',
+    'Payment Method', 'Payment Reference'
+  ],
+  INVOICES: [
+    'Status', 'Due Date', 'Payment Reference', 'Notes'
+  ],
+  CLIENTS: [
+    'Client Name', 'Client Phone', 'Store URL', 'Client Status', 'Notes'
+  ],
+  SUBMISSIONS: [
+    'Status'
+  ],
+  TESTIMONIALS: [
+    'Show on Website', 'Job Number'
+  ],
+  ACTIVITY_LOG: [
+    // Entire sheet is read-only — audit trail
+  ]
+};
+
+// Reverse lookup: sheet display name → EDITABLE_COLUMNS key
+const SHEET_TO_CONFIG_KEY = {
+  [SHEETS.JOBS]: 'JOBS',
+  [SHEETS.INVOICES]: 'INVOICES',
+  [SHEETS.CLIENTS]: 'CLIENTS',
+  [SHEETS.SUBMISSIONS]: 'SUBMISSIONS',
+  [SHEETS.TESTIMONIALS]: 'TESTIMONIALS',
+  [SHEETS.ACTIVITY_LOG]: 'ACTIVITY_LOG'
+};
+
+// ============================================================================
 // COLUMN HELPER FUNCTIONS
 // ============================================================================
 
@@ -4464,9 +4504,11 @@ function buildMenu() {
   // Check settings-based toggles
   let confirmSelectionEnabled = false;
   let headerProtectionEnabled = false;
+  let columnProtectionEnabled = false;
   try {
     confirmSelectionEnabled = getSetting('Confirm Selection Dialog') === 'Yes';
     headerProtectionEnabled = getSetting('Header Row Protection') === 'Yes';
+    columnProtectionEnabled = getSetting('Column Protection') === 'Yes';
   } catch (e) {
     // Settings may not be available yet
   }
@@ -4477,6 +4519,7 @@ function buildMenu() {
   const autoEmailsLabel = autoEmailsEnabled ? '⏰ Disable Auto Emails' : '⏰ Enable Auto Emails';
   const confirmSelectionLabel = confirmSelectionEnabled ? '✓ Disable Selection Confirmation' : '☐ Enable Selection Confirmation';
   const headerProtectionLabel = headerProtectionEnabled ? '🔒 Disable Header Protection' : '🔓 Enable Header Protection';
+  const columnProtectionLabel = columnProtectionEnabled ? '🔒 Disable Column Protection' : '🔓 Enable Column Protection';
 
   ui.createMenu('🛒 CartCure')
     .addItem('⚡ Actions', 'showActionsForSelectedRow')
@@ -4493,6 +4536,12 @@ function buildMenu() {
       .addItem('👎 Decline', 'showDeclineSubmissionDialog')
       .addItem('🚫 Mark as Spam', 'showMarkSpamDialog'))
     .addSubMenu(ui.createMenu('📋 Jobs')
+      .addSubMenu(ui.createMenu('💰 Quotes')
+        .addItem('📤 Send Quote', 'showSendQuoteDialog')
+        .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
+        .addItem('✅ Mark Quote Accepted', 'showAcceptQuoteDialog')
+        .addItem('👎 Mark Quote Declined', 'showDeclineQuoteDialog'))
+      .addSeparator()
       .addItem('▶️ Start Work on Job', 'showStartWorkDialog')
       .addItem('✔️ Mark Job Complete', 'showCompleteJobDialog')
       .addItem('⏸️ Put Job On Hold', 'showOnHoldDialog')
@@ -4504,11 +4553,6 @@ function buildMenu() {
       .addItem('⭐ Request Testimonial', 'showRequestTestimonialDialog')
       .addSeparator()
       .addItem('🔽 Sort Newest First', 'sortJobsNewestFirst'))
-    .addSubMenu(ui.createMenu('💰 Quotes')
-      .addItem('📤 Send Quote', 'showSendQuoteDialog')
-      .addItem('🔔 Send Quote Reminder', 'showQuoteReminderDialog')
-      .addItem('✅ Mark Quote Accepted', 'showAcceptQuoteDialog')
-      .addItem('👎 Mark Quote Declined', 'showDeclineQuoteDialog'))
     .addSubMenu(ui.createMenu('🧾 Invoices')
       .addItem('➕ Generate Invoice', 'showGenerateInvoiceDialog')
       .addItem('👁️ View Invoice', 'showViewInvoiceDialog')
@@ -4544,6 +4588,7 @@ function buildMenu() {
       .addItem(autoEmailsLabel, 'toggleAutoEmails')
       .addItem(confirmSelectionLabel, 'toggleConfirmSelection')
       .addItem(headerProtectionLabel, 'toggleHeaderProtection')
+      .addItem(columnProtectionLabel, 'toggleColumnProtection')
       .addSeparator()
       // Sheet Setup
       .addSubMenu(ui.createMenu('🔧 Sheet Setup')
@@ -4639,57 +4684,94 @@ function onEditHandler(e) {
   }
 
   // =========================================================================
-  // INVOICE AMOUNT PROTECTION (P0 FIX)
+  // INVOICE AMOUNT PROTECTION (P0 FIX) — always active regardless of toggle
   // Prevent editing of financial columns on non-Draft invoices
   // =========================================================================
   if (sheetName === SHEETS.INVOICES) {
     const row = range.getRow();
-
-    // Skip header row
-    if (row === 1) return;
-
-    // Protected columns that cannot be edited on sent invoices
-    const protectedColumns = ['Amount (excl GST)', 'GST', 'Total'];
-    const editedCol = range.getColumn();
-
-    // Check if the edited column is one of the protected columns
-    let editedColumnName = null;
-    for (const colName of protectedColumns) {
-      if (getColIndex('INVOICES', colName) === editedCol) {
-        editedColumnName = colName;
-        break;
+    if (row > 1) {
+      const invoiceProtectedCols = ['Amount (excl GST)', 'GST', 'Total'];
+      const editedCol = range.getColumn();
+      let editedColumnName = null;
+      for (const colName of invoiceProtectedCols) {
+        if (getColIndex('INVOICES', colName) === editedCol) {
+          editedColumnName = colName;
+          break;
+        }
+      }
+      if (editedColumnName) {
+        const statusCol = getColIndex('INVOICES', 'Status');
+        const status = sheet.getRange(row, statusCol).getValue();
+        if (status && status !== 'Draft') {
+          const oldValue = e.oldValue !== undefined ? e.oldValue : '';
+          range.setValue(oldValue);
+          try {
+            SpreadsheetApp.getUi().alert(
+              '⚠️ Protected Field',
+              'Invoice amounts cannot be edited after the invoice has been sent.\n\n' +
+              'Status: ' + status + '\n' +
+              'Column: ' + editedColumnName + '\n\n' +
+              'To modify amounts, either:\n' +
+              '• Change status back to "Draft" first (if appropriate)\n' +
+              '• Cancel this invoice and create a new one',
+              SpreadsheetApp.getUi().ButtonSet.OK
+            );
+          } catch (uiError) {
+            Logger.log('Invoice edit blocked: ' + editedColumnName + ' on row ' + row + ' (status: ' + status + ')');
+          }
+          return;
+        }
       }
     }
+  }
 
-    // If not a protected column, allow the edit
-    if (!editedColumnName) return;
+  // =========================================================================
+  // GENERAL COLUMN PROTECTION
+  // Reverts edits on system-managed columns. Toggle via Setup > Column Protection.
+  // =========================================================================
+  const configKey = SHEET_TO_CONFIG_KEY[sheetName];
+  if (configKey) {
+    const row = range.getRow();
+    // Skip header row
+    if (row <= 1) return;
 
-    // Get the invoice status from column 1 (Status column)
-    const statusCol = getColIndex('INVOICES', 'Status');
-    const status = sheet.getRange(row, statusCol).getValue();
+    // Check if column protection is enabled
+    let columnProtectionEnabled = false;
+    try {
+      columnProtectionEnabled = getSetting('Column Protection') === 'Yes';
+    } catch (e) { /* settings not available yet */ }
+    if (!columnProtectionEnabled) return;
 
-    // Only Draft invoices can have amounts edited
-    if (status && status !== 'Draft') {
-      // Revert the change
-      const oldValue = e.oldValue !== undefined ? e.oldValue : '';
-      range.setValue(oldValue);
+    const editedCol = range.getColumn();
+    const editableList = EDITABLE_COLUMNS[configKey] || [];
+    const columnConfig = COLUMN_CONFIG[configKey];
 
-      // Show warning to user (only works with installable trigger)
-      try {
-        SpreadsheetApp.getUi().alert(
-          '⚠️ Protected Field',
-          'Invoice amounts cannot be edited after the invoice has been sent.\n\n' +
-          'Status: ' + status + '\n' +
-          'Column: ' + editedColumnName + '\n\n' +
-          'To modify amounts, either:\n' +
-          '• Change status back to "Draft" first (if appropriate)\n' +
-          '• Cancel this invoice and create a new one',
-          SpreadsheetApp.getUi().ButtonSet.OK
-        );
-      } catch (uiError) {
-        // Simple triggers can't show UI - the revert still happened
-        Logger.log('Invoice edit blocked: ' + editedColumnName + ' on row ' + row + ' (status: ' + status + ')');
-      }
+    // Find the name of the edited column from COLUMN_CONFIG
+    let editedColumnName = null;
+    if (columnConfig && editedCol >= 1 && editedCol <= columnConfig.length) {
+      editedColumnName = columnConfig[editedCol - 1].name;
+    }
+    if (!editedColumnName) return; // Column outside config range, allow edit
+
+    // If column is in the editable list, allow it
+    if (editableList.includes(editedColumnName)) return;
+
+    // Column is protected — revert the change
+    const oldValue = e.oldValue !== undefined ? e.oldValue : '';
+    range.setValue(oldValue);
+
+    try {
+      SpreadsheetApp.getUi().alert(
+        '🔒 Protected Column',
+        '"' + editedColumnName + '" is a system-managed column and cannot be edited directly.\n\n' +
+        'Sheet: ' + sheetName + '\n\n' +
+        'This column is automatically populated by the system. ' +
+        'To temporarily unlock all columns, go to:\n' +
+        'CartCure > Setup > 🔓 Disable Column Protection',
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+    } catch (uiError) {
+      Logger.log('Column edit blocked: ' + sheetName + '.' + editedColumnName + ' on row ' + row);
     }
   }
 }
@@ -7862,6 +7944,35 @@ function toggleHeaderProtection() {
 }
 
 /**
+ * Toggle column protection on/off
+ * When enabled, system-managed columns cannot be edited in the spreadsheet.
+ * Editable columns are defined in EDITABLE_COLUMNS config.
+ */
+function toggleColumnProtection() {
+  const ui = SpreadsheetApp.getUi();
+  const currentValue = getSetting('Column Protection');
+  const isEnabled = currentValue === 'Yes';
+
+  if (isEnabled) {
+    updateSetting('Column Protection', 'No');
+    ui.alert('Column Protection Disabled',
+      'All columns can now be freely edited.\n\n' +
+      'Note: Invoice amount protection (Amount, GST, Total on non-Draft invoices) remains active regardless of this setting.',
+      ui.ButtonSet.OK);
+  } else {
+    updateSetting('Column Protection', 'Yes');
+    ui.alert('Column Protection Enabled',
+      'System-managed columns are now protected. Edits to auto-generated fields (IDs, dates, formulas, etc.) will be reverted with a warning.\n\n' +
+      'You can still edit admin-managed fields like Status, pricing, notes, and dates.\n\n' +
+      'To temporarily unlock, use: CartCure > Setup > Disable Column Protection',
+      ui.ButtonSet.OK);
+  }
+
+  // Rebuild menu to reflect new state
+  buildMenu();
+}
+
+/**
  * Apply warning-only protection to header rows on key sheets
  */
 function applyHeaderProtections() {
@@ -9235,6 +9346,7 @@ function setupSettingsSheet(ss, clearData) {
     ['Next Invoice Number', '1', 'Auto-incremented invoice number counter'],
     ['Confirm Selection Dialog', 'No', 'Show confirmation when job/invoice auto-detected (Yes/No)'],
     ['Header Row Protection', 'No', 'Show warning when editing header rows (Yes/No)'],
+    ['Column Protection', 'Yes', 'Prevent editing system-managed columns (Yes/No)'],
     ['Archive Jobs After Days', '90', 'Days after completion to archive jobs (0 = never archive)'],
     ['Archive Activity After Days', '365', 'Days to keep in Activity Log before archiving (0 = never)']
   ];

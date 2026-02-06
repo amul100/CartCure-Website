@@ -470,7 +470,7 @@
 <ul>
     <li><strong>9 Sheets:</strong> Updated to reflect all sheets (Dashboard, Submissions, Jobs, Invoice Log, Testimonials, Analytics, Activity Log, Clients, Settings)</li>
     <li><strong>Complete Settings Table:</strong> Documented all 13 configurable settings including Archive, Confirm Selection, and Header Protection options</li>
-    <li><strong>Full Menu Reference:</strong> Complete menu structure with all items organized by category (Dashboard, Jobs, Quotes, Invoices, Clients, Setup, Maintenance)</li>
+    <li><strong>Full Menu Reference:</strong> Complete menu structure with all items organized by category (Dashboard, Jobs, Invoices, Clients, Setup, Maintenance)</li>
     <li><strong>Accurate Invoice Log:</strong> Updated to show all 22 columns including Actions, Receipt #, PDF Link, and Receipt PDF Link columns</li>
     <li><strong>Submissions Sheet:</strong> Updated to show 11 columns with Actions column</li>
     <li><strong>Payment Status Flow:</strong> Added Overdue and Refunded states</li>
@@ -594,6 +594,11 @@
             <td>Show warning when editing header rows</td>
         </tr>
         <tr>
+            <td>Column Protection</td>
+            <td>Yes</td>
+            <td>Prevent editing system-managed columns (auto-IDs, timestamps, formulas). Admin-editable fields like Status, pricing, and notes remain editable.</td>
+        </tr>
+        <tr>
             <td>Archive Jobs After Days</td>
             <td>90</td>
             <td>Days after completion before archiving (0 = never)</td>
@@ -632,7 +637,7 @@
 
 <ol>
     <li><strong>Click</strong> on a job number cell (e.g., <code>J-RIVER-523</code>) in the Dashboard</li>
-    <li><strong>Menu:</strong> CartCure &gt; Quotes &gt; Send Quote</li>
+    <li><strong>Menu:</strong> CartCure &gt; Jobs &gt; Quotes &gt; Send Quote</li>
     <li><strong>Confirm:</strong> System asks "Use selected job: J-RIVER-523?" - Click Yes</li>
     <li><strong>Done!</strong> Quote is sent immediately</li>
 </ol>
@@ -792,7 +797,7 @@
 
 <h3>Step 3: Send the Quote</h3>
 <ol>
-    <li>Go to <strong>🛒 CartCure &gt; 💰 Quotes &gt; Send Quote</strong></li>
+    <li>Go to <strong>🛒 CartCure &gt; 📋 Jobs &gt; 💰 Quotes &gt; Send Quote</strong></li>
     <li>Select a job from the dropdown list</li>
     <li>Click OK</li>
 </ol>
@@ -1800,7 +1805,7 @@
     </tbody>
 </table>
 
-<h3>Quotes Menu</h3>
+<h3>Quotes (under Jobs Menu)</h3>
 <table>
     <thead>
         <tr>
@@ -1811,15 +1816,15 @@
     <tbody>
         <tr>
             <td>Send Quote</td>
-            <td>CartCure &gt; Quotes &gt; Send Quote</td>
+            <td>CartCure &gt; Jobs &gt; Quotes &gt; Send Quote</td>
         </tr>
         <tr>
             <td>Send Quote Reminder</td>
-            <td>CartCure &gt; Quotes &gt; Send Quote Reminder</td>
+            <td>CartCure &gt; Jobs &gt; Quotes &gt; Send Quote Reminder</td>
         </tr>
         <tr>
             <td>Mark Quote Declined</td>
-            <td>CartCure &gt; Quotes &gt; Mark Quote Declined</td>
+            <td>CartCure &gt; Jobs &gt; Quotes &gt; Mark Quote Declined</td>
         </tr>
     </tbody>
 </table>
@@ -1944,6 +1949,10 @@
         <tr>
             <td>Toggle Header Protection</td>
             <td>CartCure &gt; Setup &gt; Enable/Disable Header Protection</td>
+        </tr>
+        <tr>
+            <td>Toggle Column Protection</td>
+            <td>CartCure &gt; Setup &gt; Enable/Disable Column Protection</td>
         </tr>
     </tbody>
 </table>
@@ -2403,6 +2412,7 @@ Unpaid → Invoiced ─────────┼─→ Overdue → Paid
     <li><strong>Frozen Header Row</strong> - Headers stay visible when scrolling</li>
     <li><strong>Optimized Column Widths</strong> - All columns sized for readability</li>
     <li><strong>Protected Headers</strong> - Warning appears if you try to edit headers</li>
+    <li><strong>Column Protection</strong> - When enabled, system-managed columns (auto-IDs, timestamps, formulas) are locked. Admin-editable fields like Status, pricing, and notes remain editable. Toggle via CartCure &gt; Setup.</li>
     <li><strong>Conditional Formatting</strong> - Status colors update automatically based on values</li>
     <li><strong>Data Validation</strong> - Status dropdowns prevent typos and invalid entries</li>
     <li><strong>Subtle Borders</strong> - Clean borders matching the paper-like design</li>
@@ -2550,6 +2560,69 @@ Unpaid → Invoiced ─────────┼─→ Overdue → Paid
     <li>The testimonial will no longer display on the website</li>
     <li>The data remains in the sheet for your records</li>
 </ol>
+
+<h2>Column Protection Reference</h2>
+
+<p>When <strong>Column Protection</strong> is enabled (CartCure &gt; Setup &gt; Enable Column Protection), system-managed columns are locked to prevent accidental changes. The following tables show which columns you can and cannot edit on each sheet.</p>
+
+<h3>Jobs Sheet</h3>
+<table>
+    <thead><tr><th>Editable (Admin)</th><th>Protected (System)</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>Status, Total (incl GST), Client Name, Client Email, Client Phone, Store URL, Job Description, Category, Quote Amount (excl GST), GST, Quote Valid Until, Estimated Turnaround, Actual Start Date, Actual Completion Date, Payment Status, Refund Amount, Payment Date, Payment Method, Payment Reference</td>
+            <td>Job #, Created Date, Quote Sent Date, Quote Accepted Date, Days Since Accepted, Days Remaining, SLA Status, Due Date, Invoice #, Remaining Balance, Submission #, Last Updated</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Invoice Log Sheet</h3>
+<table>
+    <thead><tr><th>Editable (Admin)</th><th>Protected (System)</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>Status, Due Date, Payment Reference, Notes</td>
+            <td>Invoice #, Job #, Client Name, Client Email, Client Phone, Invoice Date, Amount (excl GST)*, GST*, Total*, Sent Date, Paid Date, Receipt #, Days Overdue, Late Fee, Total With Fees, Invoice Type, PDF Link, Receipt PDF Link</td>
+        </tr>
+    </tbody>
+</table>
+<p><em>* Amount, GST, and Total are always locked on non-Draft invoices, even when Column Protection is disabled.</em></p>
+
+<h3>Clients Sheet</h3>
+<table>
+    <thead><tr><th>Editable (Admin)</th><th>Protected (System)</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>Client Name, Client Phone, Store URL, Client Status, Notes</td>
+            <td>Client Email (primary key), Total Jobs, Completed Jobs, Total Revenue, First Job Date, Last Job Date, Created Date, Last Updated</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Submissions Sheet</h3>
+<table>
+    <thead><tr><th>Editable (Admin)</th><th>Protected (System)</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>Status</td>
+            <td>Submission #, Timestamp, Name, Email, Phone, Store URL, Message, Has Voice Note, Voice Note Link</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Testimonials Sheet</h3>
+<table>
+    <thead><tr><th>Editable (Admin)</th><th>Protected (System)</th></tr></thead>
+    <tbody>
+        <tr>
+            <td>Show on Website, Job Number</td>
+            <td>Submitted, Name, Business, Location, Rating, Testimonial, Email</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Activity Log Sheet</h3>
+<p>The entire Activity Log is read-only. All columns (Timestamp, Job #, Activity Type, Subject/Summary, Details, From/To, Logged By) are system-generated audit trail entries.</p>
 
 <h2>Feedback Form & Security</h2>
 
