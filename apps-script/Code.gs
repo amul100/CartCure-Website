@@ -19414,27 +19414,28 @@ function renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, payme
   const gstValue = parseFloat(gst);
   const displayTotal = isGSTRegistered ? total : amount;
 
+  // Build pricing rows HTML (inline styles for Google Docs PDF compatibility)
   let pricingRowsHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingRowsHtml = `
       <tr>
-        <td class="pricing-label">Subtotal (excl. GST)</td>
-        <td class="pricing-value">$${amount}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">Subtotal (excl. GST)</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${amount}</td>
       </tr>
       <tr>
-        <td class="pricing-label">GST (15%)</td>
-        <td class="pricing-value">$${gst}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">GST (15%)</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${gst}</td>
       </tr>
-      <tr class="pricing-total">
-        <td>TOTAL PAID (incl. GST)</td>
-        <td class="pricing-value">$${total}</td>
+      <tr>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL PAID (incl. GST)</td>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${total}</td>
       </tr>
     `;
   } else {
     pricingRowsHtml = `
-      <tr class="pricing-total">
-        <td>TOTAL PAID</td>
-        <td class="pricing-value">$${displayTotal}</td>
+      <tr>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL PAID</td>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${displayTotal}</td>
       </tr>
     `;
   }
@@ -19446,10 +19447,12 @@ function renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, payme
   let paymentReferenceHtml = '';
   if (paymentReference) {
     paymentReferenceHtml = `
-      <div class="payment-reference">
-        <p class="payment-reference-title">Payment Reference:</p>
-        <p class="payment-reference-info">${paymentReference}</p>
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="background-color:${EMAIL_COLORS.paperCream}; border:2px solid ${EMAIL_COLORS.paperBorder}; padding:12px; margin-top:10px;">
+          <p style="margin:0 0 6px 0; font-weight:bold; color:${EMAIL_COLORS.inkBlack};">Payment Reference:</p>
+          <p style="margin:0; font-size:10pt; color:${EMAIL_COLORS.inkGray}; line-height:1.5;">${paymentReference}</p>
+        </td>
+      </tr></table>
     `;
   }
 
@@ -19655,28 +19658,28 @@ function renderInvoicePDFHtml(invoiceNumber) {
   const gstValue = parseFloat(gst);
   const displayTotal = isGSTRegistered ? total : amount;
 
-  // Build pricing rows HTML (PDF-optimized)
+  // Build pricing rows HTML (inline styles for Google Docs PDF compatibility)
   let pricingRowsHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingRowsHtml = `
       <tr>
-        <td class="pricing-label">Subtotal (excl. GST)</td>
-        <td class="pricing-value">$${amount}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">Subtotal (excl. GST)</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${amount}</td>
       </tr>
       <tr>
-        <td class="pricing-label">GST (15%)</td>
-        <td class="pricing-value">$${gst}</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">GST (15%)</td>
+        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${gst}</td>
       </tr>
-      <tr class="pricing-total">
-        <td>TOTAL DUE (incl. GST)</td>
-        <td class="pricing-value">$${total}</td>
+      <tr>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL DUE (incl. GST)</td>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${total}</td>
       </tr>
     `;
   } else {
     pricingRowsHtml = `
-      <tr class="pricing-total">
-        <td>TOTAL DUE</td>
-        <td class="pricing-value">$${displayTotal}</td>
+      <tr>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL DUE</td>
+        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${displayTotal}</td>
       </tr>
     `;
   }
@@ -19693,9 +19696,11 @@ function renderInvoicePDFHtml(invoiceNumber) {
   let depositNoticeHtml = '';
   if (invoiceType === 'Deposit') {
     depositNoticeHtml = `
-      <div class="deposit-notice">
-        <strong>50% Deposit Invoice</strong> - Balance due upon project completion
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="background-color:${EMAIL_COLORS.alertBg}; border:2px dashed ${EMAIL_COLORS.alertBorder}; padding:10px; text-align:center;">
+          <strong style="color:${EMAIL_COLORS.brandGreen};">50% Deposit Invoice</strong> - Balance due upon project completion
+        </td>
+      </tr></table>
     `;
   }
 

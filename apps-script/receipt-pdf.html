@@ -1,252 +1,137 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #ffffff;
-      color: <?= colors.inkBlack ?>;
-      font-size: 12pt;
-      line-height: 1.4;
-    }
-    .receipt-container {
-      max-width: 100%;
-      margin: 0 auto;
-      background-color: #ffffff;
-    }
-    .header {
-      text-align: center;
-      padding: 20px 0;
-      border-bottom: 2px solid <?= colors.paperBorder ?>;
-    }
-    .logo {
-      max-width: 150px;
-      height: auto;
-    }
-    .receipt-title-bar {
-      background-color: <?= colors.brandGreen ?>;
-      padding: 20px;
-      text-align: center;
-      color: #ffffff;
-    }
-    .receipt-title {
-      margin: 0 0 5px 0;
-      font-size: 24pt;
-      font-weight: bold;
-      font-family: Georgia, 'Times New Roman', serif;
-    }
-    .receipt-refs {
-      margin: 0;
-      font-size: 10pt;
-      color: #ffffffcc;
-    }
-    .receipt-number-highlight {
-      background-color: rgba(255,255,255,0.2);
-      padding: 8px 15px;
-      margin-top: 10px;
-      display: inline-block;
-      font-size: 14pt;
-      font-weight: bold;
-      border: 2px solid rgba(255,255,255,0.4);
-    }
-    .section {
-      padding: 15px 0;
-    }
-    .section-title {
-      font-size: 11pt;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: <?= colors.inkBlack ?>;
-      border-bottom: 2px solid <?= colors.paperBorder ?>;
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-    }
-    .greeting {
-      font-size: 12pt;
-      line-height: 1.6;
-      margin-bottom: 15px;
-    }
-    .details-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 10px 0;
-    }
-    .detail-box {
-      width: 48%;
-      background-color: <?= colors.paperCream ?>;
-      border: 1px solid <?= colors.paperBorder ?>;
-      padding: 12px;
-      vertical-align: top;
-    }
-    .detail-label {
-      font-size: 9pt;
-      text-transform: uppercase;
-      color: <?= colors.inkGray ?>;
-      margin-bottom: 4px;
-    }
-    .detail-value {
-      font-size: 14pt;
-      font-weight: bold;
-      color: <?= colors.brandGreen ?>;
-    }
-    .pricing-table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: <?= colors.paperCream ?>;
-      border: 1px solid <?= colors.paperBorder ?>;
-    }
-    .pricing-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid <?= colors.paperBorder ?>;
-    }
-    .pricing-label {
-      color: <?= colors.inkGray ?>;
-    }
-    .pricing-value {
-      text-align: right;
-      font-weight: bold;
-      color: <?= colors.inkBlack ?>;
-    }
-    .pricing-total {
-      background-color: <?= colors.brandGreen ?>;
-    }
-    .pricing-total td {
-      color: #ffffff;
-      font-weight: bold;
-      padding: 12px;
-      border-bottom: none;
-    }
-    .pricing-total .pricing-value {
-      color: #ffffff;
-      font-size: 16pt;
-    }
-    .payment-reference {
-      background-color: <?= colors.paperCream ?>;
-      border: 2px solid <?= colors.paperBorder ?>;
-      padding: 15px;
-      margin-top: 15px;
-    }
-    .payment-reference-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: <?= colors.inkBlack ?>;
-    }
-    .payment-reference-info {
-      font-size: 11pt;
-      color: <?= colors.inkGray ?>;
-      line-height: 1.6;
-    }
-    .paid-stamp {
-      text-align: center;
-      margin: 20px 0;
-    }
-    .paid-stamp-box {
-      display: inline-block;
-      border: 3px solid <?= colors.brandGreen ?>;
-      padding: 10px 30px;
-      color: <?= colors.brandGreen ?>;
-      font-size: 18pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-    }
-    .footer {
-      margin-top: 25px;
-      padding-top: 15px;
-      border-top: 2px solid <?= colors.paperBorder ?>;
-      text-align: center;
-      font-size: 9pt;
-      color: <?= colors.inkLight ?>;
-      line-height: 1.6;
-    }
-  </style>
-</head>
-<body>
-  <div class="receipt-container">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0; padding:0; background-color:#ffffff; color:#2b2b2b; font-family:Arial, Helvetica, sans-serif; font-size:11pt; line-height:1.4;">
 
-    <!-- Header with Logo -->
-    <div class="header">
-      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" class="logo">
-    </div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto;">
 
-    <!-- Receipt Title Bar -->
-    <div class="receipt-title-bar">
-      <h1 class="receipt-title">Payment Receipt</h1>
-      <p class="receipt-refs">Invoice: <?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
-      <div class="receipt-number-highlight"><?= receiptNumber ?></div>
-    </div>
+  <!-- Logo -->
+  <tr>
+    <td align="center" style="padding:15px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="150" style="width:150px; height:auto;">
+    </td>
+  </tr>
 
-    <!-- Greeting -->
-    <div class="section">
-      <p class="greeting">
+  <!-- Title Bar -->
+  <tr>
+    <td style="background-color:<?= colors.brandGreen ?>; padding:16px; text-align:center; color:#ffffff;">
+      <h1 style="margin:0 0 4px 0; font-size:22pt; font-weight:bold; font-family:Georgia,'Times New Roman',serif; color:#ffffff;">Payment Receipt</h1>
+      <p style="margin:0; font-size:10pt; color:#ffffffcc;">Invoice: <?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
+      <div style="background-color:rgba(255,255,255,0.2); padding:6px 12px; margin-top:8px; display:inline-block; font-size:13pt; font-weight:bold; border:2px solid rgba(255,255,255,0.4); color:#ffffff;"><?= receiptNumber ?></div>
+    </td>
+  </tr>
+
+  <!-- Greeting -->
+  <tr>
+    <td style="padding:12px 0;">
+      <p style="margin:0; font-size:11pt; line-height:1.5;">
         <strong>To:</strong> <?= clientName ?><br>
         Thank you for your payment! This receipt confirms that we have received your payment in full.
       </p>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Payment Details -->
-    <div class="section">
-      <h2 class="section-title">Payment Details</h2>
-      <table class="details-table">
+  <!-- Payment Details Header -->
+  <tr>
+    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Payment Details</strong>
+    </td>
+  </tr>
+
+  <!-- Payment Date / Method -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td class="detail-box">
-            <div class="detail-label">Payment Date</div>
-            <div class="detail-value"><?= paidDate ?></div>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Payment Date</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= paidDate ?></div>
           </td>
-          <td class="detail-box">
-            <div class="detail-label">Payment Method</div>
-            <div class="detail-value"><?= paymentMethod ?></div>
+          <td width="4%"></td>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Payment Method</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= paymentMethod ?></div>
           </td>
         </tr>
       </table>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Invoice Reference -->
-    <div class="section">
-      <h2 class="section-title">Invoice Reference</h2>
-      <table class="details-table">
+  <!-- Invoice Reference Header -->
+  <tr>
+    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Invoice Reference</strong>
+    </td>
+  </tr>
+
+  <!-- Invoice Number / Date -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td class="detail-box">
-            <div class="detail-label">Invoice Number</div>
-            <div class="detail-value"><?= invoiceNumber ?></div>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Number</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceNumber ?></div>
           </td>
-          <td class="detail-box">
-            <div class="detail-label">Invoice Date</div>
-            <div class="detail-value"><?= invoiceDate ?></div>
+          <td width="4%"></td>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Date</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceDate ?></div>
           </td>
         </tr>
       </table>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Amount Paid -->
-    <div class="section">
-      <h2 class="section-title">Amount Paid</h2>
-      <table class="pricing-table">
+  <!-- Amount Paid Header -->
+  <tr>
+    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Amount Paid</strong>
+    </td>
+  </tr>
+
+  <!-- Pricing Table -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid <?= colors.paperBorder ?>; border-collapse:collapse;">
         <?!= pricingRowsHtml ?>
       </table>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Payment Reference (if provided) -->
-    <?!= paymentReferenceHtml ?>
+  <!-- Payment Reference (if provided) -->
+  <? if (paymentReferenceHtml) { ?>
+  <tr>
+    <td style="padding:8px 0;">
+      <?!= paymentReferenceHtml ?>
+    </td>
+  </tr>
+  <? } ?>
 
-    <!-- Paid Stamp -->
-    <div class="paid-stamp">
-      <div class="paid-stamp-box">Paid in Full</div>
-    </div>
+  <!-- Paid Stamp -->
+  <tr>
+    <td align="center" style="padding:15px 0;">
+      <table cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="border:3px solid <?= colors.brandGreen ?>; padding:8px 25px; color:<?= colors.brandGreen ?>; font-size:16pt; font-weight:bold; text-transform:uppercase; letter-spacing:3px;">
+          Paid in Full
+        </td>
+      </tr></table>
+    </td>
+  </tr>
 
-    <!-- Footer -->
-    <div class="footer">
-      <p>
+  <!-- Footer -->
+  <tr>
+    <td style="padding:15px 0 0 0; border-top:2px solid <?= colors.paperBorder ?>; text-align:center; font-size:9pt; color:<?= colors.inkLight ?>; line-height:1.5;">
+      <p style="margin:0;">
         Questions? Email us at hello@cartcure.co.nz<br>
         <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
         <?!= gstFooterLine ?>
         cartcure.co.nz
       </p>
-    </div>
+    </td>
+  </tr>
 
-  </div>
+</table>
+
 </body>
 </html>

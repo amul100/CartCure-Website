@@ -1,224 +1,116 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #ffffff;
-      color: <?= colors.inkBlack ?>;
-      font-size: 12pt;
-      line-height: 1.4;
-    }
-    .invoice-container {
-      max-width: 100%;
-      margin: 0 auto;
-      background-color: #ffffff;
-    }
-    .header {
-      text-align: center;
-      padding: 20px 0;
-      border-bottom: 2px solid <?= colors.paperBorder ?>;
-    }
-    .logo {
-      max-width: 150px;
-      height: auto;
-    }
-    .invoice-title-bar {
-      background-color: <?= colors.brandGreen ?>;
-      padding: 20px;
-      text-align: center;
-      color: #ffffff;
-    }
-    .invoice-title {
-      margin: 0 0 5px 0;
-      font-size: 24pt;
-      font-weight: bold;
-      font-family: Georgia, 'Times New Roman', serif;
-    }
-    .invoice-refs {
-      margin: 0;
-      font-size: 10pt;
-      color: #ffffffcc;
-    }
-    .section {
-      padding: 15px 0;
-    }
-    .section-title {
-      font-size: 11pt;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: <?= colors.inkBlack ?>;
-      border-bottom: 2px solid <?= colors.paperBorder ?>;
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-    }
-    .greeting {
-      font-size: 12pt;
-      line-height: 1.6;
-      margin-bottom: 15px;
-    }
-    .dates-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 10px 0;
-    }
-    .date-box {
-      width: 48%;
-      background-color: <?= colors.paperCream ?>;
-      border: 1px solid <?= colors.paperBorder ?>;
-      padding: 12px;
-      vertical-align: top;
-    }
-    .date-label {
-      font-size: 9pt;
-      text-transform: uppercase;
-      color: <?= colors.inkGray ?>;
-      margin-bottom: 4px;
-    }
-    .date-value {
-      font-size: 14pt;
-      font-weight: bold;
-      color: <?= colors.brandGreen ?>;
-    }
-    .pricing-table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: <?= colors.paperCream ?>;
-      border: 1px solid <?= colors.paperBorder ?>;
-    }
-    .pricing-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid <?= colors.paperBorder ?>;
-    }
-    .pricing-label {
-      color: <?= colors.inkGray ?>;
-    }
-    .pricing-value {
-      text-align: right;
-      font-weight: bold;
-      color: <?= colors.inkBlack ?>;
-    }
-    .pricing-total {
-      background-color: <?= colors.brandGreen ?>;
-    }
-    .pricing-total td {
-      color: #ffffff;
-      font-weight: bold;
-      padding: 12px;
-      border-bottom: none;
-    }
-    .pricing-total .pricing-value {
-      color: #ffffff;
-      font-size: 16pt;
-    }
-    .payment-details {
-      background-color: <?= colors.alertBg ?>;
-      border: 2px solid <?= colors.alertBorder ?>;
-      padding: 15px;
-      margin-top: 15px;
-    }
-    .payment-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: <?= colors.inkBlack ?>;
-    }
-    .payment-info {
-      font-size: 11pt;
-      color: <?= colors.inkGray ?>;
-      line-height: 1.6;
-    }
-    .footer {
-      margin-top: 25px;
-      padding-top: 15px;
-      border-top: 2px solid <?= colors.paperBorder ?>;
-      text-align: center;
-      font-size: 9pt;
-      color: <?= colors.inkLight ?>;
-      line-height: 1.6;
-    }
-    .deposit-notice {
-      background-color: <?= colors.alertBg ?>;
-      border: 2px dashed <?= colors.alertBorder ?>;
-      padding: 12px;
-      margin: 15px 0;
-      text-align: center;
-    }
-    .deposit-notice strong {
-      color: <?= colors.brandGreen ?>;
-    }
-  </style>
-</head>
-<body>
-  <div class="invoice-container">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0; padding:0; background-color:#ffffff; color:#2b2b2b; font-family:Arial, Helvetica, sans-serif; font-size:11pt; line-height:1.4;">
 
-    <!-- Header with Logo -->
-    <div class="header">
-      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" class="logo">
-    </div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto;">
 
-    <!-- Invoice Title Bar -->
-    <div class="invoice-title-bar">
-      <h1 class="invoice-title"><?= headingTitle ?></h1>
-      <p class="invoice-refs"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
-    </div>
+  <!-- Logo -->
+  <tr>
+    <td align="center" style="padding:15px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="150" style="width:150px; height:auto;">
+    </td>
+  </tr>
 
-    <?!= depositNoticeHtml ?>
+  <!-- Title Bar -->
+  <tr>
+    <td style="background-color:<?= colors.brandGreen ?>; padding:16px; text-align:center; color:#ffffff;">
+      <h1 style="margin:0 0 4px 0; font-size:22pt; font-weight:bold; font-family:Georgia,'Times New Roman',serif; color:#ffffff;"><?= headingTitle ?></h1>
+      <p style="margin:0; font-size:10pt; color:#ffffffcc;"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
+    </td>
+  </tr>
 
-    <!-- Greeting -->
-    <div class="section">
-      <p class="greeting">
+  <!-- Deposit Notice (if applicable) -->
+  <? if (depositNoticeHtml) { ?>
+  <tr>
+    <td style="padding:0;">
+      <?!= depositNoticeHtml ?>
+    </td>
+  </tr>
+  <? } ?>
+
+  <!-- Greeting -->
+  <tr>
+    <td style="padding:12px 0;">
+      <p style="margin:0; font-size:11pt; line-height:1.5;">
         <strong>To:</strong> <?= clientName ?><br>
         <?= greetingText ?>
       </p>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Invoice Details -->
-    <div class="section">
-      <h2 class="section-title">Invoice Details</h2>
-      <table class="dates-table">
+  <!-- Invoice Details Header -->
+  <tr>
+    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Invoice Details</strong>
+    </td>
+  </tr>
+
+  <!-- Dates -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td class="date-box">
-            <div class="date-label">Invoice Date</div>
-            <div class="date-value"><?= invoiceDate ?></div>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Date</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceDate ?></div>
           </td>
-          <td class="date-box">
-            <div class="date-label">Due Date</div>
-            <div class="date-value"><?= dueDate ?></div>
+          <td width="4%"></td>
+          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
+            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Due Date</div>
+            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= dueDate ?></div>
           </td>
         </tr>
       </table>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Pricing -->
-    <div class="section">
-      <h2 class="section-title">Amount Due</h2>
-      <table class="pricing-table">
+  <!-- Amount Due Header -->
+  <tr>
+    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
+      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Amount Due</strong>
+    </td>
+  </tr>
+
+  <!-- Pricing Table -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid <?= colors.paperBorder ?>; border-collapse:collapse;">
         <?!= pricingRowsHtml ?>
       </table>
-    </div>
+    </td>
+  </tr>
 
-    <!-- Payment Details -->
-    <div class="payment-details">
-      <p class="payment-title">Payment Details:</p>
-      <p class="payment-info">
-        <?!= bankDetailsHtml ?>
-        <strong>Reference:</strong> <?= invoiceNumber ?>
-      </p>
-    </div>
+  <!-- Payment Details -->
+  <tr>
+    <td style="padding:8px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="background-color:<?= colors.alertBg ?>; border:2px solid <?= colors.alertBorder ?>; padding:12px;">
+            <p style="margin:0 0 6px 0; font-weight:bold; color:#2b2b2b;">Payment Details:</p>
+            <p style="margin:0; font-size:10pt; color:<?= colors.inkGray ?>; line-height:1.5;">
+              <?!= bankDetailsHtml ?>
+              <strong>Reference:</strong> <?= invoiceNumber ?>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
-    <!-- Footer -->
-    <div class="footer">
-      <p>
+  <!-- Footer -->
+  <tr>
+    <td style="padding:15px 0 0 0; border-top:2px solid <?= colors.paperBorder ?>; text-align:center; font-size:9pt; color:<?= colors.inkLight ?>; line-height:1.5;">
+      <p style="margin:0;">
         Questions? Email us at hello@cartcure.co.nz<br>
         <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
         <?!= gstFooterLine ?>
         cartcure.co.nz
       </p>
-    </div>
+    </td>
+  </tr>
 
-  </div>
+</table>
+
 </body>
 </html>
