@@ -1254,6 +1254,16 @@ function processQuoteAcceptanceTask(task) {
   const pendingSubtasks = task.pendingSubtasks || ['signature', 'activityLog', 'clientUpdate', 'depositInvoice', 'adminEmail', 'clientEmail'];
   const failures = [];
 
+  // DEBUG: Write to Drive file to diagnose deposit invoice issues
+  const debugLog = [];
+  debugLog.push('=== QUOTE ACCEPTANCE TASK DEBUG ===');
+  debugLog.push('Timestamp: ' + new Date().toISOString());
+  debugLog.push('Job Number: ' + jobNumber);
+  debugLog.push('Total from task: ' + total + ' (type: ' + typeof total + ')');
+  debugLog.push('Requires Deposit (total >= 200): ' + (total >= 200));
+  debugLog.push('Pending Subtasks: ' + pendingSubtasks.join(', '));
+  debugLog.push('Includes depositInvoice: ' + pendingSubtasks.includes('depositInvoice'));
+
   Logger.log('Processing quote acceptance task for ' + jobNumber + ' (subtasks: ' + pendingSubtasks.join(', ') + ')');
   Logger.log('Quote acceptance task data - total: ' + total + ', type: ' + typeof total + ', requiresDeposit: ' + (total >= 200));
 
@@ -1316,29 +1326,58 @@ function processQuoteAcceptanceTask(task) {
   }
 
   // 3. Generate and send deposit invoice if required
+  debugLog.push('');
+  debugLog.push('--- DEPOSIT INVOICE SECTION ---');
+  debugLog.push('Condition check: pendingSubtasks.includes("depositInvoice") = ' + pendingSubtasks.includes('depositInvoice'));
+  debugLog.push('Condition check: requiresDeposit = ' + requiresDeposit);
+  debugLog.push('Will generate deposit invoice: ' + (pendingSubtasks.includes('depositInvoice') && requiresDeposit));
+
   if (pendingSubtasks.includes('depositInvoice') && requiresDeposit) {
+    debugLog.push('ENTERING deposit invoice generation block');
     Logger.log('Deposit invoice required for ' + jobNumber + ' (total: $' + total + ')');
     try {
       const job = getJobByNumber(jobNumber);
+      debugLog.push('Job lookup result: ' + (job ? 'FOUND' : 'NOT FOUND'));
       if (job) {
+        debugLog.push('Job Total (incl GST): ' + job['Total (incl GST)']);
+        debugLog.push('Job Quote Amount (excl GST): ' + job['Quote Amount (excl GST)']);
         Logger.log('Job found for deposit invoice, calling generateAndSendDepositInvoice()');
+        debugLog.push('Calling generateAndSendDepositInvoice()...');
         const invoiceResult = generateAndSendDepositInvoice(jobNumber, job);
+        debugLog.push('Invoice result: ' + JSON.stringify(invoiceResult));
         if (invoiceResult.success) {
+          debugLog.push('SUCCESS: Invoice ' + invoiceResult.invoiceNumber + ' created');
           Logger.log('Deposit invoice generated for ' + jobNumber + ': ' + invoiceResult.invoiceNumber);
         } else {
+          debugLog.push('FAILED: ' + invoiceResult.error);
           Logger.log('Failed to generate deposit invoice for ' + jobNumber + ': ' + invoiceResult.error);
           failures.push('depositInvoice');
         }
       } else {
+        debugLog.push('ERROR: Job not found in sheet');
         Logger.log('Job not found when generating deposit invoice for ' + jobNumber);
         failures.push('depositInvoice');
       }
     } catch (invoiceError) {
+      debugLog.push('EXCEPTION: ' + invoiceError.message);
+      debugLog.push('Stack: ' + invoiceError.stack);
       Logger.log('Error with deposit invoice: ' + invoiceError.message);
       failures.push('depositInvoice');
     }
   } else if (pendingSubtasks.includes('depositInvoice') && !requiresDeposit) {
+    debugLog.push('SKIPPED: Total $' + total + ' is below $200 threshold');
     Logger.log('Deposit invoice NOT required for ' + jobNumber + ' (total: $' + total + ' is below $200 threshold)');
+  } else {
+    debugLog.push('SKIPPED: depositInvoice not in pendingSubtasks');
+  }
+
+  // Write debug log to Drive
+  try {
+    const debugFolder = getOrCreateDebugFolder();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    debugFolder.createFile('QUOTE_ACCEPT_' + jobNumber + '_' + ts + '.txt', debugLog.join('\n'));
+  } catch (debugError) {
+    Logger.log('Could not write debug file: ' + debugError.message);
   }
 
   // 4. Send admin notification
@@ -14675,19 +14714,34 @@ function markQuoteAccepted(jobNumber) {
  * @returns {Object} Result object with success, invoiceNumber, amount, or error
  */
 function generateAndSendDepositInvoice(jobNumber, job) {
+  // DEBUG: Capture all steps for troubleshooting
+  const debugLog = [];
+  debugLog.push('=== GENERATE DEPOSIT INVOICE DEBUG ===');
+  debugLog.push('Timestamp: ' + new Date().toISOString());
+  debugLog.push('Job Number: ' + jobNumber);
+
   try {
     const ss = getSpreadsheet();
+    debugLog.push('Spreadsheet obtained: ' + (ss ? 'YES' : 'NO'));
+
     const invoiceSheet = ss.getSheetByName(SHEETS.INVOICES);
+    debugLog.push('Invoice sheet name: ' + SHEETS.INVOICES);
+    debugLog.push('Invoice sheet found: ' + (invoiceSheet ? 'YES' : 'NO'));
 
     if (!invoiceSheet) {
+      debugLog.push('ERROR: Invoice Log sheet not found');
+      writeDepositInvoiceDebug(jobNumber, debugLog);
       return { success: false, error: 'Invoice Log sheet not found' };
     }
 
     // Check for existing invoices
     const existingInvoices = getInvoicesByJobNumber(jobNumber);
+    debugLog.push('Existing invoices count: ' + (existingInvoices ? existingInvoices.length : 0));
 
     // Generate invoice number
     const invoiceNumber = generateInvoiceNumber(jobNumber, existingInvoices ? existingInvoices.length : 0);
+    debugLog.push('Generated invoice number: ' + invoiceNumber);
+
     const now = new Date();
     // Deposits are due immediately (today)
     const dueDate = new Date(now);
@@ -14698,9 +14752,19 @@ function generateAndSendDepositInvoice(jobNumber, job) {
     const gst = isGSTRegistered ? (parseFloat(job['GST']) || 0) : 0;
     const total = isGSTRegistered ? (parseFloat(job['Total (incl GST)']) || amount) : amount;
 
+    debugLog.push('Quote Amount (excl GST) raw: ' + job['Quote Amount (excl GST)']);
+    debugLog.push('Parsed amount: ' + amount);
+    debugLog.push('GST Registered: ' + isGSTRegistered);
+    debugLog.push('GST: ' + gst);
+    debugLog.push('Total: ' + total);
+
     const depositAmount = amount * 0.5;
     const depositGst = gst * 0.5;
     const depositTotal = total * 0.5;
+
+    debugLog.push('Deposit Amount: ' + depositAmount);
+    debugLog.push('Deposit GST: ' + depositGst);
+    debugLog.push('Deposit Total: ' + depositTotal);
 
     // Create invoice row using config-based helper (auto-orders columns from COLUMN_CONFIG)
     const invoiceRow = buildRowFromConfig('INVOICES', {
@@ -14720,19 +14784,29 @@ function generateAndSendDepositInvoice(jobNumber, job) {
       'Notes': 'Auto-generated on quote acceptance'
     });
 
+    debugLog.push('Invoice row built with ' + invoiceRow.length + ' columns');
+    debugLog.push('Inserting row at top of invoice sheet...');
+
     // Insert at top (row 2) so newest invoices appear first
     insertAtTopSafe(invoiceSheet, invoiceRow, false); // false = no toast (called from web form)
+    debugLog.push('Row inserted successfully');
 
     // Flush to ensure invoice is committed before attempting to send email
     SpreadsheetApp.flush();
+    debugLog.push('Spreadsheet flushed');
 
     // Update job with invoice number
     updateJobField(jobNumber, 'Invoice #', invoiceNumber);
+    debugLog.push('Job updated with invoice number');
 
     // Send the invoice email
+    debugLog.push('Sending invoice email...');
     const sendResult = sendInvoiceEmailSilent(invoiceNumber);
+    debugLog.push('Email send result: ' + JSON.stringify(sendResult));
 
     if (!sendResult.success) {
+      debugLog.push('EMAIL FAILED: ' + sendResult.error);
+      writeDepositInvoiceDebug(jobNumber, debugLog);
       return {
         success: false,
         error: 'Invoice created but email failed: ' + sendResult.error,
@@ -14740,6 +14814,9 @@ function generateAndSendDepositInvoice(jobNumber, job) {
         amount: depositTotal
       };
     }
+
+    debugLog.push('SUCCESS: Invoice created and email sent');
+    writeDepositInvoiceDebug(jobNumber, debugLog);
 
     Logger.log('Deposit invoice ' + invoiceNumber + ' generated and sent for ' + jobNumber);
 
@@ -14750,8 +14827,24 @@ function generateAndSendDepositInvoice(jobNumber, job) {
     };
 
   } catch (error) {
+    debugLog.push('EXCEPTION: ' + error.message);
+    debugLog.push('Stack: ' + error.stack);
+    writeDepositInvoiceDebug(jobNumber, debugLog);
     Logger.log('Error generating deposit invoice: ' + error.message);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Helper function to write deposit invoice debug log to Drive
+ */
+function writeDepositInvoiceDebug(jobNumber, debugLog) {
+  try {
+    const debugFolder = getOrCreateDebugFolder();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    debugFolder.createFile('DEPOSIT_INV_' + jobNumber + '_' + ts + '.txt', debugLog.join('\n'));
+  } catch (e) {
+    Logger.log('Could not write deposit invoice debug file: ' + e.message);
   }
 }
 
