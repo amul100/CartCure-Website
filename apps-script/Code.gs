@@ -8773,9 +8773,9 @@ function applyTableHeaderStyle(range) {
  */
 function applyMetricStyle(labelRange, valueRange) {
   labelRange
-    .setBackground(SHEET_COLORS.paperBeige)
+    .setBackground(SHEET_COLORS.paperCream)
     .setFontWeight('bold')
-    .setFontSize(SHEET_FONTS.sizeSM)
+    .setFontSize(SHEET_FONTS.sizeXS)
     .setFontColor(SHEET_COLORS.inkGray)
     .setHorizontalAlignment('center')
     .setFontFamily(SHEET_FONTS.primary);
@@ -8783,7 +8783,7 @@ function applyMetricStyle(labelRange, valueRange) {
   valueRange
     .setBackground(SHEET_COLORS.paperWhite)
     .setFontWeight('bold')
-    .setFontSize(SHEET_FONTS.sizeLG)
+    .setFontSize(SHEET_FONTS.sizeLG + 2)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setHorizontalAlignment('center')
     .setFontFamily(SHEET_FONTS.primary);
@@ -9653,18 +9653,16 @@ function formatDashboardSheet(sheet) {
   sheet.getRange(9, 1, 1, 5).setValues([newSubmissionsHeaders]);
   applyTableHeaderStyle(sheet.getRange(9, 1, 1, 5));
 
-  // Apply alternating rows for submissions data area
-  applyAlternatingRows(sheet, 10, 6, 5);
-
-  // Style data area text
+  // Style data area text (uniform background, no alternating on compact dashboard tables)
   sheet.getRange(10, 1, 6, 5)
+    .setBackground(SHEET_COLORS.paperWhite)
     .setFontFamily(SHEET_FONTS.primary)
-    .setFontSize(SHEET_FONTS.sizeMD)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
-  // Add border to submissions table
-  applyBorders(sheet.getRange(9, 1, 7, 5), true, false);
+  // Add outer border + horizontal row separators to submissions table
+  applyLightBorders(sheet.getRange(9, 1, 7, 5));
 
   // === RIGHT COLUMN: Active Jobs + Pending Quotes ===
 
@@ -9676,18 +9674,16 @@ function formatDashboardSheet(sheet) {
   sheet.getRange(5, 9, 1, 7).setValues([activeJobsHeaders]);
   applyTableHeaderStyle(sheet.getRange(5, 9, 1, 7));
 
-  // Apply alternating rows for active jobs
-  applyAlternatingRows(sheet, 6, 10, 7, 9);
-
-  // Style data area
+  // Style data area (uniform background, no alternating on compact dashboard tables)
   sheet.getRange(6, 9, 10, 7)
+    .setBackground(SHEET_COLORS.paperWhite)
     .setFontFamily(SHEET_FONTS.primary)
-    .setFontSize(SHEET_FONTS.sizeMD)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
-  // Add border to active jobs table
-  applyBorders(sheet.getRange(5, 9, 11, 7), true, false);
+  // Add outer border + horizontal row separators to active jobs table
+  applyLightBorders(sheet.getRange(5, 9, 11, 7));
 
   // Pending Quotes Section
   sheet.getRange('I17').setValue('⏳ Pending Quotes');
@@ -9697,36 +9693,34 @@ function formatDashboardSheet(sheet) {
   sheet.getRange(18, 9, 1, 6).setValues([pendingQuotesHeaders]);
   applyTableHeaderStyle(sheet.getRange(18, 9, 1, 6));
 
-  // Apply alternating rows for pending quotes
-  applyAlternatingRows(sheet, 19, 6, 6, 9);
-
-  // Style data area
+  // Style data area (uniform background, no alternating on compact dashboard tables)
   sheet.getRange(19, 9, 6, 6)
+    .setBackground(SHEET_COLORS.paperWhite)
     .setFontFamily(SHEET_FONTS.primary)
-    .setFontSize(SHEET_FONTS.sizeMD)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
-  // Add border to pending quotes table
-  applyBorders(sheet.getRange(18, 9, 7, 6), true, false);
+  // Add outer border + horizontal row separators to pending quotes table
+  applyLightBorders(sheet.getRange(18, 9, 7, 6));
 
   // Set fixed column widths for Dashboard
   // Left section (columns 1-7): Metrics + New Submissions
-  sheet.setColumnWidth(1, 90);   // Submission # / OVERDUE
-  sheet.setColumnWidth(2, 80);   // Date / AT RISK
-  sheet.setColumnWidth(3, 100);  // Name / In Progress
-  sheet.setColumnWidth(4, 150);  // Email / Pending Quote
-  sheet.setColumnWidth(5, 200);  // Message / Quoted
-  sheet.setColumnWidth(6, 80);   // Unpaid $
-  sheet.setColumnWidth(7, 100);  // Revenue MTD
-  sheet.setColumnWidth(8, 15);   // Spacer column
+  sheet.setColumnWidth(1, 110);  // Submission # / OVERDUE
+  sheet.setColumnWidth(2, 90);   // Date / AT RISK
+  sheet.setColumnWidth(3, 110);  // Name / In Progress
+  sheet.setColumnWidth(4, 110);  // Email / Pending Quote
+  sheet.setColumnWidth(5, 110);  // Message / Quoted
+  sheet.setColumnWidth(6, 90);   // Unpaid $
+  sheet.setColumnWidth(7, 110);  // Revenue MTD
+  sheet.setColumnWidth(8, 10);   // Spacer column
   // Right section (columns 9-15): Active Jobs + Pending Quotes
-  sheet.setColumnWidth(9, 60);   // Job #
-  sheet.setColumnWidth(10, 100); // Client
-  sheet.setColumnWidth(11, 200); // Description
-  sheet.setColumnWidth(12, 80);  // Amount
+  sheet.setColumnWidth(9, 90);   // Job #
+  sheet.setColumnWidth(10, 110); // Client
+  sheet.setColumnWidth(11, 220); // Description
+  sheet.setColumnWidth(12, 90);  // Amount
   sheet.setColumnWidth(13, 70);  // Days Left / Waiting
-  sheet.setColumnWidth(14, 80);  // SLA / Valid Until
+  sheet.setColumnWidth(14, 90);  // SLA / Valid Until
   sheet.setColumnWidth(15, 80);  // Status / Action
 
   // Set row heights for compactness
@@ -9735,6 +9729,8 @@ function formatDashboardSheet(sheet) {
   }
   sheet.setRowHeight(1, SHEET_FONTS.titleRowHeight); // Title row slightly taller
   sheet.setRowHeight(4, SHEET_FONTS.sectionHeaderHeight); // Section headers
+  sheet.setRowHeight(5, SHEET_FONTS.dashboardRowHeight);       // Metric labels - compact
+  sheet.setRowHeight(6, SHEET_FONTS.headerRowHeight);           // Metric values - taller for impact
   sheet.setRowHeight(8, SHEET_FONTS.sectionHeaderHeight);
   sheet.setRowHeight(17, SHEET_FONTS.sectionHeaderHeight);
 
@@ -22124,7 +22120,7 @@ function refreshDashboard(force) {
   pendingQuotes.sort((a, b) => b.daysWaiting - a.daysWaiting);
 
   // === POPULATE NEW SUBMISSIONS (Left side, rows 10-22) ===
-  dashboard.getRange(10, 1, 13, 5).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+  dashboard.getRange(10, 1, 13, 5).clearContent().setBackground(SHEET_COLORS.paperWhite).setFontColor(SHEET_COLORS.inkBlack).setFontWeight('normal').setFontSize(SHEET_FONTS.sizeSM);
 
   if (submissionsSheet) {
     const subData = submissionsSheet.getDataRange().getValues();
@@ -22178,7 +22174,7 @@ function refreshDashboard(force) {
   }
 
   // === POPULATE ACTIVE JOBS (Right side, rows 6-15) ===
-  dashboard.getRange(6, 9, 10, 7).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+  dashboard.getRange(6, 9, 10, 7).clearContent().setBackground(SHEET_COLORS.paperWhite).setFontColor(SHEET_COLORS.inkBlack).setFontWeight('normal').setFontSize(SHEET_FONTS.sizeSM);
 
   for (let i = 0; i < Math.min(activeJobs.length, 10); i++) {
     const job = activeJobs[i];
@@ -22207,7 +22203,7 @@ function refreshDashboard(force) {
   dashboard.getRange('I4').setValue('🔥 Active Jobs (' + activeJobs.length + ')');
 
   // === POPULATE PENDING QUOTES (Right side, rows 19-26) ===
-  dashboard.getRange(19, 9, 8, 6).clearContent().setBackground(null).setFontColor(null).setFontWeight(null);
+  dashboard.getRange(19, 9, 8, 6).clearContent().setBackground(SHEET_COLORS.paperWhite).setFontColor(SHEET_COLORS.inkBlack).setFontWeight('normal').setFontSize(SHEET_FONTS.sizeSM);
 
   for (let i = 0; i < Math.min(pendingQuotes.length, 8); i++) {
     const quote = pendingQuotes[i];
