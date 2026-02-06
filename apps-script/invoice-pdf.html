@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
-<body style="margin:0; padding:0; font-family:Arial, sans-serif; font-size:11pt;">
+<body style="margin:0; padding:0; font-family:Arial, sans-serif; font-size:10pt;">
 
 <table width="600" cellpadding="0" cellspacing="0" border="0" align="center">
 
   <!-- Logo -->
   <tr>
-    <td align="center" style="padding:10px 0;">
-      <table width="120" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="120" height="40" align="center">
-          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="120" height="40" style="display:block; width:120px; height:40px;">
-        </td>
-      </tr></table>
+    <td align="center" style="padding:8px 0;">
+      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="130" style="width:130px;">
     </td>
   </tr>
 
   <!-- Title Bar -->
   <tr>
-    <td bgcolor="<?= colors.brandGreen ?>" align="center" style="padding:14px;">
-      <font color="#ffffff" size="6"><b><?= headingTitle ?></b></font><br>
-      <font color="#dddddd" size="2"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></font>
+    <td bgcolor="<?= colors.brandGreen ?>" align="center" style="padding:10px;">
+      <font color="#ffffff" size="5"><b><?= headingTitle ?></b></font><br>
+      <font color="#dddddd" size="1"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></font>
     </td>
   </tr>
 
@@ -31,7 +27,7 @@
 
   <!-- Greeting -->
   <tr>
-    <td style="padding:10px 0 6px 0;">
+    <td align="left" style="padding:6px 0;">
       <b>To:</b> <?= clientName ?><br>
       <?= greetingText ?>
     </td>
@@ -39,14 +35,14 @@
 
   <!-- Invoice Details -->
   <tr>
-    <td style="padding:8px 0 4px 0;">
+    <td align="left" style="padding:4px 0 2px 0;">
       <b><font size="2">INVOICE DETAILS</font></b>
     </td>
   </tr>
-  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="1" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:6px 0;">
-      <table width="100%" cellpadding="8" cellspacing="4" border="0">
+    <td style="padding:4px 0;">
+      <table width="100%" cellpadding="6" cellspacing="3" border="0">
         <tr>
           <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
             <font size="1" color="<?= colors.inkGray ?>">INVOICE DATE</font><br>
@@ -63,25 +59,23 @@
 
   <!-- Amount Due -->
   <tr>
-    <td style="padding:8px 0 4px 0;">
+    <td align="left" style="padding:4px 0 2px 0;">
       <b><font size="2">AMOUNT DUE</font></b>
     </td>
   </tr>
-  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="1" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:6px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="<?= colors.paperBorder ?>" style="border-collapse:collapse;">
-        <?!= pricingRowsHtml ?>
-      </table>
+    <td style="padding:4px 0;">
+      <?!= pricingRowsHtml ?>
     </td>
   </tr>
 
   <!-- Payment Details -->
   <tr>
-    <td style="padding:6px 0;">
-      <table width="100%" cellpadding="10" cellspacing="0" border="0">
+    <td style="padding:4px 0;">
+      <table width="100%" cellpadding="8" cellspacing="0" border="0">
         <tr>
-          <td bgcolor="<?= colors.alertBg ?>" style="border:2px solid <?= colors.alertBorder ?>;">
+          <td bgcolor="<?= colors.alertBg ?>" align="left" style="border:2px solid <?= colors.alertBorder ?>;">
             <b>Payment Details:</b><br>
             <font size="2" color="<?= colors.inkGray ?>">
               <?!= bankDetailsHtml ?>
@@ -95,10 +89,10 @@
 
   <!-- Footer -->
   <tr>
-    <td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td>
+    <td bgcolor="<?= colors.paperBorder ?>" height="1" style="font-size:1px; line-height:1px;">&nbsp;</td>
   </tr>
   <tr>
-    <td align="center" style="padding:10px 0;">
+    <td align="center" style="padding:6px 0;">
       <font size="1" color="<?= colors.inkLight ?>">
         Questions? Email us at hello@cartcure.co.nz<br>
         <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
