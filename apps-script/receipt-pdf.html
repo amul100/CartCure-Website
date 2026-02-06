@@ -1,99 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
-<body style="margin:0; padding:0; background-color:#ffffff; color:#2b2b2b; font-family:Arial, Helvetica, sans-serif; font-size:11pt; line-height:1.4;">
+<body style="margin:0; padding:0; font-family:Arial, sans-serif; font-size:11pt;">
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" align="center">
 
   <!-- Logo -->
   <tr>
-    <td align="center" style="padding:15px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="150" style="width:150px; height:auto;">
+    <td align="center" style="padding:10px 0;">
+      <table width="120" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="120" height="40" align="center">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="120" height="40" style="display:block; width:120px; height:40px;">
+        </td>
+      </tr></table>
     </td>
   </tr>
 
   <!-- Title Bar -->
   <tr>
-    <td style="background-color:<?= colors.brandGreen ?>; padding:16px; text-align:center; color:#ffffff;">
-      <h1 style="margin:0 0 4px 0; font-size:22pt; font-weight:bold; font-family:Georgia,'Times New Roman',serif; color:#ffffff;">Payment Receipt</h1>
-      <p style="margin:0; font-size:10pt; color:#ffffffcc;">Invoice: <?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
-      <div style="background-color:rgba(255,255,255,0.2); padding:6px 12px; margin-top:8px; display:inline-block; font-size:13pt; font-weight:bold; border:2px solid rgba(255,255,255,0.4); color:#ffffff;"><?= receiptNumber ?></div>
+    <td bgcolor="<?= colors.brandGreen ?>" align="center" style="padding:14px;">
+      <font color="#ffffff" size="6"><b>Payment Receipt</b></font><br>
+      <font color="#dddddd" size="2">Invoice: <?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></font><br>
+      <br>
+      <table cellpadding="4" cellspacing="0" border="2" bordercolor="#ffffff" align="center"><tr>
+        <td bgcolor="<?= colors.brandGreen ?>"><font color="#ffffff" size="3"><b><?= receiptNumber ?></b></font></td>
+      </tr></table>
     </td>
   </tr>
 
   <!-- Greeting -->
   <tr>
-    <td style="padding:12px 0;">
-      <p style="margin:0; font-size:11pt; line-height:1.5;">
-        <strong>To:</strong> <?= clientName ?><br>
-        Thank you for your payment! This receipt confirms that we have received your payment in full.
-      </p>
+    <td style="padding:10px 0 6px 0;">
+      <b>To:</b> <?= clientName ?><br>
+      Thank you for your payment! This receipt confirms that we have received your payment in full.
     </td>
   </tr>
 
-  <!-- Payment Details Header -->
+  <!-- Payment Details -->
   <tr>
-    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Payment Details</strong>
+    <td style="padding:8px 0 4px 0;">
+      <b><font size="2">PAYMENT DETAILS</font></b>
     </td>
   </tr>
-
-  <!-- Payment Date / Method -->
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="8" cellspacing="4" border="0">
         <tr>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Payment Date</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= paidDate ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">PAYMENT DATE</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= paidDate ?></font></b>
           </td>
-          <td width="4%"></td>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Payment Method</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= paymentMethod ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">PAYMENT METHOD</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= paymentMethod ?></font></b>
           </td>
         </tr>
       </table>
     </td>
   </tr>
 
-  <!-- Invoice Reference Header -->
+  <!-- Invoice Reference -->
   <tr>
-    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Invoice Reference</strong>
+    <td style="padding:8px 0 4px 0;">
+      <b><font size="2">INVOICE REFERENCE</font></b>
     </td>
   </tr>
-
-  <!-- Invoice Number / Date -->
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="8" cellspacing="4" border="0">
         <tr>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Number</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceNumber ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">INVOICE NUMBER</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= invoiceNumber ?></font></b>
           </td>
-          <td width="4%"></td>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Date</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceDate ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">INVOICE DATE</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= invoiceDate ?></font></b>
           </td>
         </tr>
       </table>
     </td>
   </tr>
 
-  <!-- Amount Paid Header -->
+  <!-- Amount Paid -->
   <tr>
-    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Amount Paid</strong>
+    <td style="padding:8px 0 4px 0;">
+      <b><font size="2">AMOUNT PAID</font></b>
     </td>
   </tr>
-
-  <!-- Pricing Table -->
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid <?= colors.paperBorder ?>; border-collapse:collapse;">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="<?= colors.paperBorder ?>" style="border-collapse:collapse;">
         <?!= pricingRowsHtml ?>
       </table>
     </td>
@@ -102,7 +102,7 @@
   <!-- Payment Reference (if provided) -->
   <? if (paymentReferenceHtml) { ?>
   <tr>
-    <td style="padding:8px 0;">
+    <td style="padding:6px 0;">
       <?!= paymentReferenceHtml ?>
     </td>
   </tr>
@@ -110,24 +110,25 @@
 
   <!-- Paid Stamp -->
   <tr>
-    <td align="center" style="padding:15px 0;">
-      <table cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="border:3px solid <?= colors.brandGreen ?>; padding:8px 25px; color:<?= colors.brandGreen ?>; font-size:16pt; font-weight:bold; text-transform:uppercase; letter-spacing:3px;">
-          Paid in Full
-        </td>
+    <td align="center" style="padding:12px 0;">
+      <table cellpadding="6" cellspacing="0" border="3" bordercolor="<?= colors.brandGreen ?>" align="center"><tr>
+        <td align="center"><font color="<?= colors.brandGreen ?>" size="5"><b>&nbsp; PAID IN FULL &nbsp;</b></font></td>
       </tr></table>
     </td>
   </tr>
 
   <!-- Footer -->
   <tr>
-    <td style="padding:15px 0 0 0; border-top:2px solid <?= colors.paperBorder ?>; text-align:center; font-size:9pt; color:<?= colors.inkLight ?>; line-height:1.5;">
-      <p style="margin:0;">
+    <td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="center" style="padding:10px 0;">
+      <font size="1" color="<?= colors.inkLight ?>">
         Questions? Email us at hello@cartcure.co.nz<br>
         <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
         <?!= gstFooterLine ?>
         cartcure.co.nz
-      </p>
+      </font>
     </td>
   </tr>
 

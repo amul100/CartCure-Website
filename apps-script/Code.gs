@@ -8024,6 +8024,21 @@ function backupSheetData(ss) {
   if (settingsSheet && settingsSheet.getLastRow() > 0) {
     backup.settings = settingsSheet.getDataRange().getValues();
     Logger.log('Backed up settings data');
+
+    // Also save critical settings to PropertiesService as a persistent safety net
+    // This protects GST number, bank account, etc. even if repair crashes mid-process
+    try {
+      const settingsMap = {};
+      for (let i = 1; i < backup.settings.length; i++) {
+        if (backup.settings[i][0]) {
+          settingsMap[backup.settings[i][0]] = String(backup.settings[i][1] !== undefined ? backup.settings[i][1] : '');
+        }
+      }
+      PropertiesService.getScriptProperties().setProperty('SETTINGS_BACKUP', JSON.stringify(settingsMap));
+      Logger.log('Settings saved to PropertiesService as safety net');
+    } catch (e) {
+      Logger.log('Could not save settings to PropertiesService: ' + e.message);
+    }
   }
 
   // Back up Testimonials data (include headers for column mapping during restore)
@@ -8156,6 +8171,13 @@ function restoreSheetData(ss, backup) {
         }
       }
       Logger.log('Restored ' + updatedCount + ' settings values (preserved styling)');
+
+      // Clear PropertiesService safety net now that in-memory restore succeeded
+      try {
+        PropertiesService.getScriptProperties().deleteProperty('SETTINGS_BACKUP');
+      } catch (e) {
+        Logger.log('Could not clear PropertiesService backup: ' + e.message);
+      }
     }
   }
 
@@ -9219,8 +9241,32 @@ function setupSettingsSheet(ss, clearData) {
 
   if (!sheet) {
     sheet = ss.insertSheet(SHEETS.SETTINGS);
-    // New sheet - use all defaults
-    sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+    if (!clearData) {
+      // Repair mode - try to restore from PropertiesService safety net
+      try {
+        const propBackup = PropertiesService.getScriptProperties().getProperty('SETTINGS_BACKUP');
+        if (propBackup) {
+          const backedUpValues = JSON.parse(propBackup);
+          const mergedSettings = defaultSettings.map((row, index) => {
+            if (index === 0) return row; // Header row
+            if (backedUpValues.hasOwnProperty(row[0]) && backedUpValues[row[0]] !== '') {
+              return [row[0], backedUpValues[row[0]], row[2]];
+            }
+            return row;
+          });
+          sheet.getRange(1, 1, mergedSettings.length, 3).setValues(mergedSettings);
+          Logger.log('Settings restored from PropertiesService backup');
+        } else {
+          sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+        }
+      } catch (e) {
+        Logger.log('Could not restore from PropertiesService: ' + e.message);
+        sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+      }
+    } else {
+      // Hard reset - use defaults
+      sheet.getRange(1, 1, defaultSettings.length, 3).setValues(defaultSettings);
+    }
   } else if (clearData) {
     // Hard reset - clear and use defaults
     sheet.clear();
@@ -19410,32 +19456,32 @@ function renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, payme
   const invoiceDate = invoice['Invoice Date'];
   const paidDate = invoice['Paid Date'] || formatNZDate(new Date());
 
-  // Build pricing rows HTML (PDF-optimized)
+  // Build pricing section
   const gstValue = parseFloat(gst);
   const displayTotal = isGSTRegistered ? total : amount;
 
-  // Build pricing rows HTML (inline styles for Google Docs PDF compatibility)
+  // Build pricing rows HTML (bgcolor + font tags for Google Docs PDF compatibility)
   let pricingRowsHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingRowsHtml = `
       <tr>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">Subtotal (excl. GST)</td>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${amount}</td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" style="padding:8px 10px;"><font color="${EMAIL_COLORS.inkGray}">Subtotal (excl. GST)</font></td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" align="right" style="padding:8px 10px;"><b>$${amount}</b></td>
       </tr>
       <tr>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">GST (15%)</td>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${gst}</td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" style="padding:8px 10px;"><font color="${EMAIL_COLORS.inkGray}">GST (15%)</font></td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" align="right" style="padding:8px 10px;"><b>$${gst}</b></td>
       </tr>
       <tr>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL PAID (incl. GST)</td>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${total}</td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" style="padding:10px;"><font color="#ffffff"><b>TOTAL PAID (incl. GST)</b></font></td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" align="right" style="padding:10px;"><font color="#ffffff" size="4"><b>$${total}</b></font></td>
       </tr>
     `;
   } else {
     pricingRowsHtml = `
       <tr>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL PAID</td>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${displayTotal}</td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" style="padding:10px;"><font color="#ffffff"><b>TOTAL PAID</b></font></td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" align="right" style="padding:10px;"><font color="#ffffff" size="4"><b>$${displayTotal}</b></font></td>
       </tr>
     `;
   }
@@ -19447,10 +19493,10 @@ function renderReceiptPDFHtml(invoiceNumber, receiptNumber, paymentMethod, payme
   let paymentReferenceHtml = '';
   if (paymentReference) {
     paymentReferenceHtml = `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background-color:${EMAIL_COLORS.paperCream}; border:2px solid ${EMAIL_COLORS.paperBorder}; padding:12px; margin-top:10px;">
-          <p style="margin:0 0 6px 0; font-weight:bold; color:${EMAIL_COLORS.inkBlack};">Payment Reference:</p>
-          <p style="margin:0; font-size:10pt; color:${EMAIL_COLORS.inkGray}; line-height:1.5;">${paymentReference}</p>
+      <table width="100%" cellpadding="10" cellspacing="0" border="0"><tr>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" style="border:2px solid ${EMAIL_COLORS.paperBorder};">
+          <b>Payment Reference:</b><br>
+          <font size="2" color="${EMAIL_COLORS.inkGray}">${paymentReference}</font>
         </td>
       </tr></table>
     `;
@@ -19658,36 +19704,36 @@ function renderInvoicePDFHtml(invoiceNumber) {
   const gstValue = parseFloat(gst);
   const displayTotal = isGSTRegistered ? total : amount;
 
-  // Build pricing rows HTML (inline styles for Google Docs PDF compatibility)
+  // Build pricing rows HTML (bgcolor + font tags for Google Docs PDF compatibility)
   let pricingRowsHtml = '';
   if (isGSTRegistered && !isNaN(gstValue) && gstValue > 0) {
     pricingRowsHtml = `
       <tr>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">Subtotal (excl. GST)</td>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${amount}</td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" style="padding:8px 10px;"><font color="${EMAIL_COLORS.inkGray}">Subtotal (excl. GST)</font></td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" align="right" style="padding:8px 10px;"><b>$${amount}</b></td>
       </tr>
       <tr>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; color:${EMAIL_COLORS.inkGray}; background-color:${EMAIL_COLORS.paperCream};">GST (15%)</td>
-        <td style="padding:8px 10px; border-bottom:1px solid ${EMAIL_COLORS.paperBorder}; text-align:right; font-weight:bold; color:${EMAIL_COLORS.inkBlack}; background-color:${EMAIL_COLORS.paperCream};">$${gst}</td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" style="padding:8px 10px;"><font color="${EMAIL_COLORS.inkGray}">GST (15%)</font></td>
+        <td bgcolor="${EMAIL_COLORS.paperCream}" align="right" style="padding:8px 10px;"><b>$${gst}</b></td>
       </tr>
       <tr>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL DUE (incl. GST)</td>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${total}</td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" style="padding:10px;"><font color="#ffffff"><b>TOTAL DUE (incl. GST)</b></font></td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" align="right" style="padding:10px;"><font color="#ffffff" size="4"><b>$${total}</b></font></td>
       </tr>
     `;
   } else {
     pricingRowsHtml = `
       <tr>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold;">TOTAL DUE</td>
-        <td style="padding:10px; background-color:${EMAIL_COLORS.brandGreen}; color:#ffffff; font-weight:bold; text-align:right; font-size:14pt;">$${displayTotal}</td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" style="padding:10px;"><font color="#ffffff"><b>TOTAL DUE</b></font></td>
+        <td bgcolor="${EMAIL_COLORS.brandGreen}" align="right" style="padding:10px;"><font color="#ffffff" size="4"><b>$${displayTotal}</b></font></td>
       </tr>
     `;
   }
 
   // Build bank details HTML
   let bankDetailsHtml = '';
-  if (bankName) bankDetailsHtml += '<strong>Bank:</strong> ' + bankName + '<br>';
-  if (bankAccount) bankDetailsHtml += '<strong>Account:</strong> ' + bankAccount + '<br>';
+  if (bankName) bankDetailsHtml += '<b>Bank:</b> ' + bankName + '<br>';
+  if (bankAccount) bankDetailsHtml += '<b>Account:</b> ' + bankAccount + '<br>';
 
   // GST footer line
   const gstFooterLine = isGSTRegistered && gstNumber ? 'GST: ' + gstNumber + '<br>' : '';
@@ -19696,9 +19742,9 @@ function renderInvoicePDFHtml(invoiceNumber) {
   let depositNoticeHtml = '';
   if (invoiceType === 'Deposit') {
     depositNoticeHtml = `
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background-color:${EMAIL_COLORS.alertBg}; border:2px dashed ${EMAIL_COLORS.alertBorder}; padding:10px; text-align:center;">
-          <strong style="color:${EMAIL_COLORS.brandGreen};">50% Deposit Invoice</strong> - Balance due upon project completion
+      <table width="100%" cellpadding="8" cellspacing="0" border="0"><tr>
+        <td bgcolor="${EMAIL_COLORS.alertBg}" align="center" style="border:2px dashed ${EMAIL_COLORS.alertBorder};">
+          <b><font color="${EMAIL_COLORS.brandGreen}">50% Deposit Invoice</font></b> - Balance due upon project completion
         </td>
       </tr></table>
     `;

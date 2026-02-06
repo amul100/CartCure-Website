@@ -1,81 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
-<body style="margin:0; padding:0; background-color:#ffffff; color:#2b2b2b; font-family:Arial, Helvetica, sans-serif; font-size:11pt; line-height:1.4;">
+<body style="margin:0; padding:0; font-family:Arial, sans-serif; font-size:11pt;">
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" align="center">
 
   <!-- Logo -->
   <tr>
-    <td align="center" style="padding:15px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="150" style="width:150px; height:auto;">
+    <td align="center" style="padding:10px 0;">
+      <table width="120" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="120" height="40" align="center">
+          <img src="https://cartcure.co.nz/CartCure_fullLogo.png" alt="CartCure" width="120" height="40" style="display:block; width:120px; height:40px;">
+        </td>
+      </tr></table>
     </td>
   </tr>
 
   <!-- Title Bar -->
   <tr>
-    <td style="background-color:<?= colors.brandGreen ?>; padding:16px; text-align:center; color:#ffffff;">
-      <h1 style="margin:0 0 4px 0; font-size:22pt; font-weight:bold; font-family:Georgia,'Times New Roman',serif; color:#ffffff;"><?= headingTitle ?></h1>
-      <p style="margin:0; font-size:10pt; color:#ffffffcc;"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></p>
+    <td bgcolor="<?= colors.brandGreen ?>" align="center" style="padding:14px;">
+      <font color="#ffffff" size="6"><b><?= headingTitle ?></b></font><br>
+      <font color="#dddddd" size="2"><?= invoiceNumber ?> &middot; Job: <?= jobNumber ?></font>
     </td>
   </tr>
 
-  <!-- Deposit Notice (if applicable) -->
+  <!-- Deposit Notice -->
   <? if (depositNoticeHtml) { ?>
-  <tr>
-    <td style="padding:0;">
-      <?!= depositNoticeHtml ?>
-    </td>
-  </tr>
+  <tr><td><?!= depositNoticeHtml ?></td></tr>
   <? } ?>
 
   <!-- Greeting -->
   <tr>
-    <td style="padding:12px 0;">
-      <p style="margin:0; font-size:11pt; line-height:1.5;">
-        <strong>To:</strong> <?= clientName ?><br>
-        <?= greetingText ?>
-      </p>
+    <td style="padding:10px 0 6px 0;">
+      <b>To:</b> <?= clientName ?><br>
+      <?= greetingText ?>
     </td>
   </tr>
 
-  <!-- Invoice Details Header -->
+  <!-- Invoice Details -->
   <tr>
-    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Invoice Details</strong>
+    <td style="padding:8px 0 4px 0;">
+      <b><font size="2">INVOICE DETAILS</font></b>
     </td>
   </tr>
-
-  <!-- Dates -->
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="8" cellspacing="4" border="0">
         <tr>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Invoice Date</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= invoiceDate ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">INVOICE DATE</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= invoiceDate ?></font></b>
           </td>
-          <td width="4%"></td>
-          <td width="48%" style="background-color:<?= colors.paperCream ?>; border:1px solid <?= colors.paperBorder ?>; padding:10px; vertical-align:top;">
-            <div style="font-size:8pt; text-transform:uppercase; color:<?= colors.inkGray ?>; margin-bottom:3px;">Due Date</div>
-            <div style="font-size:13pt; font-weight:bold; color:<?= colors.brandGreen ?>;"><?= dueDate ?></div>
+          <td width="48%" bgcolor="<?= colors.paperCream ?>" style="border:1px solid <?= colors.paperBorder ?>;">
+            <font size="1" color="<?= colors.inkGray ?>">DUE DATE</font><br>
+            <b><font size="3" color="<?= colors.brandGreen ?>"><?= dueDate ?></font></b>
           </td>
         </tr>
       </table>
     </td>
   </tr>
 
-  <!-- Amount Due Header -->
+  <!-- Amount Due -->
   <tr>
-    <td style="padding:10px 0 6px 0; border-bottom:2px solid <?= colors.paperBorder ?>;">
-      <strong style="font-size:10pt; text-transform:uppercase; letter-spacing:1px; color:#2b2b2b;">Amount Due</strong>
+    <td style="padding:8px 0 4px 0;">
+      <b><font size="2">AMOUNT DUE</font></b>
     </td>
   </tr>
-
-  <!-- Pricing Table -->
+  <tr><td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td></tr>
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid <?= colors.paperBorder ?>; border-collapse:collapse;">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="<?= colors.paperBorder ?>" style="border-collapse:collapse;">
         <?!= pricingRowsHtml ?>
       </table>
     </td>
@@ -83,15 +78,15 @@
 
   <!-- Payment Details -->
   <tr>
-    <td style="padding:8px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td style="padding:6px 0;">
+      <table width="100%" cellpadding="10" cellspacing="0" border="0">
         <tr>
-          <td style="background-color:<?= colors.alertBg ?>; border:2px solid <?= colors.alertBorder ?>; padding:12px;">
-            <p style="margin:0 0 6px 0; font-weight:bold; color:#2b2b2b;">Payment Details:</p>
-            <p style="margin:0; font-size:10pt; color:<?= colors.inkGray ?>; line-height:1.5;">
+          <td bgcolor="<?= colors.alertBg ?>" style="border:2px solid <?= colors.alertBorder ?>;">
+            <b>Payment Details:</b><br>
+            <font size="2" color="<?= colors.inkGray ?>">
               <?!= bankDetailsHtml ?>
-              <strong>Reference:</strong> <?= invoiceNumber ?>
-            </p>
+              <b>Reference:</b> <?= invoiceNumber ?>
+            </font>
           </td>
         </tr>
       </table>
@@ -100,13 +95,16 @@
 
   <!-- Footer -->
   <tr>
-    <td style="padding:15px 0 0 0; border-top:2px solid <?= colors.paperBorder ?>; text-align:center; font-size:9pt; color:<?= colors.inkLight ?>; line-height:1.5;">
-      <p style="margin:0;">
+    <td bgcolor="<?= colors.paperBorder ?>" height="2" style="font-size:1px; line-height:1px;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="center" style="padding:10px 0;">
+      <font size="1" color="<?= colors.inkLight ?>">
         Questions? Email us at hello@cartcure.co.nz<br>
         <?= businessName ?> | Quick Shopify Fixes for NZ Businesses<br>
         <?!= gstFooterLine ?>
         cartcure.co.nz
-      </p>
+      </font>
     </td>
   </tr>
 
