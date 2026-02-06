@@ -1738,7 +1738,7 @@ function getOrCreateSignaturesFolder() {
  * Tests: Drive permissions, debug file creation, and full form submission
  * Saves results to CartCure Debug Logs folder
  */
-function runAllTests() {
+function runIntegrationTests() {
   const timestamp = new Date().toISOString();
   const testLog = [];
   testLog.push('========== CARTCURE INTEGRATION TESTS ==========');
@@ -1796,7 +1796,7 @@ function runAllTests() {
         email: 'test@example.com',
         phone: '021 123 4567',
         storeUrl: 'https://example.com',
-        message: 'Test submission from runAllTests() - ' + new Date().toISOString(),
+        message: 'Test submission from runIntegrationTests() - ' + new Date().toISOString(),
         hasVoiceNote: 'No',
         voiceNoteData: ''
         // Note: No origin parameter - internal tests bypass origin validation
@@ -3297,7 +3297,7 @@ function saveSettingsFromDialog(settings) {
  * Apply dark mode styling to the Settings sheet
  * Can be run standalone from the menu
  */
-function applySettingsDarkMode() {
+function styleSettingsSheet() {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.SETTINGS);
 
@@ -3330,8 +3330,8 @@ function applySettingsDarkMode() {
   headerRange.setBackground(dark.header);
   headerRange.setFontColor('#ffffff');
   headerRange.setFontWeight('bold');
-  headerRange.setFontFamily('Arial');
-  headerRange.setFontSize(11);
+  headerRange.setFontFamily(SHEET_FONTS.primary);
+  headerRange.setFontSize(SHEET_FONTS.sizeMD + 1);
   headerRange.setHorizontalAlignment('center');
   headerRange.setVerticalAlignment('middle');
   sheet.setRowHeight(1, 40);
@@ -3347,24 +3347,24 @@ function applySettingsDarkMode() {
   const namesRange = sheet.getRange(2, 1, lastRow - 1, 1);
   namesRange.setFontColor(dark.text);
   namesRange.setFontWeight('bold');
-  namesRange.setFontFamily('Arial');
-  namesRange.setFontSize(10);
+  namesRange.setFontFamily(SHEET_FONTS.primary);
+  namesRange.setFontSize(SHEET_FONTS.sizeMD);
   namesRange.setVerticalAlignment('middle');
 
   // Values - green accent
   const valuesRange = sheet.getRange(2, 2, lastRow - 1, 1);
   valuesRange.setFontColor(dark.accent);
   valuesRange.setFontWeight('bold');
-  valuesRange.setFontFamily('Arial');
-  valuesRange.setFontSize(10);
+  valuesRange.setFontFamily(SHEET_FONTS.primary);
+  valuesRange.setFontSize(SHEET_FONTS.sizeMD);
   valuesRange.setHorizontalAlignment('center');
   valuesRange.setVerticalAlignment('middle');
 
   // Descriptions - muted gray italic
   const descRange = sheet.getRange(2, 3, lastRow - 1, 1);
   descRange.setFontColor(dark.muted);
-  descRange.setFontFamily('Arial');
-  descRange.setFontSize(9);
+  descRange.setFontFamily(SHEET_FONTS.primary);
+  descRange.setFontSize(SHEET_FONTS.sizeSM);
   descRange.setFontStyle('italic');
   descRange.setVerticalAlignment('middle');
 
@@ -3445,7 +3445,7 @@ const SHEET_COLORS = {
 
   // Paper-like background colors (warm off-whites)
   paperWhite: '#f9f7f3',        // Primary background
-  paperCream: '#faf8f4',        // Alternate row color
+  paperCream: '#f3f0e8',        // Alternate row color (warm oatmeal)
   paperBeige: '#ece8df',        // Section backgrounds
   paperBorder: '#d4cfc3',       // Borders and dividers
 
@@ -3517,6 +3517,31 @@ const SHEET_COLORS = {
 };
 
 // ============================================================================
+// TYPOGRAPHY CONFIGURATION
+// ============================================================================
+const SHEET_FONTS = {
+  // Primary font for all body text and headers
+  primary: 'Inter',
+  // Monospace for IDs, reference numbers
+  mono: 'Roboto Mono',
+
+  // Font sizes
+  sizeXS: 8,
+  sizeSM: 9,
+  sizeMD: 10,
+  sizeLG: 12,
+  sizeXL: 16,
+  sizeXXL: 20,
+
+  // Row heights
+  headerRowHeight: 38,
+  dataRowHeight: 28,
+  dashboardRowHeight: 24,
+  sectionHeaderHeight: 30,
+  titleRowHeight: 36,
+};
+
+// ============================================================================
 // COLUMN CONFIGURATION SYSTEM
 // ============================================================================
 // Single source of truth for all sheet column definitions.
@@ -3555,10 +3580,10 @@ const COLUMN_CONFIG = {
       },
       defaultValue: JOB_STATUS.PENDING_QUOTE
     },
-    { name: 'Job #', width: 120 },
+    { name: 'Job #', width: 120, format: { fontWeight: 'bold' } },
     { name: 'Total (incl GST)', width: 130, format: { numberFormat: '$#,##0.00' } },
     { name: 'Created Date', width: 120 },
-    { name: 'Client Name', width: 140 },
+    { name: 'Client Name', width: 140, format: { fontWeight: 'bold' } },
     { name: 'Client Email', width: 200 },
     { name: 'Client Phone', width: 130, format: { numberFormat: '@' } },
     { name: 'Store URL', width: 200 },
@@ -3640,9 +3665,9 @@ const COLUMN_CONFIG = {
         ]
       }
     },
-    { name: 'Invoice #', width: 100 },
-    { name: 'Job #', width: 120 },
-    { name: 'Client Name', width: 140 },
+    { name: 'Invoice #', width: 100, format: { fontWeight: 'bold' } },
+    { name: 'Job #', width: 120, format: { fontWeight: 'bold' } },
+    { name: 'Client Name', width: 140, format: { fontWeight: 'bold' } },
     { name: 'Client Email', width: 200 },
     { name: 'Client Phone', width: 130, format: { numberFormat: '@' } },
     { name: 'Invoice Date', width: 120 },
@@ -3671,8 +3696,8 @@ const COLUMN_CONFIG = {
   // CLIENTS SHEET (14 columns)
   // -------------------------------------------------------------------------
   CLIENTS: [
-    { name: 'Client Email', width: 220 },  // PRIMARY KEY - unique identifier
-    { name: 'Client Name', width: 160 },
+    { name: 'Client Email', width: 220, format: { fontWeight: 'bold' } },  // PRIMARY KEY - unique identifier
+    { name: 'Client Name', width: 160, format: { fontWeight: 'bold' } },
     { name: 'Client Phone', width: 130, format: { numberFormat: '@' } },
     { name: 'Store URL', width: 200 },
     { name: 'Total Jobs', width: 100, format: { numberFormat: '0' } },
@@ -4359,6 +4384,25 @@ function applyConfigWrapText(sheet, sheetKey, startRow, numRows) {
 }
 
 /**
+ * Applies font weights from COLUMN_CONFIG (bold key identifier columns).
+ * @param {Sheet} sheet - The Google Sheet object
+ * @param {string} sheetKey - Key in COLUMN_CONFIG
+ * @param {number} startRow - First data row
+ * @param {number} numRows - Number of rows
+ */
+function applyConfigFontWeights(sheet, sheetKey, startRow, numRows) {
+  const config = COLUMN_CONFIG[sheetKey];
+  if (!config) return;
+
+  config.forEach((col, index) => {
+    if (col.format && col.format.fontWeight) {
+      const colIndex = index + 1;
+      sheet.getRange(startRow, colIndex, numRows, 1).setFontWeight(col.format.fontWeight);
+    }
+  });
+}
+
+/**
  * Applies number formats from COLUMN_CONFIG.
  * @param {Sheet} sheet - The Google Sheet object
  * @param {string} sheetKey - Key in COLUMN_CONFIG
@@ -4585,43 +4629,42 @@ function buildMenu() {
     .addSubMenu(ui.createMenu('⚙️ Setup')
       // Settings & Preferences
       .addItem('⚙️ Settings', 'showSettingsDialog')
-      .addItem(autoEmailsLabel, 'toggleAutoEmails')
       .addItem(confirmSelectionLabel, 'toggleConfirmSelection')
       .addItem(headerProtectionLabel, 'toggleHeaderProtection')
       .addItem(columnProtectionLabel, 'toggleColumnProtection')
       .addSeparator()
-      // Sheet Setup
+      // Sheet Setup & Repair
       .addSubMenu(ui.createMenu('🔧 Sheet Setup')
-        .addItem('🔧 Setup/Repair Sheets', 'showSetupDialog')
+        .addItem('🔧 Setup/Repair Sheets', 'confirmAndSetupSheets')
         .addItem('📐 Reset Column Widths', 'resetColumnWidths')
-        .addItem('🌙 Apply Dark Mode to Settings', 'applySettingsDarkMode')
+        .addItem('🔄 Repair Validation & Formatting', 'repairValidationRanges')
+        .addItem('🧹 Repair Testimonials Validation', 'repairTestimonialsValidation')
+        .addItem('🌙 Style Settings Sheet', 'styleSettingsSheet')
+        .addSeparator()
+        .addItem('🔘 Install Edit Trigger', 'installEditTrigger')
         .addSeparator()
         .addItem('⚠️ Hard Reset (Delete All Data)', 'showHardResetDialog'))
+      // Email
+      .addSubMenu(ui.createMenu('📧 Email')
+        .addItem(autoEmailsLabel, 'toggleAutoEmails')
+        .addItem(emailLoggingLabel, 'toggleEmailLogging')
+        .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs'))
       // Background Tasks
       .addSubMenu(ui.createMenu('🔌 Background Tasks')
         .addItem('🔍 Diagnose Tasks', 'diagnoseBackgroundTasks')
         .addItem('▶️ Manually Process Tasks', 'manuallyProcessBackgroundTasks')
         .addSeparator()
-        .addItem('⏱️ Setup Task Trigger', 'setupBackgroundTaskTrigger')
-        .addItem('🔘 Setup Edit Trigger', 'setupEditTrigger'))
-      // Email
-      .addSubMenu(ui.createMenu('📧 Email')
-        .addItem(emailLoggingLabel, 'toggleEmailLogging')
-        .addItem('📧 Scan Emails Now', 'scanSentEmailsForJobs'))
-      // Archiving & Cleanup
-      .addSubMenu(ui.createMenu('🗄️ Archiving & Cleanup')
+        .addItem('⏱️ Setup Task Trigger', 'setupBackgroundTaskTrigger'))
+      // Archiving
+      .addSubMenu(ui.createMenu('🗄️ Archiving')
         .addItem('📦 Archive Old Jobs', 'archiveOldJobs')
         .addItem('📋 Archive Old Activity', 'archiveOldActivity')
-        .addItem('📊 View Archive Stats', 'showArchiveStats')
-        .addSeparator()
-        .addItem('🧹 Clean Up Testimonials', 'cleanupTestimonialsSheet')
-        .addItem('🔄 Extend Validation Ranges', 'extendValidationRanges'))
+        .addItem('📊 View Archive Stats', 'showArchiveStats'))
       .addSeparator()
       // Tests
       .addSubMenu(ui.createMenu('🧪 Tests')
-        .addItem('▶️ Run Automated Tests', 'runAllAutomatedTests')
-        .addItem('📄 Run Tests & Save Results', 'runTestsAndSaveResults')
-        .addItem('🔌 Run Integration Tests', 'runAllTests')
+        .addItem('▶️ Run Unit Tests', 'runUnitTests')
+        .addItem('🔌 Run Integration Tests', 'runIntegrationTests')
         .addSeparator()
         .addItem('📝 Create 10 Test Submissions', 'createTestSubmissions')
         .addItem('⭐ Create 20 Test Testimonials', 'createTestTestimonials')
@@ -4633,7 +4676,7 @@ function buildMenu() {
 /**
  * Handle edit events - used for dashboard refresh checkbox
  * This is a simple trigger with limited permissions.
- * For full functionality, run setupEditTrigger() to install the trigger.
+ * For full functionality, run installEditTrigger() to install the trigger.
  */
 function onEdit(e) {
   try {
@@ -4781,7 +4824,7 @@ function onEditHandler(e) {
  * Run this once if the H1 refresh checkbox stops working
  * Installable triggers have more permissions than simple triggers
  */
-function setupEditTrigger() {
+function installEditTrigger() {
   const ui = SpreadsheetApp.getUi();
 
   // Remove any existing edit triggers first
@@ -8031,7 +8074,7 @@ function removeHeaderProtections() {
 /**
  * Show setup dialog with options
  */
-function showSetupDialog() {
+function confirmAndSetupSheets() {
   const ui = SpreadsheetApp.getUi();
 
   const response = ui.alert(
@@ -8661,8 +8704,8 @@ function applyHeaderStyle(range) {
     .setBackground(SHEET_COLORS.headerBg)
     .setFontColor(SHEET_COLORS.headerText)
     .setFontWeight('bold')
-    .setFontFamily('Arial')
-    .setFontSize(10)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeMD + 1)
     .setHorizontalAlignment('center')
     .setVerticalAlignment('middle');
 }
@@ -8676,6 +8719,8 @@ function applyPaperBackground(sheet) {
   const maxRows = Math.max(sheet.getMaxRows(), 100);
   const maxCols = Math.max(sheet.getMaxColumns(), 20);
   sheet.getRange(1, 1, maxRows, maxCols).setBackground(SHEET_COLORS.paperWhite);
+  // Hide gridlines for clean, modern look
+  sheet.setHiddenGridlines(true);
 }
 
 /**
@@ -8701,10 +8746,10 @@ function applyAlternatingRows(sheet, startRow, numRows, numCols, startCol) {
  */
 function applySectionHeaderStyle(range) {
   range
-    .setFontSize(12)
+    .setFontSize(SHEET_FONTS.sizeLG)
     .setFontWeight('bold')
     .setFontColor(SHEET_COLORS.inkBlack)
-    .setFontFamily('Georgia');
+    .setFontFamily(SHEET_FONTS.primary);
 }
 
 /**
@@ -8716,8 +8761,8 @@ function applyTableHeaderStyle(range) {
     .setBackground(SHEET_COLORS.headerBg)
     .setFontColor(SHEET_COLORS.headerText)
     .setFontWeight('bold')
-    .setFontFamily('Arial')
-    .setFontSize(9)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setHorizontalAlignment('center');
 }
 
@@ -8730,18 +8775,18 @@ function applyMetricStyle(labelRange, valueRange) {
   labelRange
     .setBackground(SHEET_COLORS.paperBeige)
     .setFontWeight('bold')
-    .setFontSize(9)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setFontColor(SHEET_COLORS.inkGray)
     .setHorizontalAlignment('center')
-    .setFontFamily('Arial');
+    .setFontFamily(SHEET_FONTS.primary);
 
   valueRange
     .setBackground(SHEET_COLORS.paperWhite)
     .setFontWeight('bold')
-    .setFontSize(12)
+    .setFontSize(SHEET_FONTS.sizeLG)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setHorizontalAlignment('center')
-    .setFontFamily('Georgia');
+    .setFontFamily(SHEET_FONTS.primary);
 }
 
 /**
@@ -8760,6 +8805,18 @@ function applyBorders(range, outer, inner) {
   if (inner) {
     range.setBorder(null, null, null, null, true, true, borderColor, borderStyle);
   }
+}
+
+/**
+ * Apply light borders for data sheets - horizontal only, no vertical dividers
+ * Creates clean row separation without a grid-like appearance
+ * @param {Range} range - The data range (excluding header)
+ */
+function applyLightBorders(range) {
+  const borderColor = SHEET_COLORS.paperBorder;
+  const borderStyle = SpreadsheetApp.BorderStyle.SOLID;
+  // Outer border + horizontal inner borders only (no vertical)
+  range.setBorder(true, true, true, true, false, true, borderColor, borderStyle);
 }
 
 /**
@@ -8809,11 +8866,11 @@ function setupJobsSheet(ss, clearData) {
   applyBorders(headerRange, true, false);
 
   // Set row height for header
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Set default row height for data rows
   for (let i = 2; i <= 50; i++) {
-    sheet.setRowHeight(i, 25);
+    sheet.setRowHeight(i, SHEET_FONTS.dataRowHeight);
   }
 
   // Apply alternating row colors for existing data
@@ -8822,13 +8879,15 @@ function setupJobsSheet(ss, clearData) {
 
   // Set default text styling for data area
   const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataRange.setFontFamily('Arial');
-  dataRange.setFontSize(10);
+  dataRange.setFontFamily(SHEET_FONTS.primary);
+  dataRange.setFontSize(SHEET_FONTS.sizeMD);
   dataRange.setFontColor(SHEET_COLORS.inkBlack);
   dataRange.setVerticalAlignment('middle');
+  applyLightBorders(dataRange);
 
   // Freeze header row
   sheet.setFrozenRows(1);
+  sheet.setTabColor('#1565c0');
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'JOBS');
@@ -8869,6 +8928,9 @@ function setupJobsSheet(ss, clearData) {
 
   // Apply number formats from config
   applyConfigNumberFormats(sheet, 'JOBS', 2, numRows);
+
+  // Apply font weights from config (bold key identifier columns)
+  applyConfigFontWeights(sheet, 'JOBS', 2, numRows);
 
   // Enable filtering for all columns
   try {
@@ -9119,7 +9181,7 @@ function setupInvoiceLogSheet(ss, clearData) {
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors
   const lastRow = Math.max(sheet.getLastRow(), 50);
@@ -9127,12 +9189,14 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   // Set default text styling for data area
   const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataRange.setFontFamily('Arial');
-  dataRange.setFontSize(10);
+  dataRange.setFontFamily(SHEET_FONTS.primary);
+  dataRange.setFontSize(SHEET_FONTS.sizeMD);
   dataRange.setFontColor(SHEET_COLORS.inkBlack);
   dataRange.setVerticalAlignment('middle');
+  applyLightBorders(dataRange);
 
   sheet.setFrozenRows(1);
+  sheet.setTabColor('#b8860b');
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'INVOICES');
@@ -9170,6 +9234,9 @@ function setupInvoiceLogSheet(ss, clearData) {
 
   // Apply number formats from config
   applyConfigNumberFormats(sheet, 'INVOICES', 2, numRows);
+
+  // Apply font weights from config (bold key identifier columns)
+  applyConfigFontWeights(sheet, 'INVOICES', 2, numRows);
 
   // Enable filtering for all columns
   try {
@@ -9228,7 +9295,7 @@ function setupClientsSheet(ss, clearData) {
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors
   const lastRow = Math.max(sheet.getLastRow(), 50);
@@ -9236,12 +9303,14 @@ function setupClientsSheet(ss, clearData) {
 
   // Set default text styling for data area
   const dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataRange.setFontFamily('Arial');
-  dataRange.setFontSize(10);
+  dataRange.setFontFamily(SHEET_FONTS.primary);
+  dataRange.setFontSize(SHEET_FONTS.sizeMD);
   dataRange.setFontColor(SHEET_COLORS.inkBlack);
   dataRange.setVerticalAlignment('middle');
+  applyLightBorders(dataRange);
 
   sheet.setFrozenRows(1);
+  sheet.setTabColor('#7b1fa2');
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'CLIENTS');
@@ -9258,6 +9327,9 @@ function setupClientsSheet(ss, clearData) {
 
   // Apply text wrapping for Notes column
   applyConfigWrapText(sheet, 'CLIENTS', 2, numRows);
+
+  // Apply font weights from config (bold key identifier columns)
+  applyConfigFontWeights(sheet, 'CLIENTS', 2, numRows);
 
   // Enable filtering for all columns
   try {
@@ -9416,15 +9488,15 @@ function setupSettingsSheet(ss, clearData) {
   const headerRange = sheet.getRange(1, 1, 1, numCols);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors for settings rows
   applyAlternatingRows(sheet, 2, numRows - 1, numCols);
 
   // Set default text styling for data area
   const dataRange = sheet.getRange(2, 1, numRows - 1, numCols);
-  dataRange.setFontFamily('Arial');
-  dataRange.setFontSize(10);
+  dataRange.setFontFamily(SHEET_FONTS.primary);
+  dataRange.setFontSize(SHEET_FONTS.sizeMD);
   dataRange.setFontColor(SHEET_COLORS.inkBlack);
   dataRange.setVerticalAlignment('middle');
 
@@ -9440,7 +9512,7 @@ function setupSettingsSheet(ss, clearData) {
 
   // Format description column - gray italic
   const descRange = sheet.getRange(2, 3, numRows - 1, 1);
-  descRange.setFontSize(9);
+  descRange.setFontSize(SHEET_FONTS.sizeSM);
   descRange.setFontColor(SHEET_COLORS.inkGray);
   descRange.setFontStyle('italic');
 
@@ -9450,6 +9522,7 @@ function setupSettingsSheet(ss, clearData) {
   sheet.setColumnWidth(3, 320);  // Description
 
   sheet.setFrozenRows(1);
+  sheet.setTabColor(SHEET_COLORS.inkLight);
 
   // Add dropdown validation for GST Registered (row 3, column 2)
   const gstRule = SpreadsheetApp.newDataValidation()
@@ -9499,31 +9572,32 @@ function createDashboardSheet(ss) {
 function formatDashboardSheet(sheet) {
   // Apply paper-like background to entire sheet
   applyPaperBackground(sheet);
+  sheet.setTabColor(SHEET_COLORS.brandGreen);
 
   // Dashboard header with brand styling
   sheet.getRange('A1').setValue('📊 CartCure Dashboard');
   sheet.getRange('A1')
-    .setFontSize(20)
+    .setFontSize(SHEET_FONTS.sizeXXL)
     .setFontWeight('bold')
     .setFontColor(SHEET_COLORS.brandGreen)
-    .setFontFamily('Georgia');
+    .setFontFamily(SHEET_FONTS.primary);
 
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   sheet.getRange('A2')
     .setFontColor(SHEET_COLORS.inkLight)
     .setFontStyle('italic')
-    .setFontSize(9)
-    .setFontFamily('Arial');
+    .setFontSize(SHEET_FONTS.sizeSM)
+    .setFontFamily(SHEET_FONTS.primary);
 
   // Refresh checkbox (triggers refresh when checked)
   sheet.getRange('G1').setValue('🔄 Refresh →');
   sheet.getRange('G1')
     .setFontWeight('bold')
-    .setFontSize(10)
+    .setFontSize(SHEET_FONTS.sizeMD)
     .setFontColor(SHEET_COLORS.inkGray)
     .setHorizontalAlignment('right')
     .setVerticalAlignment('middle')
-    .setFontFamily('Arial');
+    .setFontFamily(SHEET_FONTS.primary);
 
   // Checkbox that triggers refresh
   sheet.getRange('H1').insertCheckboxes();
@@ -9584,8 +9658,8 @@ function formatDashboardSheet(sheet) {
 
   // Style data area text
   sheet.getRange(10, 1, 6, 5)
-    .setFontFamily('Arial')
-    .setFontSize(10)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeMD)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
@@ -9607,8 +9681,8 @@ function formatDashboardSheet(sheet) {
 
   // Style data area
   sheet.getRange(6, 9, 10, 7)
-    .setFontFamily('Arial')
-    .setFontSize(10)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeMD)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
@@ -9628,8 +9702,8 @@ function formatDashboardSheet(sheet) {
 
   // Style data area
   sheet.getRange(19, 9, 6, 6)
-    .setFontFamily('Arial')
-    .setFontSize(10)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeMD)
     .setFontColor(SHEET_COLORS.inkBlack)
     .setVerticalAlignment('middle');
 
@@ -9657,12 +9731,12 @@ function formatDashboardSheet(sheet) {
 
   // Set row heights for compactness
   for (let i = 1; i <= 30; i++) {
-    sheet.setRowHeight(i, 22);
+    sheet.setRowHeight(i, SHEET_FONTS.dashboardRowHeight);
   }
-  sheet.setRowHeight(1, 32); // Title row slightly taller
-  sheet.setRowHeight(4, 28); // Section headers
-  sheet.setRowHeight(8, 28);
-  sheet.setRowHeight(17, 28);
+  sheet.setRowHeight(1, SHEET_FONTS.titleRowHeight); // Title row slightly taller
+  sheet.setRowHeight(4, SHEET_FONTS.sectionHeaderHeight); // Section headers
+  sheet.setRowHeight(8, SHEET_FONTS.sectionHeaderHeight);
+  sheet.setRowHeight(17, SHEET_FONTS.sectionHeaderHeight);
 
   Logger.log('Dashboard sheet formatted successfully');
 }
@@ -9695,30 +9769,31 @@ function createAnalyticsSheet(ss) {
 function formatAnalyticsSheet(sheet) {
   // Apply paper-like background to entire sheet
   applyPaperBackground(sheet);
+  sheet.setTabColor(SHEET_COLORS.brandGreen);
 
   // Title with brand styling
   sheet.getRange('A1').setValue('📈 CartCure Analytics');
   sheet.getRange('A1')
-    .setFontSize(20)
+    .setFontSize(SHEET_FONTS.sizeXXL)
     .setFontWeight('bold')
     .setFontColor(SHEET_COLORS.brandGreen)
-    .setFontFamily('Georgia');
+    .setFontFamily(SHEET_FONTS.primary);
 
   sheet.getRange('A2').setValue('Last refreshed: ' + new Date().toLocaleString('en-NZ', { timeZone: 'Pacific/Auckland' }));
   sheet.getRange('A2')
     .setFontColor(SHEET_COLORS.inkLight)
     .setFontStyle('italic')
-    .setFontSize(9)
-    .setFontFamily('Arial');
+    .setFontSize(SHEET_FONTS.sizeSM)
+    .setFontFamily(SHEET_FONTS.primary);
 
   // Refresh checkbox
   sheet.getRange('G1').setValue('🔄 Refresh →');
   sheet.getRange('G1')
     .setFontWeight('bold')
-    .setFontSize(10)
+    .setFontSize(SHEET_FONTS.sizeMD)
     .setFontColor(SHEET_COLORS.inkGray)
     .setHorizontalAlignment('right')
-    .setFontFamily('Arial');
+    .setFontFamily(SHEET_FONTS.primary);
   sheet.getRange('H1').insertCheckboxes();
   sheet.getRange('H1').setValue(false);
   sheet.getRange('H1').setNote('Check this box to refresh analytics');
@@ -9740,7 +9815,7 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(10, 1, 1, 3).setValues([statusHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 1, 1, 3));
   applyAlternatingRows(sheet, 11, 8, 3, 1);
-  sheet.getRange(11, 1, 8, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(11, 1, 8, 3).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 1, 9, 3), true, false);
 
   // === SECTION 3: PAYMENT STATUS (Row 9-18, Right) ===
@@ -9751,7 +9826,7 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(10, 5, 1, 3).setValues([paymentHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 5, 1, 3));
   applyAlternatingRows(sheet, 11, 5, 3, 5);
-  sheet.getRange(11, 5, 5, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(11, 5, 5, 3).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 5, 6, 3), true, false);
 
   // === SECTION 4: SLA PERFORMANCE (Row 9-18, Far Right) ===
@@ -9762,7 +9837,7 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(10, 9, 1, 3).setValues([slaHeaders]);
   applyTableHeaderStyle(sheet.getRange(10, 9, 1, 3));
   applyAlternatingRows(sheet, 11, 3, 3, 9);
-  sheet.getRange(11, 9, 3, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(11, 9, 3, 3).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(10, 9, 4, 3), true, false);
 
   // === SECTION 5: MONTHLY REVENUE (Row 20-32) ===
@@ -9773,7 +9848,7 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(21, 1, 1, 5).setValues([monthlyHeaders]);
   applyTableHeaderStyle(sheet.getRange(21, 1, 1, 5));
   applyAlternatingRows(sheet, 22, 6, 5, 1);
-  sheet.getRange(22, 1, 6, 5).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(22, 1, 6, 5).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 1, 7, 5), true, false);
 
   // === SECTION 6: TOP CATEGORIES (Row 20-32, Right) ===
@@ -9784,7 +9859,7 @@ function formatAnalyticsSheet(sheet) {
   sheet.getRange(21, 7, 1, 3).setValues([categoryHeaders]);
   applyTableHeaderStyle(sheet.getRange(21, 7, 1, 3));
   applyAlternatingRows(sheet, 22, 6, 3, 7);
-  sheet.getRange(22, 7, 6, 3).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(22, 7, 6, 3).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 7, 7, 3), true, false);
 
   // === SECTION 7: OVERDUE & AT RISK (Row 20, Far Right) ===
@@ -9799,11 +9874,11 @@ function formatAnalyticsSheet(sheet) {
     .setBackground(SHEET_COLORS.slaOverdueText)
     .setFontColor(SHEET_COLORS.headerText)
     .setFontWeight('bold')
-    .setFontFamily('Arial')
-    .setFontSize(9)
+    .setFontFamily(SHEET_FONTS.primary)
+    .setFontSize(SHEET_FONTS.sizeSM)
     .setHorizontalAlignment('center');
   applyAlternatingRows(sheet, 22, 6, 4, 11);
-  sheet.getRange(22, 11, 6, 4).setFontFamily('Arial').setFontSize(10).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
+  sheet.getRange(22, 11, 6, 4).setFontFamily(SHEET_FONTS.primary).setFontSize(SHEET_FONTS.sizeMD).setFontColor(SHEET_COLORS.inkBlack).setVerticalAlignment('middle');
   applyBorders(sheet.getRange(21, 11, 7, 4), true, false);
 
   // Set fixed column widths for Analytics
@@ -9827,13 +9902,13 @@ function formatAnalyticsSheet(sheet) {
 
   // Set row heights
   for (let i = 1; i <= 45; i++) {
-    sheet.setRowHeight(i, 22);
+    sheet.setRowHeight(i, SHEET_FONTS.dashboardRowHeight);
   }
-  sheet.setRowHeight(1, 32);  // Title row
-  sheet.setRowHeight(4, 28);  // Section headers
-  sheet.setRowHeight(9, 28);
-  sheet.setRowHeight(20, 28);
-  sheet.setRowHeight(30, 28); // Charts section header
+  sheet.setRowHeight(1, SHEET_FONTS.titleRowHeight);  // Title row
+  sheet.setRowHeight(4, SHEET_FONTS.sectionHeaderHeight);  // Section headers
+  sheet.setRowHeight(9, SHEET_FONTS.sectionHeaderHeight);
+  sheet.setRowHeight(20, SHEET_FONTS.sectionHeaderHeight);
+  sheet.setRowHeight(30, SHEET_FONTS.sectionHeaderHeight); // Charts section header
 
   // Create visual charts section (below existing tables)
   createAnalyticsCharts(sheet);
@@ -9853,7 +9928,7 @@ function createAnalyticsCharts(sheet) {
   // === SECTION: VISUAL CHARTS (Row 30+) ===
   sheet.getRange('A30').setValue('📊 Visual Analytics');
   applySectionHeaderStyle(sheet.getRange('A30'));
-  sheet.setRowHeight(30, 28);
+  sheet.setRowHeight(30, SHEET_FONTS.sectionHeaderHeight);
 
   // Create a pie chart for Job Status Distribution (using data from row 11-18, cols A-B)
   const statusPieChart = sheet.newChart()
@@ -10061,7 +10136,7 @@ function refreshAnalytics() {
     completionRate.toFixed(1) + '%',
     onTimeRate.toFixed(1) + '%'
   ]]);
-  analytics.getRange(6, 1, 1, 6).setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
+  analytics.getRange(6, 1, 1, 6).setFontSize(SHEET_FONTS.sizeXL - 2).setFontWeight('bold').setHorizontalAlignment('center');
 
   // === JOB STATUS BREAKDOWN ===
   analytics.getRange(11, 1, 8, 3).clearContent();
@@ -10869,7 +10944,7 @@ function setupSubmissionsSheet(ss) {
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors for existing data
   const lastRow = Math.max(sheet.getLastRow(), 50);
@@ -10877,13 +10952,15 @@ function setupSubmissionsSheet(ss) {
 
   // Set default text styling for data area
   const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataArea.setFontFamily('Arial');
-  dataArea.setFontSize(10);
+  dataArea.setFontFamily(SHEET_FONTS.primary);
+  dataArea.setFontSize(SHEET_FONTS.sizeMD);
   dataArea.setFontColor(SHEET_COLORS.inkBlack);
   dataArea.setVerticalAlignment('middle');
+  applyLightBorders(dataArea);
 
   // Freeze header row
   sheet.setFrozenRows(1);
+  sheet.setTabColor('#e65100');
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'SUBMISSIONS');
@@ -11049,7 +11126,7 @@ function setupTestimonialsSheet(ss, clearData) {
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors for existing data
   const lastRow = Math.max(sheet.getLastRow(), 50);
@@ -11057,13 +11134,15 @@ function setupTestimonialsSheet(ss, clearData) {
 
   // Set default text styling for data area
   const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataArea.setFontFamily('Arial');
-  dataArea.setFontSize(10);
+  dataArea.setFontFamily(SHEET_FONTS.primary);
+  dataArea.setFontSize(SHEET_FONTS.sizeMD);
   dataArea.setFontColor(SHEET_COLORS.inkBlack);
   dataArea.setVerticalAlignment('middle');
+  applyLightBorders(dataArea);
 
   // Freeze header row
   sheet.setFrozenRows(1);
+  sheet.setTabColor('#2e7d32');
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'TESTIMONIALS');
@@ -11138,7 +11217,7 @@ function applyTestimonialRowValidation(sheet, row) {
  * Run this once via: CartCure Menu > Setup > Clean Up Testimonials Sheet
  * This fixes the issue where appendRow() was adding data at the bottom due to pre-populated checkboxes
  */
-function cleanupTestimonialsSheet() {
+function repairTestimonialsValidation() {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
@@ -11446,7 +11525,7 @@ function archiveOldActivity() {
  * Useful when sheets have grown significantly and need more dropdown rows
  * Called from menu: CartCure > Setup > Maintenance > Extend Validation Ranges
  */
-function extendValidationRanges() {
+function repairValidationRanges() {
   const ui = SpreadsheetApp.getUi();
 
   const sheets = [
@@ -11569,7 +11648,7 @@ function setupActivityLogSheet(ss, clearData) {
   const headerRange = sheet.getRange(1, 1, 1, headers.length);
   applyHeaderStyle(headerRange);
   applyBorders(headerRange, true, false);
-  sheet.setRowHeight(1, 35);
+  sheet.setRowHeight(1, SHEET_FONTS.headerRowHeight);
 
   // Apply alternating row colors for existing data
   const lastRow = Math.max(sheet.getLastRow(), 50);
@@ -11577,13 +11656,15 @@ function setupActivityLogSheet(ss, clearData) {
 
   // Set default text styling for data area
   const dataArea = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  dataArea.setFontFamily('Arial');
-  dataArea.setFontSize(10);
+  dataArea.setFontFamily(SHEET_FONTS.primary);
+  dataArea.setFontSize(SHEET_FONTS.sizeMD);
   dataArea.setFontColor(SHEET_COLORS.inkBlack);
   dataArea.setVerticalAlignment('middle');
+  applyLightBorders(dataArea);
 
   // Freeze header row
   sheet.setFrozenRows(1);
+  sheet.setTabColor(SHEET_COLORS.inkGray);
 
   // Set column widths from config
   applyConfigColumnWidths(sheet, 'ACTIVITY_LOG');
@@ -11608,7 +11689,7 @@ function setupActivityLogSheet(ss, clearData) {
   const refreshLabelCell = sheet.getRange(1, extraCol);
   refreshLabelCell.setValue('Scan Emails →');
   refreshLabelCell.setFontWeight('bold');
-  refreshLabelCell.setFontSize(9);
+  refreshLabelCell.setFontSize(SHEET_FONTS.sizeSM);
   refreshLabelCell.setFontColor(SHEET_COLORS.navy);
   refreshLabelCell.setHorizontalAlignment('right');
   refreshLabelCell.setVerticalAlignment('middle');
@@ -11847,48 +11928,6 @@ function updateLastScanTimestamp() {
     settingsSheet.getRange(lastRow + 1, 1).setValue('Last Email Scan');
     settingsSheet.getRange(lastRow + 1, 2).setValue(new Date().toISOString());
   }
-}
-
-/**
- * Setup time-based trigger to automatically scan emails
- * Run this once to enable automatic email logging
- */
-function setupEmailScanTrigger() {
-  // Delete any existing triggers for this function
-  const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'scanSentEmailsForJobs') {
-      ScriptApp.deleteTrigger(triggers[i]);
-    }
-  }
-
-  // Create new trigger to run every hour
-  ScriptApp.newTrigger('scanSentEmailsForJobs')
-    .timeBased()
-    .everyHours(1)
-    .create();
-
-  Logger.log('Email scan trigger created - will run every hour');
-
-  // Also run immediately
-  scanSentEmailsForJobs();
-}
-
-/**
- * Remove the email scan trigger
- */
-function removeEmailScanTrigger() {
-  const triggers = ScriptApp.getProjectTriggers();
-  let removed = 0;
-
-  for (let i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'scanSentEmailsForJobs') {
-      ScriptApp.deleteTrigger(triggers[i]);
-      removed++;
-    }
-  }
-
-  Logger.log('Removed ' + removed + ' email scan trigger(s)');
 }
 
 /**
@@ -20827,85 +20866,6 @@ function autoSendOverdueInvoices() {
 }
 
 /**
- * Set up automatic email triggers
- * Creates daily triggers for invoice reminders, overdue notices, and quote reminders
- */
-function setupAutoEmailTriggers() {
-  const ui = SpreadsheetApp.getUi();
-
-  // Remove existing triggers first
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'autoSendInvoiceReminders' ||
-        trigger.getHandlerFunction() === 'autoSendOverdueInvoices' ||
-        trigger.getHandlerFunction() === 'autoSendQuoteReminders') {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-
-  // Create new daily triggers (run at 9 AM NZ time)
-  ScriptApp.newTrigger('autoSendInvoiceReminders')
-    .timeBased()
-    .atHour(9)
-    .everyDays(1)
-    .inTimezone('Pacific/Auckland')
-    .create();
-
-  ScriptApp.newTrigger('autoSendOverdueInvoices')
-    .timeBased()
-    .atHour(9)
-    .everyDays(1)
-    .inTimezone('Pacific/Auckland')
-    .create();
-
-  ScriptApp.newTrigger('autoSendQuoteReminders')
-    .timeBased()
-    .atHour(9)
-    .everyDays(1)
-    .inTimezone('Pacific/Auckland')
-    .create();
-
-  ui.alert('Auto Email Triggers Set Up',
-    'Daily automatic emails have been configured:\n\n' +
-    '• Quote Reminders: Sent 7 days after quote sent (if not accepted/declined)\n' +
-    '• Invoice Reminders: Sent 1-2 days before due date\n' +
-    '• Overdue Invoices: Sent weekly for overdue invoices\n\n' +
-    'Triggers run daily at 9:00 AM (NZ time).\n' +
-    'Paid invoices and accepted/declined quotes are automatically skipped.',
-    ui.ButtonSet.OK
-  );
-
-  Logger.log('Auto email triggers set up successfully');
-}
-
-/**
- * Remove automatic email triggers
- */
-function removeAutoEmailTriggers() {
-  const ui = SpreadsheetApp.getUi();
-
-  const triggers = ScriptApp.getProjectTriggers();
-  let removed = 0;
-
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'autoSendInvoiceReminders' ||
-        trigger.getHandlerFunction() === 'autoSendOverdueInvoices' ||
-        trigger.getHandlerFunction() === 'autoSendQuoteReminders') {
-      ScriptApp.deleteTrigger(trigger);
-      removed++;
-    }
-  });
-
-  ui.alert('Auto Email Triggers Removed',
-    removed + ' automatic email trigger(s) have been removed.\n\n' +
-    'Quote reminders, invoice reminders, and overdue notices will no longer be sent automatically.',
-    ui.ButtonSet.OK
-  );
-
-  Logger.log('Removed ' + removed + ' auto email triggers');
-}
-
-/**
  * Ensure all automatic triggers exist (silent - no UI alerts)
  * Called automatically during setup to enable auto features by default
  * Creates triggers only if they don't already exist
@@ -22205,7 +22165,7 @@ function refreshDashboard(force) {
         sub.name,
         sub.email,
         sub.message
-      ]]).setFontSize(9);
+      ]]).setFontSize(SHEET_FONTS.sizeSM);
     }
 
     // Show count if there are more
@@ -22230,7 +22190,7 @@ function refreshDashboard(force) {
       job.daysRemaining,
       job.slaStatus,
       job.status
-    ]]).setFontSize(9);
+    ]]).setFontSize(SHEET_FONTS.sizeSM);
 
     // Color code SLA status
     const slaCell = dashboard.getRange(6 + i, 14);
@@ -22258,7 +22218,7 @@ function refreshDashboard(force) {
       quote.daysWaiting + 'd',
       quote.validUntil,
       quote.action
-    ]]).setFontSize(9);
+    ]]).setFontSize(SHEET_FONTS.sizeSM);
 
     // Highlight follow-up needed
     if (quote.action === 'Follow up!') {
@@ -23366,12 +23326,13 @@ function sendAllTestEmails() {
 // ============================================================================
 
 /**
- * Main test runner - runs all automated test suites
- * Returns combined results from all tests
+ * Main test runner - runs all unit test suites
+ * Shows results in UI alert and saves to Drive
  */
-function runAllAutomatedTests() {
+function runUnitTests() {
   const ui = SpreadsheetApp.getUi();
-  Logger.log('========== CARTCURE AUTOMATED TESTS ==========\n');
+  const timestamp = new Date().toISOString();
+  Logger.log('========== CARTCURE UNIT TESTS ==========\n');
 
   const allResults = [];
 
@@ -23389,6 +23350,7 @@ function runAllAutomatedTests() {
   let totalPassed = 0;
   let totalTests = 0;
   const summaryLines = [];
+  const suiteResults = [];
 
   for (const suite of suites) {
     try {
@@ -23398,9 +23360,22 @@ function runAllAutomatedTests() {
       totalTests += results.length;
       summaryLines.push(suite.name + ': ' + passed + '/' + results.length);
       allResults.push(...results);
+      suiteResults.push({
+        name: suite.name,
+        passed: passed,
+        total: results.length,
+        tests: results
+      });
     } catch (e) {
       Logger.log('ERROR in ' + suite.name + ': ' + e.message);
       summaryLines.push(suite.name + ': ERROR - ' + e.message);
+      suiteResults.push({
+        name: suite.name,
+        error: e.message,
+        passed: 0,
+        total: 0,
+        tests: []
+      });
     }
   }
 
@@ -23413,9 +23388,48 @@ function runAllAutomatedTests() {
   Logger.log('TOTAL: ' + totalPassed + '/' + totalTests + ' tests passed');
   Logger.log('==============================');
 
+  // Save results to Drive
+  const passRate = totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : 0;
+  let textOutput = '========================================\n';
+  textOutput += 'CARTCURE UNIT TEST RESULTS\n';
+  textOutput += '========================================\n';
+  textOutput += 'Timestamp: ' + timestamp + '\n\n';
+  textOutput += 'SUMMARY\n';
+  textOutput += '--------\n';
+  textOutput += 'Total: ' + totalPassed + '/' + totalTests + ' tests passed (' + passRate + '%)\n\n';
+
+  for (const suite of suiteResults) {
+    textOutput += suite.name + ': ' + suite.passed + '/' + suite.total;
+    if (suite.error) {
+      textOutput += ' (ERROR: ' + suite.error + ')';
+    }
+    textOutput += '\n';
+  }
+
+  textOutput += '\n========================================\n';
+  textOutput += 'DETAILED RESULTS\n';
+  textOutput += '========================================\n\n';
+
+  for (const suite of suiteResults) {
+    textOutput += '--- ' + suite.name + ' ---\n';
+    for (const test of suite.tests) {
+      const status = test.pass ? 'PASS' : 'FAIL';
+      textOutput += '[' + status + '] ' + test.id + ': ' + test.description;
+      if (!test.pass) {
+        textOutput += '\n       Expected: ' + JSON.stringify(test.expected) + ', Got: ' + JSON.stringify(test.actual);
+      }
+      textOutput += '\n';
+    }
+    textOutput += '\n';
+  }
+
+  const folder = getOrCreateDebugFolder();
+  const textFileName = 'TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.txt';
+  const textFile = folder.createFile(textFileName, textOutput, 'text/plain');
+
   // Show UI alert with results
   const failedTests = allResults.filter(r => !r.pass);
-  let message = totalPassed + ' of ' + totalTests + ' tests passed.\n\n';
+  let message = totalPassed + ' of ' + totalTests + ' tests passed (' + passRate + '%).\n\n';
   message += summaryLines.join('\n');
 
   if (failedTests.length > 0 && failedTests.length <= 10) {
@@ -23426,6 +23440,8 @@ function runAllAutomatedTests() {
   } else if (failedTests.length > 10) {
     message += '\n\n' + failedTests.length + ' tests failed. Check Logger for details.';
   }
+
+  message += '\n\nResults saved to:\n' + textFile.getUrl();
 
   ui.alert(
     totalPassed === totalTests ? '✅ All Tests Passed' : '⚠️ Some Tests Failed',
@@ -23787,113 +23803,3 @@ function runColumnConfigTests() {
   return results;
 }
 
-/**
- * Run all automated tests and save results to a Drive file
- * This allows running tests from the Apps Script editor and retrieving results
- */
-function runTestsAndSaveResults() {
-  const results = [];
-  const timestamp = new Date().toISOString();
-
-  // Run all test suites
-  const suites = [
-    { name: 'Email Validation', fn: runEmailValidationTests },
-    { name: 'Phone Validation', fn: runPhoneValidationTests },
-    { name: 'URL Validation', fn: runURLValidationTests },
-    { name: 'Text Sanitization', fn: runTextSanitizationTests },
-    { name: 'Format Validators', fn: runFormatValidatorTests },
-    { name: 'Utility Functions', fn: runUtilityTests },
-    { name: 'Column Config', fn: runColumnConfigTests }
-  ];
-
-  let totalPassed = 0;
-  let totalTests = 0;
-  const suiteResults = [];
-
-  for (const suite of suites) {
-    try {
-      const suiteTestResults = suite.fn();
-      const passed = suiteTestResults.filter(r => r.pass).length;
-      totalPassed += passed;
-      totalTests += suiteTestResults.length;
-      suiteResults.push({
-        name: suite.name,
-        passed: passed,
-        total: suiteTestResults.length,
-        tests: suiteTestResults
-      });
-    } catch (e) {
-      suiteResults.push({
-        name: suite.name,
-        error: e.message,
-        passed: 0,
-        total: 0,
-        tests: []
-      });
-    }
-  }
-
-  // Build output
-  const output = {
-    timestamp: timestamp,
-    summary: {
-      totalPassed: totalPassed,
-      totalTests: totalTests,
-      passRate: totalTests > 0 ? Math.round((totalPassed / totalTests) * 100) : 0
-    },
-    suites: suiteResults
-  };
-
-  // Save to Drive
-  const folder = getOrCreateDebugFolder();
-  const fileName = 'TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.json';
-  const file = folder.createFile(fileName, JSON.stringify(output, null, 2), 'application/json');
-
-  // Also create a readable text version
-  let textOutput = '========================================\n';
-  textOutput += 'CARTCURE AUTOMATED TEST RESULTS\n';
-  textOutput += '========================================\n';
-  textOutput += 'Timestamp: ' + timestamp + '\n\n';
-  textOutput += 'SUMMARY\n';
-  textOutput += '--------\n';
-  textOutput += 'Total: ' + totalPassed + '/' + totalTests + ' tests passed (' + output.summary.passRate + '%)\n\n';
-
-  for (const suite of suiteResults) {
-    textOutput += suite.name + ': ' + suite.passed + '/' + suite.total;
-    if (suite.error) {
-      textOutput += ' (ERROR: ' + suite.error + ')';
-    }
-    textOutput += '\n';
-  }
-
-  textOutput += '\n========================================\n';
-  textOutput += 'DETAILED RESULTS\n';
-  textOutput += '========================================\n\n';
-
-  for (const suite of suiteResults) {
-    textOutput += '--- ' + suite.name + ' ---\n';
-    for (const test of suite.tests) {
-      const status = test.pass ? 'PASS' : 'FAIL';
-      textOutput += '[' + status + '] ' + test.id + ': ' + test.description;
-      if (!test.pass) {
-        textOutput += '\n       Expected: ' + JSON.stringify(test.expected) + ', Got: ' + JSON.stringify(test.actual);
-      }
-      textOutput += '\n';
-    }
-    textOutput += '\n';
-  }
-
-  const textFileName = 'TEST_RESULTS_' + timestamp.replace(/[:.]/g, '-') + '.txt';
-  const textFile = folder.createFile(textFileName, textOutput, 'text/plain');
-
-  // Show UI alert
-  const ui = SpreadsheetApp.getUi();
-  ui.alert(
-    totalPassed === totalTests ? '✅ All Tests Passed' : '⚠️ Some Tests Failed',
-    totalPassed + ' of ' + totalTests + ' tests passed (' + output.summary.passRate + '%)\n\n' +
-    'Results saved to:\n' + textFile.getUrl(),
-    ui.ButtonSet.OK
-  );
-
-  return output;
-}

@@ -7,12 +7,36 @@ Allow: /
 # Sitemap location
 Sitemap: https://cartcure.co.nz/sitemap.xml
 
-# Crawl-delay for polite crawling
-Crawl-delay: 1
+# Block demo page
+Disallow: /demo.html
 
 # Block backend/development paths
 Disallow: /apps-script/
 Disallow: /email-previews/
+Disallow: /old_stuff/
+Disallow: /old_versions/
 
-# Block duplicate content paths if any
-Disallow: /*.json$
+# Block development/config files
+Disallow: /.github/
+Disallow: /.githubworkflows/
+Disallow: /.claude/
+Disallow: /.clasp.json
+Disallow: /.mcp.json
+Disallow: /.gitignore
+
+# Block internal documentation
+Disallow: /CLAUDE.md
+Disallow: /PROJECT_SUMMARY.md
+Disallow: /README.md
+Disallow: /README-SECURITY.md
+Disallow: /SEO_MASTER_PLAN.md
+Disallow: /CartCure*Marketing*
+Disallow: /CartCure_Job_Management_Guide*
+Disallow: /CartCure_Submission_Flowchart*
+
+# Block development scripts
+Disallow: /*.py
+Disallow: /security-config.js
+
+# Block config/data files
+Disallow: /*.json

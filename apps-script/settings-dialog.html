@@ -467,38 +467,6 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Behavior</div>
-
-      <div class="setting-row">
-        <div class="setting-label">
-          <span>Confirm Selection Dialog</span>
-        </div>
-        <div class="setting-description">Show confirmation when job/invoice is auto-detected</div>
-        <div class="toggle-wrapper">
-          <label class="toggle">
-            <input type="checkbox" id="confirmSelection">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label" id="confirmLabel">No</span>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-label">
-          <span>Header Row Protection</span>
-        </div>
-        <div class="setting-description">Warn when editing header rows</div>
-        <div class="toggle-wrapper">
-          <label class="toggle">
-            <input type="checkbox" id="headerProtection">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label" id="headerLabel">No</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">System</div>
 
       <div class="setting-row">
@@ -545,15 +513,6 @@
       }
     });
 
-    // Other toggle handlers
-    document.getElementById('confirmSelection').addEventListener('change', function() {
-      document.getElementById('confirmLabel').textContent = this.checked ? 'Yes' : 'No';
-    });
-
-    document.getElementById('headerProtection').addEventListener('change', function() {
-      document.getElementById('headerLabel').textContent = this.checked ? 'Yes' : 'No';
-    });
-
     function populateSettings(settings) {
       document.getElementById('businessName').value = settings['Business Name'] || '';
       document.getElementById('adminEmail').value = settings['Admin Email'] || '';
@@ -573,14 +532,6 @@
 
       document.getElementById('archiveJobsDays').value = settings['Archive Jobs After Days'] || '90';
       document.getElementById('archiveActivityDays').value = settings['Archive Activity After Days'] || '365';
-
-      const confirmSel = settings['Confirm Selection Dialog'] === 'Yes';
-      document.getElementById('confirmSelection').checked = confirmSel;
-      document.getElementById('confirmLabel').textContent = confirmSel ? 'Yes' : 'No';
-
-      const headerProt = settings['Header Row Protection'] === 'Yes';
-      document.getElementById('headerProtection').checked = headerProt;
-      document.getElementById('headerLabel').textContent = headerProt ? 'Yes' : 'No';
 
       document.getElementById('nextInvoiceNumber').value = settings['Next Invoice Number'] || '1';
     }
@@ -602,8 +553,6 @@
         'Default SLA Days': document.getElementById('slaDays').value || '7',
         'Archive Jobs After Days': document.getElementById('archiveJobsDays').value || '90',
         'Archive Activity After Days': document.getElementById('archiveActivityDays').value || '365',
-        'Confirm Selection Dialog': document.getElementById('confirmSelection').checked ? 'Yes' : 'No',
-        'Header Row Protection': document.getElementById('headerProtection').checked ? 'Yes' : 'No',
         'Next Invoice Number': document.getElementById('nextInvoiceNumber').value || '1'
       };
 

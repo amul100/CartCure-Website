@@ -1,0 +1,226 @@
+================================================================================
+CARTCURE CRM - ACCOUNTING ISSUES & RISKS
+Assessment Date: 2026-02-05
+================================================================================
+
+================================================================================
+CRITICAL (P0) - Fix Immediately ✅ ALL COMPLETE
+================================================================================
+
+1. SENT INVOICE AMOUNTS CAN BE EDITED
+   ------------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Added onEdit protection in Code.gs (onEditHandler function)
+   that blocks edits to 'Amount (excl GST)', 'GST', and 'Total' columns when
+   invoice status is not 'Draft'. The change is automatically reverted and
+   user sees warning dialog explaining why the edit was blocked.
+
+   Original Risk: Once an invoice is sent to a client, anyone with sheet access
+   could manually edit the amount in Google Sheets.
+
+   Location: apps-script/Code.gs - onEditHandler() function (line ~4449)
+
+
+2. NO DUPLICATE INVOICE NUMBER VALIDATION
+   ---------------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Updated generateInvoiceNumber() to check all existing
+   invoice numbers before returning. If a duplicate is found, the suffix
+   is incremented until a unique number is generated. Added helper function
+   getExistingInvoiceNumbers() that loads all invoice numbers into a Set
+   for efficient O(1) lookup.
+
+   Original Risk: Duplicate invoice numbers could occur from manual creation,
+   data corruption, or race conditions.
+
+   Location: apps-script/Code.gs - generateInvoiceNumber() function (line ~11752)
+
+
+================================================================================
+HIGH (P1) - Fix Soon ✅ ALL COMPLETE
+================================================================================
+
+3. NO NEGATIVE AMOUNT VALIDATION
+   ------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Added validateInvoiceAmount() helper function that checks:
+   - Amount is a valid number (not NaN/null/undefined)
+   - Amount is greater than $0
+   - Amount doesn't exceed $1,000,000 sanity limit (catches typos)
+
+   Validation added to both generateInvoiceForJob() and generateInvoiceForJobSilent().
+   Invalid amounts now block invoice creation with clear error messages.
+
+   Location: apps-script/Code.gs - validateInvoiceAmount() function (line ~11801)
+
+
+4. REFUND WORKFLOW MISSING
+   ------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Created full refund workflow with:
+   - showProcessRefundDialog() - Dialog to select jobs for refund (shows Paid/Invoiced jobs)
+   - processRefund() - Main function that handles refund with:
+     • Prompts for refund amount with validation
+     • Prompts for refund reason
+     • Supports partial refunds (tracks cumulative refund amount)
+     • Updates Payment Status to "Refunded" for full refunds
+     • Logs activity to Activity Log
+   - sendCreditNoteEmail() - Sends credit note email to client with refund details
+
+   Menu access: Jobs → 💸 Process Refund
+   Actions Dialog: Available on Completed and Cancelled jobs
+
+   Location: apps-script/Code.gs - processRefund() function (line ~14878)
+
+
+================================================================================
+MEDIUM (P2) - Plan to Address ✅ ALL COMPLETE
+================================================================================
+
+5. USER IDENTITY NOT CAPTURED IN AUDIT LOGS
+   -----------------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Updated logJobActivity() function to automatically capture
+   the current user's email using Session.getActiveUser().getEmail() when:
+   - loggedBy parameter is "Manual"
+   - loggedBy parameter is not provided
+
+   The "Logged By" column now stores the actual user email address instead of
+   just "Manual". Falls back gracefully to "Auto" in trigger contexts where
+   Session.getActiveUser() is not available.
+
+   Location: apps-script/Code.gs - logJobActivity() function (line ~10661)
+
+
+6. NO PERIOD-END FINANCIAL REPORTS
+   --------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Added comprehensive financial reporting via new Reports submenu:
+
+   📅 Monthly Report (showMonthlyReportDialog):
+   - Jobs created/completed, quotes accepted/declined
+   - Invoices sent/paid
+   - Revenue collected, GST collected, net revenue
+
+   ⏰ Aging Report (generateAgingReport):
+   - Outstanding invoices grouped by age buckets (0-30, 31-60, 61-90, 90+ days)
+   - Shows invoice details, client, amount, days overdue
+
+   🧾 GST Summary (showGSTSummaryDialog):
+   - Supports quarterly (Q1-Q4) or monthly periods
+   - Total sales, GST collected, invoice-by-invoice breakdown
+   - Note about verifying against accounting records
+
+   Menu access: Reports → Monthly Report / Aging Report / GST Summary
+
+   Location: apps-script/Code.gs - Financial Reports section (line ~9841)
+
+
+7. DESTRUCTIVE "CLEAR DATA" OPTION IN SETUP
+   -----------------------------------------
+   ✅ RESOLVED (2026-02-05)
+
+   Fix implemented: Enhanced showHardResetDialog() with multiple safety measures:
+
+   1. Data count warning: Shows exact number of jobs/invoices/submissions to be deleted
+   2. Mandatory backup: Creates a timestamped backup copy in Google Drive before
+      proceeding. Reset is blocked if backup fails.
+   3. Stronger confirmation: Changed from "RESET" to "DELETE ALL DATA" for
+      explicit user acknowledgment
+   4. Multiple confirmation stages: 3-step process (warning → backup → confirmation)
+   5. Success/failure messages reference the backup availability
+
+   The option was kept (rather than removed) because it's useful for:
+   - Starting fresh with a new client
+   - Testing/demo purposes
+   - Recovery from corrupted data
+
+   Location: apps-script/Code.gs - showHardResetDialog() function (line ~21209)
+
+
+================================================================================
+LOW (P3) - Nice to Have ✅ ALL COMPLETE
+================================================================================
+
+8. NO INVOICE PDF GENERATION
+   --------------------------
+   ✅ RESOLVED (2026-02-06)
+
+   Fix implemented: Added comprehensive PDF generation system:
+   - generateInvoicePDF() function creates print-optimized PDFs
+   - PDFs automatically attached to all invoice emails
+   - PDFs saved to "CartCure Invoices" folder in Google Drive
+   - "PDF Link" column added to Invoice Log for easy access
+   - Menu item: Invoices > Download PDF
+   - Actions dialog: "Download PDF" option available for all invoices
+
+   Location: apps-script/Code.gs - PDF generation section (~line 18786)
+             apps-script/invoice-pdf.html - Print-optimized template
+
+
+9. NO PAYMENT RECEIPT NUMBERS
+   ---------------------------
+   ✅ RESOLVED (2026-02-06)
+
+   Fix implemented: Added sequential receipt number generation:
+   - generateReceiptNumber() function creates unique REC-001, REC-002, etc.
+   - Receipt # column added to Invoice Log (21 columns total now)
+   - Receipt number displayed in payment receipt email subject and header
+   - Receipt number saved to Invoice Log when payment receipt is sent
+
+   Location: apps-script/Code.gs - generateReceiptNumber() (~line 12312)
+             apps-script/email-payment-receipt.html - Updated template
+
+
+10. NO AUTOMATED RECONCILIATION CHECK
+    ----------------------------------
+    ✅ RESOLVED (2026-02-06)
+
+    Fix implemented: Added comprehensive reconciliation check function:
+    - runReconciliationCheck() compares paid invoices vs client revenue
+    - Detects revenue mismatches between Invoice Log and Clients sheet
+    - Flags payment date anomalies (paid before sent)
+    - Identifies orphaned records (invoices without clients, clients without invoices)
+    - Provides recommended actions for fixing issues
+    - Shows detailed report with errors and warnings
+
+    Menu access: Reports > Reconciliation Check
+
+    Location: apps-script/Code.gs - runReconciliationCheck() (~line 10128)
+
+
+================================================================================
+WHAT'S WORKING WELL
+================================================================================
+
++ Comprehensive activity logging (logJobActivity)
++ Invoice lifecycle: Draft -> Sent -> Paid with proper status tracking
++ Only Draft invoices can be cancelled (sent invoices preserved)
++ Payment verification workflow ("Paid?" status)
++ Archive system for old records (not permanent delete)
++ Automatic balance calculation via formula
++ Late fee calculation (calculateLateFee)
++ GST handling with separate tracking
++ Backup before schema migrations
++ Client revenue tracking
+
+
+================================================================================
+RECOMMENDED FIX ORDER
+================================================================================
+
+1. [P0] ✅ Add onEdit protection for sent invoice amounts (DONE 2026-02-05)
+2. [P0] ✅ Add duplicate invoice number check (DONE 2026-02-05)
+3. [P1] ✅ Add amount validation (> 0, valid number) (DONE 2026-02-05)
+4. [P1] ✅ Create refund workflow (DONE 2026-02-05)
+5. [P2] ✅ Capture user email in audit logs (DONE 2026-02-05)
+6. [P2] ✅ Add monthly/period reports (DONE 2026-02-05)
+7. [P2] ✅ Protect or remove "Clear Data" option (DONE 2026-02-05)
+
+================================================================================

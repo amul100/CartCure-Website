@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CartCure Submission Flowchart - Complete System Overview</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --brand-green: #2E7D32;
+            --brand-green-light: #4CAF50;
+            --accent-blue: #1976D2;
+            --warning-orange: #F57C00;
+            --error-red: #D32F2F;
+            --success-green: #388E3C;
+            --purple: #7B1FA2;
+            --gray: #616161;
+            --light-bg: #f5f5f5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-light) 100%);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(46, 125, 50, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--brand-green);
+        }
+
+        .section-title h2 {
+            color: var(--brand-green);
+            font-size: 1.8em;
+        }
+
+        .section-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--brand-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .mermaid {
+            background: var(--light-bg);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 0.9em;
+        }
+
+        .status-new { background: #E3F2FD; border: 2px solid #1976D2; }
+        .status-active { background: #E8F5E9; border: 2px solid #4CAF50; }
+        .status-warning { background: #FFF3E0; border: 2px solid #F57C00; }
+        .status-danger { background: #FFEBEE; border: 2px solid #D32F2F; }
+        .status-complete { background: #F3E5F5; border: 2px solid #7B1FA2; }
+        .status-terminal { background: #ECEFF1; border: 2px solid #607D8B; }
+
+        .email-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .email-table th,
+        .email-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .email-table th {
+            background: var(--brand-green);
+            color: white;
+            font-weight: 600;
+        }
+
+        .email-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .email-table tr:hover {
+            background: #e8f5e9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-auto { background: #FFF3E0; color: #E65100; }
+        .badge-manual { background: #E3F2FD; color: #1565C0; }
+        .badge-client { background: #F3E5F5; color: #7B1FA2; }
+
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 30px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--brand-green);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 80px;
+            padding-bottom: 30px;
+        }
+
+        .timeline-item::before {
+            content: attr(data-step);
+            position: absolute;
+            left: 10px;
+            width: 44px;
+            height: 44px;
+            background: var(--brand-green);
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .timeline-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--brand-green);
+        }
+
+        .timeline-content h4 {
+            color: var(--brand-green);
+            margin-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: #bdbdbd;
+        }
+
+        .tab.active {
+            background: var(--brand-green);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .info-box {
+            background: #E3F2FD;
+            border-left: 4px solid #1976D2;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info-box.warning {
+            background: #FFF3E0;
+            border-color: #F57C00;
+        }
+
+        .info-box.success {
+            background: #E8F5E9;
+            border-color: #4CAF50;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .state-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .state-card:hover {
+            border-color: var(--brand-green);
+            box-shadow: 0 5px 20px rgba(46, 125, 50, 0.2);
+        }
+
+        .state-card h4 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .state-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .actions-list {
+            list-style: none;
+        }
+
+        .actions-list li {
+            padding: 8px 0;
+            border-bottom: 1px dashed #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .actions-list li:last-child {
+            border-bottom: none;
+        }
+
+        .arrow {
+            color: var(--brand-green);
+            font-weight: bold;
+        }
+
+        /* Lifecycle Timeline Styles */
+        .lifecycle-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .phase-block {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .phase-header h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .phase-number {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1em;
+        }
+
+        .phase-submission .phase-header { background: linear-gradient(135deg, #1976D2, #42A5F5); }
+        .phase-job .phase-header { background: linear-gradient(135deg, #388E3C, #66BB6A); }
+        .phase-quote .phase-header { background: linear-gradient(135deg, #F57C00, #FFB74D); }
+        .phase-payment .phase-header { background: linear-gradient(135deg, #7B1FA2, #BA68C8); }
+        .phase-work .phase-header { background: linear-gradient(135deg, #00796B, #4DB6AC); }
+        .phase-final .phase-header { background: linear-gradient(135deg, #C2185B, #F06292); }
+        .phase-testimonial .phase-header { background: linear-gradient(135deg, #5D4037, #8D6E63); }
+
+        .phase-content {
+            background: #fafafa;
+            padding: 20px;
+        }
+
+        .timeline-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            border-left: 4px solid #e0e0e0;
+        }
+
+        .timeline-step.emails {
+            border-left-color: #7B1FA2;
+            background: #faf5fc;
+        }
+
+        .timeline-step.auto {
+            border-left-color: #F57C00;
+            background: #fff8f0;
+        }
+
+        .timeline-step.complete {
+            border-left-color: #4CAF50;
+            background: #f1f8e9;
+        }
+
+        .step-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .step-icon.small {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+
+        .step-icon.client { background: #E3F2FD; color: #1565C0; }
+        .step-icon.admin { background: #E8F5E9; color: #2E7D32; }
+        .step-icon.system { background: #FFF3E0; color: #E65100; }
+        .step-icon.auto { background: #FFE0B2; color: #E65100; }
+        .step-icon.email { background: #F3E5F5; color: #7B1FA2; }
+        .step-icon.complete { background: #C8E6C9; color: #2E7D32; }
+
+        .step-details {
+            flex: 1;
+        }
+
+        .step-details strong {
+            display: block;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .step-details ul {
+            margin: 5px 0 0 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .step-details ul li {
+            margin-bottom: 3px;
+        }
+
+        .step-target,
+        .step-action,
+        .step-status {
+            display: block;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .step-status {
+            color: #1976D2;
+            font-weight: 500;
+        }
+
+        .step-action {
+            color: #7B1FA2;
+            font-style: italic;
+        }
+
+        .timeline-arrow {
+            text-align: center;
+            font-size: 1.5em;
+            color: #bdbdbd;
+            padding: 5px 0;
+        }
+
+        .timeline-branch {
+            margin: 10px 0 10px 50px;
+            padding: 15px;
+            background: #fff8e1;
+            border-radius: 8px;
+            border: 2px dashed #FFB74D;
+        }
+
+        .branch-condition {
+            font-weight: 600;
+            color: #E65100;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .branch-content {
+            padding-left: 10px;
+        }
+
+        .timeline-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .timeline-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .section {
+                padding: 20px;
+            }
+
+            .timeline::before {
+                left: 20px;
+            }
+
+            .timeline-item {
+                padding-left: 60px;
+            }
+
+            .timeline-item::before {
+                left: 0;
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛒 CartCure Complete System Flowchart</h1>
+            <p>Every state, transition, and action from submission to completion</p>
+        </div>
+
+        <!-- Master Overview -->
+        <div class="section">
+            <div class="section-title">
+                <div class="section-icon">🗺️</div>
+                <h2>Master Overview - The Complete Journey</h2>
+            </div>
+
+            <div class="mermaid">
+flowchart TB
+    subgraph WEB["🌐 WEB FORM"]
+        W1[Client Submits Form]
+    end
+
+    subgraph SUBMISSION["📥 SUBMISSIONS SHEET"]
+        S1[New]
+        S2[In Review]
+        S3[Job Created]
+        S4[Declined]
+        S5[Spam]
+    end
+
+    subgraph JOB["📋 JOBS SHEET"]
+        J1[Pending Quote]
+        J2[Quoted]
+        J3[Quote Reminded]
+        J4[Accepted]
+        J5[In Progress]
+        J6[Completed]
+        J7[On Hold]
+        J8[Cancelled]
+        J9[Declined]
+    end
+
+    subgraph INVOICE["🧾 INVOICES SHEET"]
+        I1[Draft]
+        I2[Sent]
+        I3[Overdue]
+        I4[Paid?]
+        I5[Paid]
+        I6[Cancelled]
+    end
+
+    subgraph TESTIMONIAL["⭐ TESTIMONIALS"]
+        T1[Request Sent]
+        T2[Received]
+    end
+
+    %% Web to Submission
+    W1 -->|Auto-creates| S1
+
+    %% Submission flows
+    S1 -->|Review| S2
+    S1 -->|Create Job| S3
+    S2 -->|Create Job| S3
+    S1 -->|Decline| S4
+    S1 -->|Mark Spam| S5
+    S2 -->|Decline| S4
+
+    %% Submission to Job
+    S3 -.->|Creates| J1
+
+    %% Job Quote Flow
+    J1 -->|Send Quote| J2
+    J2 -->|7 days auto| J3
+    J2 -->|Accept| J4
+    J3 -->|Accept| J4
+    J2 -->|Decline| J9
+    J3 -->|Decline| J9
+
+    %% Job Work Flow
+    J4 -->|Start Work| J5
+    J4 -->|Generate Invoice| I1
+    J5 -->|Complete| J6
+    J4 -->|Hold| J7
+    J5 -->|Hold| J7
+    J7 -->|Resume| J5
+    J4 -->|Cancel| J8
+    J5 -->|Cancel| J8
+    J7 -->|Cancel| J8
+
+    %% Invoice Flow
+    I1 -->|Send| I2
+    I2 -->|Past Due Auto| I3
+    I2 -->|Client Claims| I4
+    I3 -->|Client Claims| I4
+    I4 -->|Verify Yes| I5
+    I4 -->|Verify No| I2
+    I2 -->|Mark Paid| I5
+    I3 -->|Mark Paid| I5
+    I1 -->|Cancel| I6
+
+    %% Testimonial Flow
+    J6 -->|Request| T1
+    T1 -->|Client Submits| T2
+
+    %% Styling
+    style W1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style S1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style S2 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style S3 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style S4 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style S5 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style J1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style J2 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style J3 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style J4 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style J5 fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px
+    style J6 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    style J7 fill:#FFECB3,stroke:#FFA000,stroke-width:2px
+    style J8 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style J9 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style I1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style I2 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style I3 fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px
+    style I4 fill:#FFF8E1,stroke:#FFC107,stroke-width:2px
+    style I5 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    style I6 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style T1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style T2 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color status-new"></div>
+                    <span class="legend-text"><strong>New/Initial</strong> - Entry point states</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color status-warning"></div>
+                    <span class="legend-text"><strong>Pending/Waiting</strong> - Awaiting action</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color status-active"></div>
+                    <span class="legend-text"><strong>Active</strong> - Work in progress</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FFEBEE; border: 2px solid #D32F2F;"></div>
+                    <span class="legend-text"><strong>Overdue/Risk</strong> - Needs attention</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color status-complete"></div>
+                    <span class="legend-text"><strong>Complete/Paid</strong> - Successfully finished</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color status-terminal"></div>
+                    <span class="legend-text"><strong>Terminal</strong> - End states (no further transitions)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs for detailed views -->
+        <div class="section">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('submission')">📥 Submissions</button>
+                <button class="tab" onclick="showTab('job')">📋 Jobs</button>
+                <button class="tab" onclick="showTab('invoice')">🧾 Invoices</button>
+                <button class="tab" onclick="showTab('email')">📧 Emails</button>
+                <button class="tab" onclick="showTab('automation')">⚙️ Automation</button>
+                <button class="tab" onclick="showTab('testimonial')">⭐ Testimonials</button>
+            </div>
+
+            <!-- Submission Tab -->
+            <div id="submission" class="tab-content active">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">Submission State Machine</h3>
+
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> New: Web Form Submitted
+
+    New --> InReview: Mark In Review
+    New --> JobCreated: Create Job
+    New --> Declined: Decline
+    New --> Spam: Mark as Spam
+
+    InReview --> JobCreated: Create Job
+    InReview --> Declined: Decline
+    InReview --> Spam: Mark as Spam
+
+    Declined --> JobCreated: Create Job (retry)
+    Spam --> JobCreated: Create Job (retry)
+
+    JobCreated --> [*]: Terminal
+
+    note right of New
+        📧 Admin notification sent
+        📧 User confirmation sent
+    end note
+
+    note right of JobCreated
+        Creates new row in Jobs sheet
+        Links Submission # to Job
+    end note
+                </div>
+
+                <div class="grid-2" style="margin-top: 30px;">
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #E3F2FD; color: #1976D2;">New</span> Initial State</h4>
+                        <p>Just received from web form. Awaiting admin review.</p>
+                        <h5 style="margin-top: 15px;">Available Actions:</h5>
+                        <ul class="actions-list">
+                            <li><span class="arrow">→</span> Create Job <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Mark In Review <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Decline <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Mark as Spam <span class="badge badge-manual">Manual</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #FFF3E0; color: #E65100;">In Review</span> Quality Check</h4>
+                        <p>Admin is reviewing submission details before creating job.</p>
+                        <h5 style="margin-top: 15px;">Available Actions:</h5>
+                        <ul class="actions-list">
+                            <li><span class="arrow">→</span> Create Job <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Decline <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Mark as Spam <span class="badge badge-manual">Manual</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #E8F5E9; color: #2E7D32;">Job Created</span> Terminal ✓</h4>
+                        <p>Job has been created. No further actions available on submission.</p>
+                        <h5 style="margin-top: 15px;">What Happens:</h5>
+                        <ul class="actions-list">
+                            <li>✓ New row created in Jobs sheet</li>
+                            <li>✓ Job # assigned (J-prefix)</li>
+                            <li>✓ Client details copied to job</li>
+                            <li>✓ Submission # linked in job</li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #ECEFF1; color: #607D8B;">Declined / Spam</span> Terminal</h4>
+                        <p>Submission rejected. Can still create job if needed (retry).</p>
+                        <h5 style="margin-top: 15px;">Recovery:</h5>
+                        <ul class="actions-list">
+                            <li><span class="arrow">→</span> Create Job (override) <span class="badge badge-manual">Manual</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Tab -->
+            <div id="job" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">Job State Machine</h3>
+
+                <div class="mermaid">
+flowchart TB
+    subgraph QUOTE["Quote Phase"]
+        PQ[Pending Quote]
+        Q[Quoted]
+        QR[Quote Reminded]
+        QD[Quote Declined]
+    end
+
+    subgraph WORK["Work Phase"]
+        A[Accepted]
+        IP[In Progress]
+        C[Completed]
+        OH[On Hold]
+        CA[Cancelled]
+    end
+
+    subgraph PAYMENT["Payment Events"]
+        DEP[Deposit Invoice Created]
+        BAL[Balance Invoice Created]
+        FULL[Full Invoice Created]
+    end
+
+    PQ -->|"Send Quote<br/>📧 Quote Email"| Q
+    Q -->|"Auto: 7 days<br/>📧 Quote Reminder"| QR
+    Q -->|"Mark Declined"| QD
+    QR -->|"Mark Declined"| QD
+
+    Q -->|"Accept Quote<br/>($200+ = Accepted)<br/>(<$200 = In Progress)"| DECISION{Amount ≥ $200?}
+    QR -->|"Accept Quote"| DECISION
+
+    DECISION -->|"Yes - Deposit Required<br/>📧 Deposit Invoice"| A
+    DECISION -->|"No - Start Immediately<br/>📧 Status Update"| IP
+
+    A -->|"Start Work<br/>(after deposit paid)<br/>📧 Status Update"| IP
+    A -->|"Generate Invoice"| DEP
+    A -->|"Put On Hold<br/>📧 Status Update"| OH
+    A -->|"Cancel"| CA
+
+    IP -->|"Mark Complete<br/>📧 Status Update"| C
+    IP -->|"Generate Invoice"| BAL
+    IP -->|"Put On Hold<br/>📧 Status Update"| OH
+    IP -->|"Cancel"| CA
+
+    OH -->|"Resume Work<br/>📧 Status Update"| IP
+    OH -->|"Cancel"| CA
+
+    C -->|"Generate Invoice"| BAL
+    C -->|"Request Testimonial<br/>📧 Testimonial Request"| T[Testimonial Requested]
+
+    DEP -.->|"Links to Job"| A
+    BAL -.->|"Links to Job"| IP
+    FULL -.->|"Links to Job"| IP
+
+    style PQ fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style Q fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style QR fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style QD fill:#ECEFF1,stroke:#607D8B,stroke-width:3px
+    style A fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style IP fill:#C8E6C9,stroke:#2E7D32,stroke-width:2px
+    style C fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px
+    style OH fill:#FFECB3,stroke:#FFA000,stroke-width:2px
+    style CA fill:#ECEFF1,stroke:#607D8B,stroke-width:3px
+    style DECISION fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    <strong>💡 Quote Acceptance Logic:</strong><br/>
+                    When a quote is accepted, the system checks the quote amount:
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li><strong>≥ $200:</strong> Job → "Accepted" state, 50% deposit invoice auto-generated and sent</li>
+                        <li><strong>< $200:</strong> Job → "In Progress" immediately, full invoice sent after completion</li>
+                    </ul>
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">All Job Statuses & Actions</h4>
+
+                <table class="email-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Available Actions</th>
+                            <th>Next Status</th>
+                            <th>Email Sent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="state-badge" style="background: #E3F2FD; color: #1976D2;">Pending Quote</span></td>
+                            <td>Send Quote</td>
+                            <td>Quoted</td>
+                            <td>Quote Email</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #FFF3E0; color: #E65100;">Quoted</span></td>
+                            <td>Send Quote Reminder<br/>Mark Quote Accepted<br/>Mark Quote Declined</td>
+                            <td>Quote Reminded<br/>Accepted/In Progress<br/>Declined</td>
+                            <td>Quote Reminder<br/>Status Update / Invoice<br/>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #FFF3E0; color: #E65100;">Quote Reminded</span></td>
+                            <td>Mark Quote Accepted<br/>Mark Quote Declined</td>
+                            <td>Accepted/In Progress<br/>Declined</td>
+                            <td>Status Update / Invoice<br/>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #E8F5E9; color: #2E7D32;">Accepted</span></td>
+                            <td>Start Work<br/>Generate Invoice<br/>Put On Hold<br/>Cancel</td>
+                            <td>In Progress<br/>(stays Accepted)<br/>On Hold<br/>Cancelled</td>
+                            <td>Status Update<br/>Deposit Invoice<br/>Status Update<br/>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #C8E6C9; color: #1B5E20;">In Progress</span></td>
+                            <td>Mark Complete<br/>Generate Invoice<br/>Put On Hold<br/>Cancel</td>
+                            <td>Completed<br/>(stays In Progress)<br/>On Hold<br/>Cancelled</td>
+                            <td>Status Update<br/>Balance/Full Invoice<br/>Status Update<br/>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #F3E5F5; color: #7B1FA2;">Completed</span></td>
+                            <td>Generate Invoice<br/>Request Testimonial</td>
+                            <td>(stays Completed)<br/>(stays Completed)</td>
+                            <td>Balance Invoice<br/>Testimonial Request</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #FFECB3; color: #E65100;">On Hold</span></td>
+                            <td>Resume Work<br/>Cancel</td>
+                            <td>In Progress<br/>Cancelled</td>
+                            <td>Status Update<br/>-</td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #ECEFF1; color: #607D8B;">Cancelled</span></td>
+                            <td colspan="3"><em>Terminal state - no actions available</em></td>
+                        </tr>
+                        <tr>
+                            <td><span class="state-badge" style="background: #ECEFF1; color: #607D8B;">Declined</span></td>
+                            <td colspan="3"><em>Terminal state - no actions available</em></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Invoice Tab -->
+            <div id="invoice" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">Invoice State Machine</h3>
+
+                <div class="mermaid">
+flowchart TB
+    subgraph CREATION["Invoice Creation"]
+        GEN[Generate Invoice Action]
+        TYPE{Invoice Type?}
+    end
+
+    subgraph LIFECYCLE["Invoice Lifecycle"]
+        D[Draft]
+        S[Sent]
+        O[Overdue]
+        PQ[Paid?]
+        P[Paid]
+        CX[Cancelled]
+    end
+
+    GEN --> TYPE
+    TYPE -->|"≥$200, first invoice"| DEP[Deposit - 50%]
+    TYPE -->|"≥$200, deposit paid"| BAL[Balance - 50%]
+    TYPE -->|"<$200"| FULL[Full - 100%]
+    TYPE -->|"Partial paid"| ADD[Additional - Remaining]
+
+    DEP --> D
+    BAL --> D
+    FULL --> D
+    ADD --> D
+
+    D -->|"Send Invoice<br/>📧 Invoice Email"| S
+    D -->|"Cancel"| CX
+
+    S -->|"Due Date Passed<br/>⚙️ Auto-trigger"| O
+    S -->|"1-2 Days Before Due<br/>📧 Reminder"| S
+    S -->|"Client: I Have Paid<br/>📧 Admin Notification"| PQ
+    S -->|"Admin: Mark Paid<br/>📧 Receipt"| P
+
+    O -->|"Weekly<br/>📧 Overdue Notice<br/>+ Late Fees"| O
+    O -->|"Client: I Have Paid<br/>📧 Admin Notification"| PQ
+    O -->|"Admin: Mark Paid<br/>📧 Receipt"| P
+
+    PQ -->|"Admin: Verify Yes<br/>📧 Receipt"| P
+    PQ -->|"Admin: Verify No"| S2[Sent/Overdue]
+
+    S2 -->|"Reverts to<br/>previous state"| S
+
+    style D fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style S fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style O fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px
+    style PQ fill:#FFF8E1,stroke:#FFC107,stroke-width:2px
+    style P fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px
+    style CX fill:#ECEFF1,stroke:#607D8B,stroke-width:3px
+                </div>
+
+                <div class="info-box warning" style="margin-top: 20px;">
+                    <strong>⚠️ Overdue Processing:</strong><br/>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>Late fees calculated at <strong>2% per day</strong></li>
+                        <li>Overdue notices sent automatically <strong>every 7 days</strong></li>
+                        <li>Job's Payment Status also updates to "Overdue"</li>
+                    </ul>
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">Invoice Types Explained</h4>
+
+                <div class="grid-2">
+                    <div class="state-card">
+                        <h4>💰 Full Invoice (100%)</h4>
+                        <p>Used for small projects under $200. Single payment covers entire job.</p>
+                        <ul class="actions-list" style="margin-top: 10px;">
+                            <li>✓ Quote Amount: < $200</li>
+                            <li>✓ Generated when: Job accepted or completed</li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4>💵 Deposit Invoice (50%)</h4>
+                        <p>First invoice for larger projects. Secures commitment before work starts.</p>
+                        <ul class="actions-list" style="margin-top: 10px;">
+                            <li>✓ Quote Amount: ≥ $200</li>
+                            <li>✓ Auto-generated on quote acceptance</li>
+                            <li>✓ Must be paid before work starts</li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4>💳 Balance Invoice (50%)</h4>
+                        <p>Final invoice after deposit paid. Covers remaining project cost.</p>
+                        <ul class="actions-list" style="margin-top: 10px;">
+                            <li>✓ Generated after deposit marked Paid</li>
+                            <li>✓ Usually sent on job completion</li>
+                            <li>✓ Amount = Total - Deposit Paid</li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4>➕ Additional Invoice</h4>
+                        <p>For any remaining balance after partial payments or scope changes.</p>
+                        <ul class="actions-list" style="margin-top: 10px;">
+                            <li>✓ Manually triggered</li>
+                            <li>✓ Amount = Total - All Paid Invoices</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">Client Self-Service: "I Have Paid" Flow</h4>
+
+                <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant E as Email
+    participant W as Web Form
+    participant A as Admin
+    participant S as System
+
+    C->>E: Receives Invoice/Reminder
+    E->>E: Contains "I Have Paid" button
+    C->>W: Clicks button → Web form
+    W->>S: doPost() receives claim
+    S->>S: Invoice status → "Paid?"
+    S->>A: 📧 Notification email
+    A->>A: Verifies in bank
+
+    alt Payment Confirmed
+        A->>S: Mark as Paid
+        S->>S: Status → "Paid"
+        S->>C: 📧 Payment Receipt
+    else Payment Not Found
+        A->>S: Mark as NOT Paid
+        S->>S: Status → Sent/Overdue
+        Note over S: Late fees recalculated
+    end
+                </div>
+            </div>
+
+            <!-- Email Tab -->
+            <div id="email" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">All Emails in the System</h3>
+
+                <table class="email-table">
+                    <thead>
+                        <tr>
+                            <th>Email Type</th>
+                            <th>Template File</th>
+                            <th>Trigger</th>
+                            <th>Recipient</th>
+                            <th>Key Content</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Admin Notification</strong></td>
+                            <td>email-admin-notification.html</td>
+                            <td><span class="badge badge-auto">Auto</span> Web form submission</td>
+                            <td>Admin</td>
+                            <td>New submission details, client info</td>
+                        </tr>
+                        <tr>
+                            <td><strong>User Confirmation</strong></td>
+                            <td>email-user-confirmation.html</td>
+                            <td><span class="badge badge-auto">Auto</span> Web form submission</td>
+                            <td>Client</td>
+                            <td>Submission received confirmation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Quote</strong></td>
+                            <td>email-quote.html</td>
+                            <td><span class="badge badge-manual">Manual</span> Send Quote action</td>
+                            <td>Client</td>
+                            <td>Quote amount, terms, validity period</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Quote Reminder</strong></td>
+                            <td>email-quote-reminder.html</td>
+                            <td><span class="badge badge-auto">Auto</span> 7 days after quote sent</td>
+                            <td>Client</td>
+                            <td>Reminder with Accept Quote button</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Quote Accepted Confirmation</strong></td>
+                            <td>email-quote-accepted.html</td>
+                            <td><span class="badge badge-client">Client</span> Accepts via web form</td>
+                            <td>Client</td>
+                            <td>Acceptance confirmation, next steps</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status Update</strong></td>
+                            <td>email-status-update.html</td>
+                            <td><span class="badge badge-manual">Manual</span> Status change</td>
+                            <td>Client</td>
+                            <td>New status, what to expect</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invoice (Standard)</strong></td>
+                            <td>email-invoice.html</td>
+                            <td><span class="badge badge-manual">Manual</span> Send Invoice action</td>
+                            <td>Client</td>
+                            <td>Invoice amount, due date, payment link</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Deposit Invoice</strong></td>
+                            <td>email-invoice.html</td>
+                            <td><span class="badge badge-auto">Auto</span> Quote accepted (≥$200)</td>
+                            <td>Client</td>
+                            <td>50% deposit amount, immediate payment</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Balance Invoice</strong></td>
+                            <td>email-balance-invoice.html</td>
+                            <td><span class="badge badge-manual">Manual</span> After deposit paid</td>
+                            <td>Client</td>
+                            <td>Remaining 50%, deposit acknowledged</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invoice Reminder</strong></td>
+                            <td>email-invoice-reminder.html</td>
+                            <td><span class="badge badge-auto">Auto</span> 1-2 days before due</td>
+                            <td>Client</td>
+                            <td>Friendly reminder, "I Have Paid" button</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Overdue Invoice</strong></td>
+                            <td>email-overdue-invoice.html</td>
+                            <td><span class="badge badge-auto">Auto</span> Weekly when overdue</td>
+                            <td>Client</td>
+                            <td>Late fees, urgency, "I Have Paid" button</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Payment Receipt</strong></td>
+                            <td>email-payment-receipt.html</td>
+                            <td><span class="badge badge-manual">Manual</span> Mark as Paid</td>
+                            <td>Client</td>
+                            <td>Payment confirmation, thank you</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client Paid Notification</strong></td>
+                            <td>email-client-paid-notification.html</td>
+                            <td><span class="badge badge-client">Client</span> "I Have Paid" click</td>
+                            <td>Admin</td>
+                            <td>Alert to verify payment claimed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Testimonial Request</strong></td>
+                            <td>email-testimonial-request.html</td>
+                            <td><span class="badge badge-manual">Manual</span> Request Testimonial action</td>
+                            <td>Client</td>
+                            <td>Thank you, submission form link</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box success" style="margin-top: 30px;">
+                    <strong>📧 Email Template Location:</strong><br/>
+                    All templates are in <code>apps-script/*.html</code> (same folder as Code.gs)<br/>
+                    Templates use <code>&lt;?= variable ?&gt;</code> syntax for dynamic content
+                </div>
+            </div>
+
+            <!-- Automation Tab -->
+            <div id="automation" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">Automated Processes & Triggers</h3>
+
+                <div class="timeline">
+                    <div class="timeline-item" data-step="1">
+                        <div class="timeline-content">
+                            <h4>Daily Quote Reminders (9 AM NZ)</h4>
+                            <p><strong>Function:</strong> <code>autoSendQuoteReminders()</code></p>
+                            <p><strong>Condition:</strong> Job status = "Quoted" AND quote sent 7+ days ago</p>
+                            <p><strong>Action:</strong> Sends reminder email, changes status to "Quote Reminded"</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item" data-step="2">
+                        <div class="timeline-content">
+                            <h4>Daily Invoice Reminders (9 AM NZ)</h4>
+                            <p><strong>Function:</strong> <code>autoSendInvoiceReminders()</code></p>
+                            <p><strong>Condition:</strong> Invoice status = "Sent" AND due date 1-2 days away</p>
+                            <p><strong>Action:</strong> Sends friendly reminder email with "I Have Paid" button</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item" data-step="3">
+                        <div class="timeline-content">
+                            <h4>Daily Overdue Processing (9 AM NZ)</h4>
+                            <p><strong>Function:</strong> <code>autoSendOverdueInvoices()</code></p>
+                            <p><strong>Condition:</strong> Invoice past due date AND (Days Overdue % 7 = 1)</p>
+                            <p><strong>Action:</strong> Updates to "Overdue", calculates late fees (2%/day), sends overdue notice weekly</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item" data-step="4">
+                        <div class="timeline-content">
+                            <h4>Background Task Queue</h4>
+                            <p><strong>Function:</strong> <code>processBackgroundTasks()</code></p>
+                            <p><strong>Trigger:</strong> Multi-step operations (e.g., quote acceptance)</p>
+                            <p><strong>Action:</strong> Processes queued tasks with retry logic (up to 3 attempts)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 40px; margin-bottom: 20px;">SLA Management</h4>
+
+                <div class="mermaid">
+flowchart LR
+    QA[Quote Accepted]
+    CALC[Calculate Due Date]
+    CHECK{Days Remaining?}
+    OT[ON TRACK]
+    AR[AT RISK]
+    OD[OVERDUE]
+
+    QA -->|Due = Accepted + Turnaround| CALC
+    CALC --> CHECK
+    CHECK -->|3+ days| OT
+    CHECK -->|0-2 days| AR
+    CHECK -->|Past due| OD
+
+    style OT fill:#E8F5E9,stroke:#4CAF50,stroke-width:3px,color:#2E7D32
+    style AR fill:#FFF3E0,stroke:#F57C00,stroke-width:3px,color:#E65100
+    style OD fill:#FFEBEE,stroke:#D32F2F,stroke-width:3px,color:#C62828
+    style QA fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style CALC fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    style CHECK fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px
+                </div>
+
+                <div class="grid-2" style="margin-top: 30px;">
+                    <div class="state-card">
+                        <h4>🟢 On Track</h4>
+                        <p>3+ days remaining until due date. Proceeding normally.</p>
+                    </div>
+                    <div class="state-card">
+                        <h4>🟡 AT RISK</h4>
+                        <p>0-2 days remaining. Approaching deadline.</p>
+                    </div>
+                    <div class="state-card">
+                        <h4>🔴 OVERDUE</h4>
+                        <p>Past due date. Requires immediate attention.</p>
+                    </div>
+                    <div class="state-card">
+                        <h4>⏸️ On Hold</h4>
+                        <p>SLA clock paused. Days on hold tracked separately.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonial Tab -->
+            <div id="testimonial" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: var(--brand-green);">Testimonial State Machine</h3>
+
+                <div class="mermaid">
+flowchart TB
+    subgraph JOB["📋 From Jobs Sheet"]
+        J1[Job Completed]
+        J2[All Invoices Paid]
+    end
+
+    subgraph REQUEST["📧 Request Phase"]
+        R1[Request Testimonial Action]
+        R2[Email Sent to Client]
+    end
+
+    subgraph TESTIMONIAL["⭐ Testimonials Sheet"]
+        T1[Pending]
+        T2[Received]
+        T3[Approved]
+        T4[Published]
+        T5[Rejected]
+    end
+
+    subgraph WEBSITE["🌐 Website"]
+        W1[Displayed on Site]
+    end
+
+    J1 --> R1
+    J2 -.->|Recommended| R1
+    R1 -->|"Menu: Clients → Request Testimonial"| R2
+    R2 -->|"📧 Testimonial Request Email"| T1
+
+    T1 -->|"Client submits via web form"| T2
+    T1 -->|"No response"| T1
+
+    T2 -->|"Admin approves"| T3
+    T2 -->|"Admin rejects"| T5
+
+    T3 -->|"Mark as Published"| T4
+    T4 --> W1
+
+    style J1 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    style J2 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style R1 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style R2 fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    style T1 fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    style T2 fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style T3 fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
+    style T4 fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px
+    style T5 fill:#ECEFF1,stroke:#607D8B,stroke-width:2px
+    style W1 fill:#E1F5FE,stroke:#0288D1,stroke-width:2px
+                </div>
+
+                <div class="info-box" style="margin-top: 20px;">
+                    <strong>💡 When to Request Testimonials:</strong><br/>
+                    <ul style="margin-top: 10px; margin-left: 20px;">
+                        <li>Job status must be <strong>Completed</strong></li>
+                        <li>Best practice: Request after final payment is received</li>
+                        <li>Client receives email with link to testimonial web form</li>
+                    </ul>
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">Testimonial Statuses & Actions</h4>
+
+                <div class="grid-2">
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #FFF3E0; color: #E65100;">Pending</span> Awaiting Response</h4>
+                        <p>Testimonial request sent, waiting for client to submit.</p>
+                        <h5 style="margin-top: 15px;">What Happens:</h5>
+                        <ul class="actions-list">
+                            <li>✓ Row created in Testimonials sheet</li>
+                            <li>✓ Client email & job details recorded</li>
+                            <li>✓ Unique submission link generated</li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #E3F2FD; color: #1976D2;">Received</span> Awaiting Review</h4>
+                        <p>Client submitted testimonial via web form. Needs admin review.</p>
+                        <h5 style="margin-top: 15px;">Available Actions:</h5>
+                        <ul class="actions-list">
+                            <li><span class="arrow">→</span> Approve <span class="badge badge-manual">Manual</span></li>
+                            <li><span class="arrow">→</span> Reject <span class="badge badge-manual">Manual</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #E8F5E9; color: #2E7D32;">Approved</span> Ready to Publish</h4>
+                        <p>Admin has reviewed and approved the testimonial content.</p>
+                        <h5 style="margin-top: 15px;">Available Actions:</h5>
+                        <ul class="actions-list">
+                            <li><span class="arrow">→</span> Mark as Published <span class="badge badge-manual">Manual</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="state-card">
+                        <h4><span class="state-badge" style="background: #C8E6C9; color: #1B5E20;">Published</span> Live on Website</h4>
+                        <p>Testimonial is displayed on the CartCure website.</p>
+                        <h5 style="margin-top: 15px;">Data Used:</h5>
+                        <ul class="actions-list">
+                            <li>✓ Client name (or "Anonymous")</li>
+                            <li>✓ Star rating</li>
+                            <li>✓ Testimonial text</li>
+                            <li>✓ Service category</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">Client Testimonial Submission Flow</h4>
+
+                <div class="mermaid">
+sequenceDiagram
+    participant A as Admin
+    participant S as System
+    participant E as Email
+    participant C as Client
+    participant W as Web Form
+    participant T as Testimonials Sheet
+
+    A->>S: Request Testimonial (from completed job)
+    S->>T: Create row (Status: Pending)
+    S->>E: Send testimonial request email
+    E->>C: Email with submission link
+
+    C->>W: Clicks link, fills form
+    Note over W: Name, Rating (1-5 stars),<br/>Testimonial text, Permission
+
+    W->>S: doPost() receives submission
+    S->>T: Update row with content
+    S->>T: Status → "Received"
+    S->>A: 📧 Admin notification (optional)
+
+    A->>T: Reviews testimonial
+    alt Content Approved
+        A->>T: Status → "Approved"
+        A->>T: Status → "Published"
+        T->>W: Displayed on website
+    else Content Rejected
+        A->>T: Status → "Rejected"
+        Note over T: Testimonial not published
+    end
+                </div>
+
+                <h4 style="margin-top: 30px; margin-bottom: 15px;">Testimonials Sheet Columns</h4>
+
+                <table class="email-table">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Description</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Testimonial #</strong></td>
+                            <td>Unique ID (T-001, T-002...)</td>
+                            <td>Auto-generated</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Job #</strong></td>
+                            <td>Linked job reference</td>
+                            <td>From request action</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client Name</strong></td>
+                            <td>Name for display</td>
+                            <td>Client submission</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client Email</strong></td>
+                            <td>Contact email</td>
+                            <td>From job record</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Rating</strong></td>
+                            <td>1-5 star rating</td>
+                            <td>Client submission</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Testimonial</strong></td>
+                            <td>Written feedback</td>
+                            <td>Client submission</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status</strong></td>
+                            <td>Pending / Received / Approved / Published / Rejected</td>
+                            <td>System / Admin</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Request Date</strong></td>
+                            <td>When request was sent</td>
+                            <td>Auto-generated</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Submitted Date</strong></td>
+                            <td>When client submitted</td>
+                            <td>Auto-generated</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box success" style="margin-top: 30px;">
+                    <strong>📧 Testimonial Email:</strong><br/>
+                    Template: <code>email-testimonial-request.html</code> (if exists) or inline HTML<br/>
+                    Contains: Thank you message, link to submission form, job details reminder
+                </div>
+            </div>
+        </div>
+
+        <!-- Complete Timeline -->
+        <div class="section">
+            <div class="section-title">
+                <div class="section-icon">⏱️</div>
+                <h2>Typical Job Lifecycle Timeline</h2>
+            </div>
+
+            <div class="lifecycle-timeline">
+                <!-- Phase 1: Submission -->
+                <div class="phase-block phase-submission">
+                    <div class="phase-header">
+                        <span class="phase-number">1</span>
+                        <h3>SUBMISSION PHASE</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon client">C</div>
+                            <div class="step-details">
+                                <strong>Client submits work request</strong>
+                                <span class="step-target">via Web Form</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Submission created</strong>
+                                <span class="step-status">Status: New</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Emails sent automatically</strong>
+                                <ul>
+                                    <li>Admin notification (to you)</li>
+                                    <li>User confirmation (to client)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 2: Job Creation -->
+                <div class="phase-block phase-job">
+                    <div class="phase-header">
+                        <span class="phase-number">2</span>
+                        <h3>JOB CREATION</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin reviews submission</strong>
+                                <span class="step-action">Menu: Actions → Create Job</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Job created in Jobs sheet</strong>
+                                <span class="step-status">Job Status: Pending Quote</span>
+                                <span class="step-status">Submission Status: Job Created</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 3: Quote -->
+                <div class="phase-block phase-quote">
+                    <div class="phase-header">
+                        <span class="phase-number">3</span>
+                        <h3>QUOTE PHASE</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin fills quote details</strong>
+                                <span class="step-action">Category, Quote Amount, Turnaround</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin sends quote</strong>
+                                <span class="step-action">Menu: Quotes → Send Quote</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Quote email sent to client</strong>
+                                <span class="step-status">Job Status: Quoted</span>
+                            </div>
+                        </div>
+                        <div class="timeline-branch">
+                            <div class="branch-condition">If no response after 7 days...</div>
+                            <div class="branch-content">
+                                <div class="timeline-step auto">
+                                    <div class="step-icon auto">⚙</div>
+                                    <div class="step-details">
+                                        <strong>Auto: Quote reminder sent</strong>
+                                        <span class="step-status">Job Status: Quote Reminded</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon client">C</div>
+                            <div class="step-details">
+                                <strong>Client accepts quote</strong>
+                                <span class="step-action">Via "Accept Quote" button in email</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Quote accepted confirmation sent</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 4: Payment (Deposit) -->
+                <div class="phase-block phase-payment">
+                    <div class="phase-header">
+                        <span class="phase-number">4</span>
+                        <h3>PAYMENT PHASE (if quote ≥ $200)</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Job moves to Accepted</strong>
+                                <span class="step-status">Job Status: Accepted</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Deposit invoice auto-created (50%)</strong>
+                                <span class="step-status">Invoice Status: Sent</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Deposit invoice emailed to client</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-branch">
+                            <div class="branch-condition">1-2 days before due date...</div>
+                            <div class="branch-content">
+                                <div class="timeline-step auto">
+                                    <div class="step-icon auto">⚙</div>
+                                    <div class="step-details">
+                                        <strong>Auto: Invoice reminder sent</strong>
+                                        <span class="step-action">With "I Have Paid" button</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon client">C</div>
+                            <div class="step-details">
+                                <strong>Client pays deposit</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin marks invoice as Paid</strong>
+                                <span class="step-status">Invoice Status: Paid</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Payment receipt sent to client</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 5: Work -->
+                <div class="phase-block phase-work">
+                    <div class="phase-header">
+                        <span class="phase-number">5</span>
+                        <h3>WORK PHASE</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin starts work</strong>
+                                <span class="step-action">Menu: Jobs → Start Work</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Job in progress</strong>
+                                <span class="step-status">Job Status: In Progress</span>
+                                <span class="step-status">SLA clock active</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Status update email sent</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin completes work</strong>
+                                <span class="step-action">Menu: Jobs → Mark Complete</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon system">S</div>
+                            <div class="step-details">
+                                <strong>Job completed</strong>
+                                <span class="step-status">Job Status: Completed</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Completion notification sent</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 6: Final Payment -->
+                <div class="phase-block phase-final">
+                    <div class="phase-header">
+                        <span class="phase-number">6</span>
+                        <h3>FINAL PAYMENT</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin generates balance invoice (50%)</strong>
+                                <span class="step-action">Menu: Invoices → Generate Invoice</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Balance invoice emailed to client</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon client">C</div>
+                            <div class="step-details">
+                                <strong>Client pays balance</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin marks invoice as Paid</strong>
+                                <span class="step-status">Invoice Status: Paid</span>
+                                <span class="step-status">Job Payment Status: Paid</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Payment receipt sent</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 7: Testimonial -->
+                <div class="phase-block phase-testimonial">
+                    <div class="phase-header">
+                        <span class="phase-number">7</span>
+                        <h3>TESTIMONIAL (Optional)</h3>
+                    </div>
+                    <div class="phase-content">
+                        <div class="timeline-step">
+                            <div class="step-icon admin">A</div>
+                            <div class="step-details">
+                                <strong>Admin requests testimonial</strong>
+                                <span class="step-action">Menu: Clients → Request Testimonial</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step emails">
+                            <div class="step-icon email">✉</div>
+                            <div class="step-details">
+                                <strong>Testimonial request emailed</strong>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step">
+                            <div class="step-icon client">C</div>
+                            <div class="step-details">
+                                <strong>Client submits testimonial</strong>
+                                <span class="step-action">Via web form link in email</span>
+                            </div>
+                        </div>
+                        <div class="timeline-arrow">↓</div>
+                        <div class="timeline-step complete">
+                            <div class="step-icon complete">✓</div>
+                            <div class="step-details">
+                                <strong>JOB COMPLETE!</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="timeline-legend">
+                <div class="legend-item"><div class="step-icon client small">C</div> Client Action</div>
+                <div class="legend-item"><div class="step-icon admin small">A</div> Admin Action</div>
+                <div class="legend-item"><div class="step-icon system small">S</div> System Update</div>
+                <div class="legend-item"><div class="step-icon auto small">⚙</div> Automated Trigger</div>
+                <div class="legend-item"><div class="step-icon email small">✉</div> Email Sent</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 30px; color: #666;">
+            <p>CartCure Job Management System - Complete Flowchart</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Generated from Code.gs analysis</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: true,
+                showSequenceNumbers: false
+            }
+        });
+
+        // Tab functionality
+        function showTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Remove active from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(tabId).classList.add('active');
+
+            // Add active to clicked tab
+            event.target.classList.add('active');
+
+            // Re-render mermaid diagrams in the newly visible tab
+            setTimeout(() => {
+                mermaid.init(undefined, document.querySelectorAll('#' + tabId + ' .mermaid:not([data-processed])'));
+            }, 100);
+        }
+    </script>
+</body>
+</html>

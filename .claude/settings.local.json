@@ -103,7 +103,17 @@
       "Bash(find:*)",
       "Bash(identify -verbose:*)",
       "Bash(cmd //c \"dir c:\\\\Users\\\\andre\\\\OneDrive\\\\Documents\\\\CartCure\\\\Cartcure-website\\\\*.png\")",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(code --version:*)",
+      "Bash(winget search:*)",
+      "Bash(FLUTTER_PATH=\"C:\\\\Users\\\\andre\\\\dev\\\\flutter\\\\bin\")",
+      "Bash(echo:*)",
+      "Bash(code --install-extension:*)",
+      "Bash(~/dev/flutter/bin/flutter doctor:*)",
+      "Bash(git status:*)",
+      "Bash(git ls-files:*)",
+      "Bash(for f in index.html how-to.html testimonials.html shopify-speed-optimization.html shopify-seo-fixes.html shopify-theme-customization.html shopify-checkout-optimization.html shopify-bug-fixes.html terms-of-service.html privacy-policy.html)",
+      "Bash(done)"
     ],
     "deny": [
       "Bash(rm -rf /*)",

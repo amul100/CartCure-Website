@@ -231,7 +231,7 @@
         Complete workflow management with SLA tracking,<br>
         professional quotes, and payment management
     </p>
-    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.2</p>
+    <p style="margin-top: 40px; color: #2d5d3f; font-weight: bold;">Version 2.3</p>
 </div>
 
 <div class="toc">
@@ -443,6 +443,27 @@
 <hr>
 
 <div class="info">
+    <strong>Version 2.3 Updates (February 2026)</strong>
+</div>
+
+<h2>Visual Refresh</h2>
+
+<p><strong>Modern CRM Styling:</strong> Subtle visual improvements for a cleaner, more polished look</p>
+
+<ul>
+    <li><strong>Inter Font:</strong> Switched from Arial/Georgia to Inter — a clean, modern sans-serif used by GitHub, Figma, and Linear</li>
+    <li><strong>Hidden Gridlines:</strong> All sheet gridlines are now hidden for a cleaner, app-like appearance</li>
+    <li><strong>Colored Sheet Tabs:</strong> Each sheet has a distinct tab color for quick navigation (blue for Jobs, gold for Invoices, purple for Clients, etc.)</li>
+    <li><strong>Improved Row Spacing:</strong> Slightly taller rows (28px data, 38px headers) for better readability</li>
+    <li><strong>Better Alternating Rows:</strong> Increased contrast between alternating row colors for clearer row distinction</li>
+    <li><strong>Horizontal-Only Borders:</strong> Data sheets now use horizontal row separators only — no vertical column dividers</li>
+    <li><strong>Bold Key Columns:</strong> Job #, Client Name, and Invoice # columns are now bold for quick identification</li>
+    <li><strong>Centralized Typography:</strong> All fonts and sizes are now controlled by a single <code>SHEET_FONTS</code> constant for easy customization</li>
+</ul>
+
+<hr>
+
+<div class="info">
     <strong>Version 2.2 Updates (February 2025)</strong>
 </div>
 
@@ -505,7 +526,7 @@
     <li>Open your CartCure Google Sheet</li>
     <li>Refresh the page (F5 or Ctrl+R)</li>
     <li>Wait for the custom menu to appear (may take a few seconds)</li>
-    <li>Click: <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Setup/Repair Sheets</strong></li>
+    <li>Click: <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 🔧 Sheet Setup &gt; 🔧 Setup/Repair Sheets</strong></li>
     <li>Authorize the script when prompted</li>
     <li>Wait for "Setup Complete" confirmation</li>
 </ol>
@@ -1221,7 +1242,7 @@
     <li>If enabled: Menu shows <strong>"⏰ Disable Auto Emails"</strong></li>
     <li>If disabled: Menu shows <strong>"⏰ Enable Auto Emails"</strong></li>
 </ul>
-<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
+<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 📧 Email</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
 
 <div class="success">
     <strong>Set It and Forget It:</strong> The system automatically manages quote reminders, invoice reminders, and overdue notices. You don't need to remember to follow up on quotes or check for due invoices - the system handles it for you, and automatically skips any items that have been handled.
@@ -1915,34 +1936,6 @@
             <td>CartCure &gt; Setup &gt; Settings</td>
         </tr>
         <tr>
-            <td>Apply Dark Mode</td>
-            <td>CartCure &gt; Setup &gt; Apply Dark Mode to Settings</td>
-        </tr>
-        <tr>
-            <td>Setup/Repair Sheets</td>
-            <td>CartCure &gt; Setup &gt; Setup/Repair Sheets</td>
-        </tr>
-        <tr>
-            <td>Reset Column Widths</td>
-            <td>CartCure &gt; Setup &gt; Reset Column Widths</td>
-        </tr>
-        <tr>
-            <td>Hard Reset</td>
-            <td>CartCure &gt; Setup &gt; Hard Reset (Delete All Data)</td>
-        </tr>
-        <tr>
-            <td>Toggle Email Logging</td>
-            <td>CartCure &gt; Setup &gt; Enable/Disable Email Logging</td>
-        </tr>
-        <tr>
-            <td>Scan Emails Now</td>
-            <td>CartCure &gt; Setup &gt; Scan Emails Now</td>
-        </tr>
-        <tr>
-            <td>Toggle Auto Emails</td>
-            <td>CartCure &gt; Setup &gt; Enable/Disable Auto Emails</td>
-        </tr>
-        <tr>
             <td>Toggle Confirm Selection</td>
             <td>CartCure &gt; Setup &gt; Enable/Disable Confirm Selection</td>
         </tr>
@@ -1957,7 +1950,95 @@
     </tbody>
 </table>
 
-<h3>Maintenance Submenu</h3>
+<h3>Sheet Setup Submenu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Setup/Repair Sheets</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Setup/Repair Sheets</td>
+        </tr>
+        <tr>
+            <td>Reset Column Widths</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Reset Column Widths</td>
+        </tr>
+        <tr>
+            <td>Repair Validation &amp; Formatting</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Repair Validation &amp; Formatting</td>
+        </tr>
+        <tr>
+            <td>Repair Testimonials Validation</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Repair Testimonials Validation</td>
+        </tr>
+        <tr>
+            <td>Style Settings Sheet</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Style Settings Sheet</td>
+        </tr>
+        <tr>
+            <td>Install Edit Trigger</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Install Edit Trigger</td>
+        </tr>
+        <tr>
+            <td>Hard Reset</td>
+            <td>CartCure &gt; Setup &gt; Sheet Setup &gt; Hard Reset (Delete All Data)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Email Submenu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Toggle Auto Emails</td>
+            <td>CartCure &gt; Setup &gt; Email &gt; Enable/Disable Auto Emails</td>
+        </tr>
+        <tr>
+            <td>Toggle Email Logging</td>
+            <td>CartCure &gt; Setup &gt; Email &gt; Enable/Disable Email Logging</td>
+        </tr>
+        <tr>
+            <td>Scan Emails Now</td>
+            <td>CartCure &gt; Setup &gt; Email &gt; Scan Emails Now</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Background Tasks Submenu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Diagnose Tasks</td>
+            <td>CartCure &gt; Setup &gt; Background Tasks &gt; Diagnose Tasks</td>
+        </tr>
+        <tr>
+            <td>Manually Process Tasks</td>
+            <td>CartCure &gt; Setup &gt; Background Tasks &gt; Manually Process Tasks</td>
+        </tr>
+        <tr>
+            <td>Setup Task Trigger</td>
+            <td>CartCure &gt; Setup &gt; Background Tasks &gt; Setup Task Trigger</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Archiving Submenu</h3>
 <table>
     <thead>
         <tr>
@@ -1968,27 +2049,51 @@
     <tbody>
         <tr>
             <td>Archive Old Jobs</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Jobs</td>
+            <td>CartCure &gt; Setup &gt; Archiving &gt; Archive Old Jobs</td>
         </tr>
         <tr>
             <td>Archive Old Activity</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; Archive Old Activity</td>
-        </tr>
-        <tr>
-            <td>Clean Up Testimonials</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; Clean Up Testimonials</td>
-        </tr>
-        <tr>
-            <td>Extend Validation Ranges</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; Extend Validation Ranges</td>
-        </tr>
-        <tr>
-            <td>Setup Background Tasks</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; Setup Background Tasks</td>
+            <td>CartCure &gt; Setup &gt; Archiving &gt; Archive Old Activity</td>
         </tr>
         <tr>
             <td>View Archive Stats</td>
-            <td>CartCure &gt; Setup &gt; Maintenance &gt; View Archive Stats</td>
+            <td>CartCure &gt; Setup &gt; Archiving &gt; View Archive Stats</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Tests Submenu</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Menu Path</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Run Unit Tests</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Run Unit Tests</td>
+        </tr>
+        <tr>
+            <td>Run Integration Tests</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Run Integration Tests</td>
+        </tr>
+        <tr>
+            <td>Create Test Submissions</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Create 10 Test Submissions</td>
+        </tr>
+        <tr>
+            <td>Create Test Testimonials</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Create 20 Test Testimonials</td>
+        </tr>
+        <tr>
+            <td>Create Test Job</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Create Test Job for Testimonials</td>
+        </tr>
+        <tr>
+            <td>Send All Test Emails</td>
+            <td>CartCure &gt; Setup &gt; Tests &gt; Send All Test Emails</td>
         </tr>
     </tbody>
 </table>
@@ -3088,7 +3193,7 @@ Unpaid → Invoiced ─────────┼─→ Overdue → Paid
     <li>If enabled: Menu shows <strong>"📧 Disable Email Logging"</strong></li>
     <li>If disabled: Menu shows <strong>"📧 Enable Email Logging"</strong></li>
 </ul>
-<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
+<p>Go to <strong>🛒 CartCure &gt; ⚙️ Setup &gt; 📧 Email</strong> and click the toggle to switch on/off. The menu updates automatically.</p>
 
 <div class="warning">
     <strong>Important:</strong> For emails to be logged automatically, they must contain a job tag in the format <code>(J-WORD-XXX)</code> in the subject line. For example: "Re: Quote for your project (J-MAPLE-001)"
