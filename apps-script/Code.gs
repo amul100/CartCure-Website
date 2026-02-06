@@ -1119,6 +1119,17 @@ function queueBackgroundTask(taskData) {
  * Run setupBackgroundTaskTrigger() once to create the trigger
  */
 function processBackgroundTasks() {
+  // DEBUG: Log that this function was called at all
+  try {
+    const debugFolder = getOrCreateDebugFolder();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    debugFolder.createFile('BG_TASK_RUN_' + ts + '.txt',
+      'processBackgroundTasks called at ' + new Date().toISOString());
+  } catch (e) {
+    // If even this fails, try to log somewhere
+    Logger.log('processBackgroundTasks started but debug file failed: ' + e.message);
+  }
+
   const props = PropertiesService.getScriptProperties();
   const queueKey = 'BACKGROUND_TASK_QUEUE';
 
