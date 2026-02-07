@@ -2902,28 +2902,6 @@ function updateClientStatus(clientEmail, newStatus) {
   Logger.log('Client status updated: ' + clientEmail + ' -> ' + newStatus);
 }
 
-/**
- * Update submission status
- * @param {string} submissionNumber - The submission number
- * @param {string} newStatus - The new status
- */
-function updateSubmissionStatus(submissionNumber, newStatus) {
-  const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName(SHEETS.SUBMISSIONS);
-  if (!sheet) return;
-
-  const data = sheet.getDataRange().getValues();
-  const subNumCol = getColIndex('SUBMISSIONS', 'Submission #') - 1;
-  const statusCol = getColIndex('SUBMISSIONS', 'Status') - 1;
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][subNumCol]).trim().toUpperCase() === submissionNumber.toUpperCase()) {
-      sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
-      return;
-    }
-  }
-}
-
 // ============================================================================
 // CLIENT STATUS MENU FUNCTIONS
 // ============================================================================

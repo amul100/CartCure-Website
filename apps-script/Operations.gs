@@ -1592,7 +1592,7 @@ function createJobFromSubmission(submissionNumber) {
 
   if (!submissionsSheet) {
     debugLog.push('ERROR: Submissions sheet not found');
-    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
+    saveDebugLog('CREATE_JOB_' + debugTs, debugLog);
     ui.alert('Error', 'Submissions sheet not found. Please run Setup first.', ui.ButtonSet.OK);
     return;
   }
@@ -1629,7 +1629,7 @@ function createJobFromSubmission(submissionNumber) {
 
   if (!submissionRow) {
     debugLog.push('ERROR: Submission ' + submissionNumber + ' not found in ' + (submissionsData.length - 1) + ' submissions');
-    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
+    saveDebugLog('CREATE_JOB_' + debugTs, debugLog);
     ui.alert('Not Found', 'Submission ' + submissionNumber + ' not found.', ui.ButtonSet.OK);
     return;
   }
@@ -1675,7 +1675,7 @@ function createJobFromSubmission(submissionNumber) {
 
     if (response !== ui.Button.YES) {
       debugLog.push('User cancelled - declined to create additional job');
-      saveDebugLog(debugLog, 'CREATE_JOB_CANCELLED_' + debugTs);
+      saveDebugLog('CREATE_JOB_CANCELLED_' + debugTs, debugLog);
       return;
     }
     debugLog.push('User confirmed - proceeding to create additional job');
@@ -1716,7 +1716,7 @@ function createJobFromSubmission(submissionNumber) {
   // Add to Jobs sheet
   if (!jobsSheet) {
     debugLog.push('ERROR: Jobs sheet not found');
-    saveDebugLog(debugLog, 'CREATE_JOB_' + debugTs);
+    saveDebugLog('CREATE_JOB_' + debugTs, debugLog);
     ui.alert('Error', 'Jobs sheet not found. Please run Setup first.', ui.ButtonSet.OK);
     return;
   }
@@ -1738,7 +1738,7 @@ function createJobFromSubmission(submissionNumber) {
   }
 
   debugLog.push('SUCCESS: Job ' + jobNumber + ' created');
-  saveDebugLog(debugLog, 'CREATE_JOB_SUCCESS_' + debugTs);
+  saveDebugLog('CREATE_JOB_SUCCESS_' + debugTs, debugLog);
 
   // Log activity
   logJobActivity(jobNumber, 'Job Created', 'Job created from submission ' + submissionNumber, '', '', 'Auto');
@@ -1772,7 +1772,7 @@ function createJobFromSubmission(submissionNumber) {
   } catch (e) {
     debugLog.push('EXCEPTION: ' + e.toString());
     debugLog.push('Stack: ' + (e.stack || 'N/A'));
-    saveDebugLog(debugLog, 'CREATE_JOB_ERROR_' + debugTs);
+    saveDebugLog('CREATE_JOB_ERROR_' + debugTs, debugLog);
     throw e; // Re-throw to trigger the failure handler in the HTML dialog
   }
 }
@@ -2302,13 +2302,7 @@ function generateAndSendDepositInvoice(jobNumber, job) {
  * Helper function to write deposit invoice debug log to Drive
  */
 function writeDepositInvoiceDebug(jobNumber, debugLog) {
-  try {
-    const debugFolder = getOrCreateDebugFolder();
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    debugFolder.createFile('DEPOSIT_INV_' + jobNumber + '_' + ts + '.txt', debugLog.join('\n'));
-  } catch (e) {
-    Logger.log('Could not write deposit invoice debug file: ' + e.message);
-  }
+  saveDebugLog('DEPOSIT_INV_' + jobNumber, debugLog);
 }
 
 /**

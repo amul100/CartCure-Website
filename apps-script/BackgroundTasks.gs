@@ -40,15 +40,7 @@ function queueBackgroundTask(taskData) {
  */
 function processBackgroundTasks() {
   // DEBUG: Log that this function was called at all
-  try {
-    const debugFolder = getOrCreateDebugFolder();
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    debugFolder.createFile('BG_TASK_RUN_' + ts + '.txt',
-      'processBackgroundTasks called at ' + new Date().toISOString());
-  } catch (e) {
-    // If even this fails, try to log somewhere
-    Logger.log('processBackgroundTasks started but debug file failed: ' + e.message);
-  }
+  saveDebugLog('BG_TASK_RUN', 'processBackgroundTasks called at ' + new Date().toISOString());
 
   const props = PropertiesService.getScriptProperties();
   const queueKey = 'BACKGROUND_TASK_QUEUE';
@@ -303,13 +295,7 @@ function processQuoteAcceptanceTask(task) {
   }
 
   // Write debug log to Drive
-  try {
-    const debugFolder = getOrCreateDebugFolder();
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    debugFolder.createFile('QUOTE_ACCEPT_' + jobNumber + '_' + ts + '.txt', debugLog.join('\n'));
-  } catch (debugError) {
-    Logger.log('Could not write debug file: ' + debugError.message);
-  }
+  saveDebugLog('QUOTE_ACCEPT_' + jobNumber, debugLog);
 
   // 4. Send admin notification
   if (pendingSubtasks.includes('adminEmail') && CONFIG.ADMIN_EMAIL) {

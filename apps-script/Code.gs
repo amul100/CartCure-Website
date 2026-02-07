@@ -114,7 +114,14 @@ var SUBMISSION_WORDS = [
   'ZINC', 'ARCTIC', 'BASALT', 'COBALT', 'DUNE', 'FALCON', 'GOLDEN', 'HARBOR'
 ];
 
-
+/**
+ * Returns a JSON response for web app endpoints (doPost/doGet).
+ * @param {Object} data - The response payload
+ * @returns {TextOutput} ContentService JSON response
+ */
+function respondJson(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
 
 // ============================================================================
 // MAIN HANDLER
@@ -258,12 +265,7 @@ function doPost(e) {
     }
 
     // Return success response
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        message: 'Form submitted successfully'
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: true, message: 'Form submitted successfully' });
 
   } catch (error) {
     Logger.log('Error processing submission: ' + error.message);
@@ -283,9 +285,7 @@ function doPost(e) {
       errorResponse.errorType = error.name;
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify(errorResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson(errorResponse);
   }
 }
 
@@ -304,13 +304,7 @@ function doGet(e) {
   }
 
   // Default response - health check
-  return ContentService
-    .createTextOutput(JSON.stringify({
-      status: 'ok',
-      message: 'CartCure Form Handler is running',
-      timestamp: new Date().toISOString()
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return respondJson({ status: 'ok', message: 'CartCure Form Handler is running', timestamp: new Date().toISOString() });
 }
 
 /**
@@ -325,22 +319,12 @@ function getApprovedTestimonials(fiveStarOnly, limit) {
     const sheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
     if (!sheet) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: true,
-          testimonials: []
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: true, testimonials: [] });
     }
 
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: true,
-          testimonials: []
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: true, testimonials: [] });
     }
 
     // Get all data (header not needed since we use COLUMN_CONFIG)
@@ -380,22 +364,11 @@ function getApprovedTestimonials(fiveStarOnly, limit) {
       approvedTestimonials = approvedTestimonials.slice(0, limit);
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        testimonials: approvedTestimonials
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: true, testimonials: approvedTestimonials });
 
   } catch (error) {
     Logger.log('Error fetching testimonials: ' + error.message);
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        error: 'Failed to load testimonials',
-        testimonials: []
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: false, error: 'Failed to load testimonials', testimonials: [] });
   }
 }
 
@@ -454,22 +427,12 @@ function handleTestimonialSubmission(data) {
       if (!IS_PRODUCTION) {
         Logger.log('VALIDATION FAILED - name empty: ' + !name + ', testimonial empty: ' + !testimonial);
       }
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Name and testimonial are required'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Name and testimonial are required' });
     }
 
     // Job number is required
     if (!jobNumber) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Job reference number is required to submit feedback'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Job reference number is required to submit feedback' });
     }
 
     const ss = getSpreadsheet();
@@ -495,12 +458,7 @@ function handleTestimonialSubmission(data) {
         saveTestimonialDebugFile(jobNumber, debugLog);
       }
 
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Unable to verify job reference. Please try again later.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Unable to verify job reference. Please try again later.' });
     }
     debugLog.push('Jobs sheet found: YES');
 
@@ -518,12 +476,7 @@ function handleTestimonialSubmission(data) {
         saveTestimonialDebugFile(jobNumber, debugLog);
       }
 
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Unable to verify job reference. Please try again later.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Unable to verify job reference. Please try again later.' });
     }
 
     // Save debug file on success path too
@@ -544,31 +497,17 @@ function handleTestimonialSubmission(data) {
     });
 
     // Debug: Log job exists check
-    if (!IS_PRODUCTION) {
-      const debugFolder = getOrCreateDebugFolder();
-      debugFolder.createFile('TESTIMONIAL_JOB_CHECK_' + new Date().getTime() + '.txt',
-        'Job exists check for "' + jobNumber + '": ' + jobExists + '\nAll jobs: ' + jobsData.slice(1).map(row => row[jobNumberColIndex]).join(', '));
-    }
+    saveDebugLog('TESTIMONIAL_JOB_CHECK', 'Job exists check for "' + jobNumber + '": ' + jobExists + '\nAll jobs: ' + jobsData.slice(1).map(row => row[jobNumberColIndex]).join(', '));
 
     if (!jobExists) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Job reference not found. Please check your job number and try again.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Job reference not found. Please check your job number and try again.' });
     }
 
     // Check if testimonial already exists for this job
     let testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
 
     // Debug: Log testimonials sheet check
-    if (!IS_PRODUCTION) {
-      const debugFolder = getOrCreateDebugFolder();
-      debugFolder.createFile('TESTIMONIAL_SHEET_CHECK_' + new Date().getTime() + '.txt',
-        'Testimonials sheet: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL') +
-        '\nLast row: ' + (testimonialsSheet ? testimonialsSheet.getLastRow() : 'N/A'));
-    }
+    saveDebugLog('TESTIMONIAL_SHEET_CHECK', 'Testimonials sheet: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL') + '\nLast row: ' + (testimonialsSheet ? testimonialsSheet.getLastRow() : 'N/A'));
 
     if (testimonialsSheet && testimonialsSheet.getLastRow() > 1) {
       const testimonialData = testimonialsSheet.getDataRange().getValues();
@@ -581,19 +520,10 @@ function handleTestimonialSubmission(data) {
         });
 
         // Debug: Log already submitted check
-        if (!IS_PRODUCTION) {
-          const debugFolder = getOrCreateDebugFolder();
-          debugFolder.createFile('TESTIMONIAL_DUPLICATE_CHECK_' + new Date().getTime() + '.txt',
-            'Already submitted for ' + jobNumber + ': ' + alreadySubmitted);
-        }
+        saveDebugLog('TESTIMONIAL_DUPLICATE_CHECK', 'Already submitted for ' + jobNumber + ': ' + alreadySubmitted);
 
         if (alreadySubmitted) {
-          return ContentService
-            .createTextOutput(JSON.stringify({
-              success: false,
-              message: 'Feedback has already been submitted for this job. Thank you!'
-            }))
-            .setMimeType(ContentService.MimeType.JSON);
+          return respondJson({ success: false, message: 'Feedback has already been submitted for this job. Thank you!' });
         }
       }
     }
@@ -614,35 +544,27 @@ function handleTestimonialSubmission(data) {
 
     // Create Testimonials sheet if it doesn't exist
     if (!testimonialsSheet) {
-      if (!IS_PRODUCTION) {
-        const debugFolder = getOrCreateDebugFolder();
-        debugFolder.createFile('TESTIMONIAL_SHEET_CREATE_' + new Date().getTime() + '.txt', 'Creating testimonials sheet...');
-      }
+      saveDebugLog('TESTIMONIAL_SHEET_CREATE', 'Creating testimonials sheet...');
       setupTestimonialsSheet(ss, false);
       testimonialsSheet = ss.getSheetByName(SHEETS.TESTIMONIALS);
     }
 
     // Debug: Log what we're about to append
-    if (!IS_PRODUCTION) {
-      const debugFolder = getOrCreateDebugFolder();
-      const appendDebug = [
-        '=== Testimonial Append Debug ===',
-        'Timestamp: ' + new Date().toISOString(),
-        'Sheet exists: ' + (testimonialsSheet !== null),
-        'Sheet name: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL'),
-        'Data to append:',
-        '  showOnWebsite: ' + sanitizedData.showOnWebsite,
-        '  submitted: ' + sanitizedData.submitted,
-        '  name: ' + sanitizedData.name,
-        '  business: ' + sanitizedData.business,
-        '  location: ' + sanitizedData.location,
-        '  rating: ' + sanitizedData.rating,
-        '  testimonial: ' + sanitizedData.testimonial.substring(0, 50) + '...',
-        '  jobNumber: ' + sanitizedData.jobNumber,
-        '  email: ' + sanitizedData.email
-      ];
-      debugFolder.createFile('TESTIMONIAL_APPEND_' + new Date().getTime() + '.txt', appendDebug.join('\n'));
-    }
+    saveDebugLog('TESTIMONIAL_APPEND', [
+      '=== Testimonial Append Debug ===',
+      'Sheet exists: ' + (testimonialsSheet !== null),
+      'Sheet name: ' + (testimonialsSheet ? testimonialsSheet.getName() : 'NULL'),
+      'Data to append:',
+      '  showOnWebsite: ' + sanitizedData.showOnWebsite,
+      '  submitted: ' + sanitizedData.submitted,
+      '  name: ' + sanitizedData.name,
+      '  business: ' + sanitizedData.business,
+      '  location: ' + sanitizedData.location,
+      '  rating: ' + sanitizedData.rating,
+      '  testimonial: ' + sanitizedData.testimonial.substring(0, 50) + '...',
+      '  jobNumber: ' + sanitizedData.jobNumber,
+      '  email: ' + sanitizedData.email
+    ]);
 
     // Insert testimonial at top (row 2) so newest appear first
     // Note: Column A is left empty here - the checkbox is added by applyTestimonialRowValidation()
@@ -664,10 +586,7 @@ function handleTestimonialSubmission(data) {
     applyTestimonialRowValidation(testimonialsSheet, 2);
 
     // Debug: Confirm append completed
-    if (!IS_PRODUCTION) {
-      const debugFolder = getOrCreateDebugFolder();
-      debugFolder.createFile('TESTIMONIAL_APPENDED_' + new Date().getTime() + '.txt', 'Row appended successfully at row ' + newRow + '. Last row: ' + testimonialsSheet.getLastRow());
-    }
+    saveDebugLog('TESTIMONIAL_APPENDED', 'Row appended successfully at row ' + newRow + '. Last row: ' + testimonialsSheet.getLastRow());
 
     // Queue notification email to admin (async for faster response)
     if (CONFIG.ADMIN_EMAIL) {
@@ -676,21 +595,11 @@ function handleTestimonialSubmission(data) {
 
     Logger.log('Testimonial submitted for job ' + sanitizedData.jobNumber + ' by: ' + sanitizedData.name);
 
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        message: 'Thank you for your feedback! Your testimonial will be reviewed shortly.'
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: true, message: 'Thank you for your feedback! Your testimonial will be reviewed shortly.' });
 
   } catch (error) {
     Logger.log('Error saving testimonial: ' + error.message);
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        message: 'Sorry, there was an error submitting your testimonial. Please try again.'
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: false, message: 'Sorry, there was an error submitting your testimonial. Please try again.' });
   }
 }
 
@@ -718,70 +627,35 @@ function handleQuoteAcceptance(data) {
     const termsAccepted = data.termsAccepted === true || data.termsAccepted === 'true';
 
     if (!jobNumber) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Job number is required'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Job number is required' });
     }
 
     if (!fullName) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Full name is required'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Full name is required' });
     }
 
     if (!signatureData) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Signature is required'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Signature is required' });
     }
 
     if (!termsAccepted) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'You must accept the Terms of Service to proceed'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'You must accept the Terms of Service to proceed' });
     }
 
     // Get the job
     const job = getJobByNumber(jobNumber);
 
     if (!job) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Job not found. Please check the job number and try again.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Job not found. Please check the job number and try again.' });
     }
 
     // Check if job is in Quoted or Quote Reminded status
     if (job['Status'] !== JOB_STATUS.QUOTED && job['Status'] !== JOB_STATUS.QUOTE_REMINDED) {
       // Job might already be accepted
       if (job['Status'] === JOB_STATUS.ACCEPTED || job['Status'] === JOB_STATUS.IN_PROGRESS || job['Status'] === JOB_STATUS.COMPLETED) {
-        return ContentService
-          .createTextOutput(JSON.stringify({
-            success: false,
-            message: 'This quote has already been accepted. If you have questions, please contact us.'
-          }))
-          .setMimeType(ContentService.MimeType.JSON);
+        return respondJson({ success: false, message: 'This quote has already been accepted. If you have questions, please contact us.' });
       }
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'This job is not in a quotable status. Current status: ' + job['Status']
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'This job is not in a quotable status. Current status: ' + job['Status'] });
     }
 
     // Calculate due date
@@ -836,22 +710,11 @@ function handleQuoteAcceptance(data) {
       ? ' A deposit invoice will be sent to your email shortly.'
       : '';
 
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        message: 'Quote accepted successfully!' + depositInfo,
-        jobNumber: jobNumber
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: true, message: 'Quote accepted successfully!' + depositInfo, jobNumber: jobNumber });
 
   } catch (error) {
     Logger.log('Error processing quote acceptance: ' + error.message);
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        message: 'Sorry, there was an error processing your acceptance. Please try again or contact us directly.'
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: false, message: 'Sorry, there was an error processing your acceptance. Please try again or contact us directly.' });
   }
 }
 
@@ -865,56 +728,29 @@ function handlePaymentConfirmation(data) {
     const jobNumber = (data.jobNumber || '').trim().toUpperCase();
 
     if (!invoiceNumber) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Invoice number is required'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Invoice number is required' });
     }
 
     // Get the invoice
     const invoice = getInvoiceByNumber(invoiceNumber);
 
     if (!invoice) {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'Invoice not found. Please check the invoice number and try again.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'Invoice not found. Please check the invoice number and try again.' });
     }
 
     const currentStatus = invoice['Status'];
 
     // Check current status
     if (currentStatus === 'Paid') {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: true,
-          alreadyPaid: true,
-          message: 'This invoice has already been marked as paid. Thank you!'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: true, alreadyPaid: true, message: 'This invoice has already been marked as paid. Thank you!' });
     }
 
     if (currentStatus === 'Paid?') {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: true,
-          alreadyMarked: true,
-          message: 'We already received your payment notification. We\'ll verify it shortly. Thank you!'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: true, alreadyMarked: true, message: 'We already received your payment notification. We\'ll verify it shortly. Thank you!' });
     }
 
     if (currentStatus === 'Draft' || currentStatus === 'Cancelled') {
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: false,
-          message: 'This invoice cannot be marked as paid. Please contact us if you have questions.'
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return respondJson({ success: false, message: 'This invoice cannot be marked as paid. Please contact us if you have questions.' });
     }
 
     // Update invoice status to "Paid?"
@@ -946,22 +782,11 @@ function handlePaymentConfirmation(data) {
 
     Logger.log('Payment confirmation received for ' + invoiceNumber);
 
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        message: 'Thank you for letting us know! We\'ll verify your payment shortly.',
-        invoiceNumber: invoiceNumber
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: true, message: 'Thank you for letting us know! We\'ll verify your payment shortly.', invoiceNumber: invoiceNumber });
 
   } catch (error) {
     Logger.log('Error processing payment confirmation: ' + error.message);
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        message: 'Sorry, there was an error. Please try again or contact us directly.'
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return respondJson({ success: false, message: 'Sorry, there was an error. Please try again or contact us directly.' });
   }
 }
 

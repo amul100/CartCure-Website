@@ -2263,7 +2263,7 @@ function generateMonthlyReport(month, year) {
 
   // Get all jobs and invoices
   const jobs = getAllJobs();
-  const invoices = getAllInvoices();
+  const invoices = getAllInvoicesRaw();
 
   // Filter data for the month
   let jobsCreated = 0;
@@ -2367,7 +2367,7 @@ function generateMonthlyReport(month, year) {
 function generateAgingReport() {
   const ui = SpreadsheetApp.getUi();
   const now = new Date();
-  const invoices = getAllInvoices();
+  const invoices = getAllInvoicesRaw();
 
   // Filter to unpaid/overdue invoices
   const outstandingInvoices = invoices.filter(inv => {
@@ -2470,7 +2470,7 @@ function runReconciliationCheck() {
   const issues = [];
 
   // Get all paid invoices
-  const invoices = getAllInvoices();
+  const invoices = getAllInvoicesRaw();
   const paidInvoices = invoices.filter(inv => inv['Status'] === 'Paid');
 
   // Calculate total from paid invoices
@@ -2708,7 +2708,7 @@ function generateGSTSummary(period, year) {
   }
 
   // Get all paid invoices in period
-  const invoices = getAllInvoices();
+  const invoices = getAllInvoicesRaw();
 
   let totalSales = 0;
   let totalGSTCollected = 0;
@@ -2799,7 +2799,7 @@ function generateGSTSummary(period, year) {
  * Get all invoices from Invoice Log sheet
  * @returns {Array<Object>} Array of invoice objects
  */
-function getAllInvoices() {
+function getAllInvoicesRaw() {
   const sheet = getSheet(SHEETS.INVOICES);
   if (!sheet || sheet.getLastRow() < 2) return [];
 

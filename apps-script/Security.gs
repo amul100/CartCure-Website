@@ -3,6 +3,17 @@
 // ============================================================================
 
 /**
+ * Throw a validation error with a user-friendly message.
+ * @param {string} internalMsg - Technical error message for logging
+ * @param {string} userMsg - User-friendly error message
+ */
+function throwValidationError(internalMsg, userMsg) {
+  const error = new Error(internalMsg);
+  error.userMessage = userMsg;
+  throw error;
+}
+
+/**
  * Validate request origin
  * In production mode, rejects requests from origins not in ALLOWED_ORIGINS
  * In development mode (IS_PRODUCTION = false), allows all origins
@@ -70,9 +81,7 @@ function checkServerRateLimit(email) {
   // Check if limit exceeded
   if (recentTimestamps.length >= CONFIG.MAX_SUBMISSIONS_PER_HOUR) {
     Logger.log('Rate limit exceeded for email: ' + email + ' (' + recentTimestamps.length + ' submissions in last hour)');
-    const error = new Error('Rate limit exceeded');
-    error.userMessage = 'Too many submissions. Please try again in 1 hour.';
-    throw error;
+    throwValidationError('Rate limit exceeded', 'Too many submissions. Please try again in 1 hour.');
   }
 
   if (!IS_PRODUCTION) {
@@ -196,9 +205,7 @@ function validateAndSanitizeInput(data) {
 
   // Check that either message or voice note is provided
   if (!sanitized.message && !sanitized.hasVoiceNote) {
-    const error = new Error('No message or voice note provided');
-    error.userMessage = 'Please provide either a message or voice note.';
-    throw error;
+    throwValidationError('No message or voice note provided', 'Please provide either a message or voice note.');
   }
 
   // Add timestamp
@@ -232,9 +239,7 @@ function validateSubmissionNumber(submissionNumber) {
   const legacyFormatRegex = /^CC-\d{8}-\d{5}$/;
 
   if (!newFormatRegex.test(submissionNumber) && !legacyFormatRegex.test(submissionNumber)) {
-    const error = new Error('Invalid submission number format');
-    error.userMessage = 'Invalid submission format.';
-    throw error;
+    throwValidationError('Invalid submission number format', 'Invalid submission format.');
   }
 
   return submissionNumber;
@@ -279,23 +284,17 @@ function validateAndSanitizeText(text, fieldName, maxLength, required) {
  */
 function validateEmail(email) {
   if (!email || email.trim() === '') {
-    const error = new Error('Email is required');
-    error.userMessage = 'Email is required.';
-    throw error;
+    throwValidationError('Email is required', 'Email is required.');
   }
 
   email = email.trim().toLowerCase();
 
   if (email.length > CONFIG.MAX_EMAIL_LENGTH) {
-    const error = new Error('Email is too long');
-    error.userMessage = 'Email exceeds maximum length.';
-    throw error;
+    throwValidationError('Email is too long', 'Email exceeds maximum length.');
   }
 
   if (!REGEX.EMAIL.test(email)) {
-    const error = new Error('Invalid email format');
-    error.userMessage = 'Please enter a valid email address.';
-    throw error;
+    throwValidationError('Invalid email format', 'Please enter a valid email address.');
   }
 
   return escapeHtml(email);
@@ -306,32 +305,24 @@ function validateEmail(email) {
  */
 function validatePhone(phone) {
   if (!phone || phone.trim() === '') {
-    const error = new Error('Phone number is required');
-    error.userMessage = 'Please enter a phone number.';
-    throw error;
+    throwValidationError('Phone number is required', 'Please enter a phone number.');
   }
 
   phone = phone.trim();
 
   if (phone.length > 20) {
-    const error = new Error('Invalid phone number length');
-    error.userMessage = 'Please enter a valid phone number.';
-    throw error;
+    throwValidationError('Invalid phone number length', 'Please enter a valid phone number.');
   }
 
   // Allow digits, spaces, dashes, parentheses, and plus sign
   if (!/^[\d\s\-\(\)\+]+$/.test(phone)) {
-    const error = new Error('Invalid phone number format');
-    error.userMessage = 'Please enter a valid phone number.';
-    throw error;
+    throwValidationError('Invalid phone number format', 'Please enter a valid phone number.');
   }
 
   // Count actual digits (minimum 8 for valid NZ phone numbers)
   const digitCount = (phone.match(/\d/g) || []).length;
   if (digitCount < 8) {
-    const error = new Error('Phone number too short');
-    error.userMessage = 'Please enter a valid phone number (minimum 8 digits).';
-    throw error;
+    throwValidationError('Phone number too short', 'Please enter a valid phone number (minimum 8 digits).');
   }
 
   return escapeHtml(phone);
@@ -342,9 +333,7 @@ function validatePhone(phone) {
  */
 function validateURL(url) {
   if (!url || url.trim() === '') {
-    const error = new Error('Store URL is required');
-    error.userMessage = 'Please enter your store URL.';
-    throw error;
+    throwValidationError('Store URL is required', 'Please enter your store URL.');
   }
 
   url = url.trim();
@@ -355,24 +344,18 @@ function validateURL(url) {
   }
 
   if (url.length > CONFIG.MAX_URL_LENGTH) {
-    const error = new Error('URL is too long');
-    error.userMessage = 'Store URL exceeds maximum length.';
-    throw error;
+    throwValidationError('URL is too long', 'Store URL exceeds maximum length.');
   }
 
   if (!REGEX.URL.test(url)) {
-    const error = new Error('Invalid URL format');
-    error.userMessage = 'Please enter a valid store URL.';
-    throw error;
+    throwValidationError('Invalid URL format', 'Please enter a valid store URL.');
   }
 
   // Check for blocked patterns
   const lowerUrl = url.toLowerCase();
   for (const pattern of BLOCKED_PATTERNS) {
     if (lowerUrl.includes(pattern)) {
-      const error = new Error('Blocked URL pattern detected');
-      error.userMessage = 'Invalid store URL.';
-      throw error;
+      throwValidationError('Blocked URL pattern detected', 'Invalid store URL.');
     }
   }
 
@@ -384,25 +367,19 @@ function validateURL(url) {
  */
 function validateAudioData(audioData) {
   if (!audioData || audioData.trim() === '') {
-    const error = new Error('Audio data is empty');
-    error.userMessage = 'Voice note is empty.';
-    throw error;
+    throwValidationError('Audio data is empty', 'Voice note is empty.');
   }
 
   // Check if it's base64 encoded
   if (!audioData.startsWith('data:audio/')) {
-    const error = new Error('Invalid audio format');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
+    throwValidationError('Invalid audio format', 'Invalid voice note format.');
   }
 
   // Estimate file size (base64 is ~33% larger than original)
   // Add null check for split result to handle malformed data
   const splitData = audioData.split(',');
   if (splitData.length < 2 || !splitData[1]) {
-    const error = new Error('Malformed audio data');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
+    throwValidationError('Malformed audio data', 'Invalid voice note format.');
   }
 
   const base64Length = splitData[1].length;
@@ -410,25 +387,19 @@ function validateAudioData(audioData) {
   const estimatedSizeMB = estimatedSizeBytes / (1024 * 1024);
 
   if (estimatedSizeMB > CONFIG.MAX_AUDIO_SIZE_MB) {
-    const error = new Error('Audio file too large');
-    error.userMessage = 'Voice note exceeds 10MB limit.';
-    throw error;
+    throwValidationError('Audio file too large', 'Voice note exceeds 10MB limit.');
   }
 
   // Validate MIME type
   const semicolonIndex = audioData.indexOf(';');
   if (semicolonIndex === -1) {
-    const error = new Error('Invalid audio data format');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
+    throwValidationError('Invalid audio data format', 'Invalid voice note format.');
   }
 
   const mimeType = audioData.substring(5, semicolonIndex);
   const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg'];
   if (!allowedTypes.includes(mimeType)) {
-    const error = new Error('Invalid audio MIME type');
-    error.userMessage = 'Invalid voice note format.';
-    throw error;
+    throwValidationError('Invalid audio MIME type', 'Invalid voice note format.');
   }
 
   return audioData; // Return full base64 string for storage
@@ -573,19 +544,22 @@ function getOrCreateDebugFolder() {
 }
 
 /**
- * Save debug log to a file in the debug folder
- * @param {Array} debugLog - Array of log messages
- * @param {string} prefix - Filename prefix
+ * Save debug log to a file in the debug folder.
+ * Automatically appends a timestamp to the filename.
+ * @param {string} prefix - Filename prefix (e.g., 'DOPOST_DEBUG', 'TESTIMONIAL_JOB_CHECK')
+ * @param {Array|string} content - Log content: array of lines (joined with \n) or a string
  */
-function saveDebugLog(debugLog, prefix) {
+function saveDebugLog(prefix, content) {
+  if (IS_PRODUCTION) return;
   try {
     const folder = getOrCreateDebugFolder();
-    const fileName = prefix + '.txt';
-    folder.createFile(fileName, debugLog.join('\n'));
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const text = Array.isArray(content) ? content.join('\n') : String(content);
+    folder.createFile(prefix + '_' + ts + '.txt', text);
   } catch (e) {
-    // If even this fails, try writing to Drive root
     try {
-      DriveApp.createFile('DEBUG_FALLBACK_' + new Date().getTime() + '.txt', debugLog.join('\n') + '\nError: ' + e.toString());
+      const text = Array.isArray(content) ? content.join('\n') : String(content);
+      DriveApp.createFile('DEBUG_FALLBACK_' + new Date().getTime() + '.txt', text + '\nError: ' + e.toString());
     } catch (e2) { /* ignore */ }
   }
 }
