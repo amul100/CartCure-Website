@@ -5,8 +5,24 @@
 - **Local Path**: c:\Users\andre\OneDrive\Documents\CartCure\Cartcure-website
 - **Main Branch**: main
 
+## Apps Script File Structure
+The Job Management System is split across multiple `.gs` files in `apps-script/`. All files share the same global namespace (Apps Script natively supports this). Cross-file constants use `var` instead of `const` for global visibility.
+
+| File | Contents |
+|------|----------|
+| **Code.gs** | Config constants (`IS_PRODUCTION`, `CONFIG`, `VALIDATION_CONFIG`, `REGEX`), `doPost()`, `doGet()`, testimonials, quote acceptance, payment confirmation, `respondJson()` helper |
+| **BackgroundTasks.gs** | Background task queue, processing, retry logic, diagnostics, signatures folder |
+| **Security.gs** | Validation, rate limiting, input sanitization, `escapeHtml()`, `saveToSheet()`, debug helpers (`saveDebugLog()`, `throwValidationError()`) |
+| **Email.gs** | `EMAIL_COLORS`, `renderEmailTemplate()`, `wrapEmailHtml()`, deferred email queue, all notification email functions |
+| **Config.gs** | `JOB_CONFIG`, `SHEETS`, `COLUMN_CONFIG`, `EDITABLE_COLUMNS`, status/payment constants, colors, typography, cache system, settings dialog |
+| **Columns.gs** | Column helpers (`getColIndex`, `getColLetter`, `buildRowFromConfig`), row insertion, sheet setup/formatting, migration utilities |
+| **Menu.gs** | `onOpen()`, `buildMenu()`, `onEdit()`, actions dialogs, multi-row batch support, silent batch helpers, status menu functions, trigger helpers |
+| **Setup.gs** | Setup functions, sheet styling, financial reports, data archival |
+| **Operations.gs** | Helper functions, dropdowns, selection helpers, job management, refund processing, client management, quote functions, invoice functions, PDF generation |
+| **Tests.gs** | Dashboard/reporting, hard reset, test data generation, test jobs, test emails |
+
 ## Job Management System Documentation Rule
-**IMPORTANT**: Whenever changes are made to the Job Management System (apps-script/Code.gs), you MUST update the CartCure_Job_Management_Guide.html file to reflect the new functionality, features, or workflow changes.
+**IMPORTANT**: Whenever changes are made to the Job Management System (`apps-script/*.gs` files), you MUST update the CartCure_Job_Management_Guide.html file to reflect the new functionality, features, or workflow changes.
 
 This includes:
 - New features or menu items
@@ -18,22 +34,22 @@ This includes:
 The guide must stay synchronized with the actual implementation to ensure users have accurate documentation.
 
 ## Email Template System
-**IMPORTANT**: Email templates are stored as separate `.html` files in the `apps-script/` folder (same folder as Code.gs). **NEVER write inline HTML in Code.gs** - always create or use separate template files.
+**IMPORTANT**: Email templates are stored as separate `.html` files in the `apps-script/` folder. **NEVER write inline HTML in `.gs` files** - always create or use separate template files.
 
 ### How Templates Work
-1. Templates are `.html` files stored alongside Code.gs in `apps-script/` (e.g., `email-invoice.html`, `email-balance-invoice.html`)
-2. Google Apps Script bundles all files in the same folder - Code.gs references templates by filename (without extension)
-3. Code.gs loads templates using `renderEmailTemplate('template-name', data)` which calls `HtmlService.createTemplateFromFile()`
+1. Templates are `.html` files stored in `apps-script/` (e.g., `email-invoice.html`, `email-balance-invoice.html`)
+2. Google Apps Script bundles all files in the same folder - templates are referenced by filename (without extension)
+3. Email.gs loads templates using `renderEmailTemplate('template-name', data)` which calls `HtmlService.createTemplateFromFile()`
 4. Template syntax:
    - `<?= variable ?>` - Escaped output (safe for user input)
    - `<?!= htmlVariable ?>` - Unescaped HTML output (use for pre-built HTML snippets)
-   - `<?= colors.brandGreen ?>` - Access to EMAIL_COLORS object (always available)
+   - `<?= colors.brandGreen ?>` - Access to `EMAIL_COLORS` object (defined in Email.gs, always available)
 
 ### Creating New Email Templates
 When adding a new email type:
-1. Create a new `.html` file in `apps-script/` folder (same folder as Code.gs)
+1. Create a new `.html` file in `apps-script/` folder
 2. Use existing templates as reference for structure and styling
-3. Call it from Code.gs with: `renderEmailTemplate('email-new-type', { data })` - the template name matches the filename without `.html`
+3. Call from any `.gs` file with: `renderEmailTemplate('email-new-type', { data })` - the template name matches the filename without `.html`
 4. Update the template mapping table below
 
 ### Current Template Files
@@ -55,10 +71,10 @@ When adding a new email type:
 | receipt-pdf.html | generateReceiptPDF(), renderReceiptPDFHtml() | Print-optimized payment receipt PDF template |
 
 ## Column Configuration System
-**IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object at the top of Code.gs. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.
+**IMPORTANT**: All sheet columns are defined in a single `COLUMN_CONFIG` object in `apps-script/Config.gs`. To reorder columns or add new ones, ONLY modify this config - no other code changes needed.
 
 ### How to Reorder Columns
-1. Find `COLUMN_CONFIG` in Code.gs (around line 2300)
+1. Find `COLUMN_CONFIG` in Config.gs
 2. Move the column object to its new position in the array
 3. Run Setup from the CartCure menu - migration happens automatically
 
@@ -83,7 +99,7 @@ Add a new object to the appropriate sheet's array in `COLUMN_CONFIG`:
 }
 ```
 
-### Helper Functions
+### Helper Functions (in Columns.gs)
 - `getColIndex('JOBS', 'Column Name')` - Returns 1-based column number
 - `getColLetter('JOBS', 'Column Name')` - Returns column letter (A, B, ... AA)
 - `buildRowFromConfig('JOBS', { 'Column': value })` - Builds row array in correct order
@@ -105,71 +121,46 @@ The `🛒 CartCure` menu offers two ways to perform actions:
 | **Submenu Items** | `📥 Submissions`, `📋 Jobs`, `💰 Quotes`, `🧾 Invoices`, `👥 Clients` | Direct access to specific actions (e.g., `▶️ Start Work`, `📤 Send Quote`). Best for power users. |
 
 ### Sync Requirement
-**Both systems must stay identical.** When modifying actions, update:
-- **Actions Dialog:** `getValidJobActions()`, `getValidSubmissionActions()`, `getValidInvoiceActions()`, `getValidClientActions()` (~line 4542-4677)
-- **Submenus:** `onOpen()` menu builder (~line 4315)
+**Both systems must stay identical.** When modifying actions, update in **Menu.gs**:
+- **Actions Dialog:** `getValidJobActions()`, `getValidSubmissionActions()`, `getValidInvoiceActions()`, `getValidClientActions()`
+- **Submenus:** `onOpen()` menu builder
 
 Both call the same underlying `show...Dialog()` functions.
 
 ## Apps Script Debugging
-**IMPORTANT**: The only way to see debug output from Code.gs is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
+**IMPORTANT**: The only way to see debug output from `.gs` files is to write to a text file in Google Drive. `Logger.log()` is NOT visible to the user.
 
 ### How to add debug logging:
-1. Create a debug log array to collect messages:
-   ```javascript
-   const debugLog = [];
-   debugLog.push('=== Debug Title ===');
-   debugLog.push('Variable: ' + someValue);
-   ```
-
-2. Save the debug file using the helper function:
-   ```javascript
-   if (!IS_PRODUCTION) {
-     saveTestimonialDebugFile(identifier, debugLog);
-   }
-   ```
-
-3. Or use the generic pattern:
-   ```javascript
-   const folder = getOrCreateDebugFolder();
-   const fileName = 'DEBUG_' + timestamp + '.txt';
-   folder.createFile(fileName, debugLog.join('\n'));
-   ```
-
-4. Debug files are saved to **"CartCure Debug Logs"** folder in Google Drive
-
-5. The `IS_PRODUCTION` flag (set at top of Code.gs) controls whether debug files are created
-
-**Remember**: After updating Code.gs, push changes with git (clasp is linked and runs automatically).
-
-### Error logging pattern:
-When debugging functions that might fail early, add debug file creation at the VERY START of the function, before any other code:
+Use the `saveDebugLog()` helper (defined in Security.gs). It automatically handles timestamps, `IS_PRODUCTION` checks, and error fallback:
 
 ```javascript
-function someFunction(data) {
-  // Create debug file FIRST before anything else can fail
-  try {
-    const debugFolder = getOrCreateDebugFolder();
-    const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    const earlyDebug = [
-      '=== Function Name Early Debug ===',
-      'Timestamp: ' + ts,
-      'Data received: ' + JSON.stringify(data),
-      'Key variable: ' + someVar
-    ];
-    debugFolder.createFile('FUNCTION_EARLY_' + ts + '.txt', earlyDebug.join('\n'));
-  } catch (earlyDebugError) {
-    // If even this fails, try writing to Drive root
-    try {
-      DriveApp.createFile('ERROR_' + new Date().getTime() + '.txt', 'Debug failed: ' + earlyDebugError.toString());
-    } catch (e) { /* ignore */ }
-  }
+// Simple string debug
+saveDebugLog('MY_FUNCTION', 'Variable: ' + someValue);
 
-  // Rest of function...
-}
+// Array of debug messages (joined with newlines)
+const debugLog = [];
+debugLog.push('=== Debug Title ===');
+debugLog.push('Variable: ' + someValue);
+debugLog.push('Data: ' + JSON.stringify(data));
+saveDebugLog('MY_FUNCTION', debugLog);
 ```
 
-This ensures you get a debug file even if the function fails immediately.
+**Key points:**
+- `saveDebugLog(prefix, content)` - prefix becomes the filename prefix, content can be a string or array
+- Automatically skipped when `IS_PRODUCTION = true` (set in Code.gs)
+- Auto-generates timestamps in filenames
+- Falls back to Drive root if debug folder creation fails
+- Debug files are saved to **"CartCure Debug Logs"** folder in Google Drive
+
+**Remember**: After updating any `.gs` file, push changes with git (clasp is linked and runs automatically).
+
+### Helper Functions (in Security.gs)
+- `saveDebugLog(prefix, content)` - Write debug file with auto-timestamp and IS_PRODUCTION guard
+- `throwValidationError(internalMsg, userMsg)` - Create and throw error with `.userMessage` property
+- `getOrCreateDebugFolder()` - Get/create the "CartCure Debug Logs" Drive folder
+
+### JSON Response Helper (in Code.gs)
+- `respondJson(data)` - Wraps `ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON)`
 
 ## Background Task System & Diagnostics
 Quote acceptance, deposit invoices, and other async operations use a background task queue processed every minute by a time-based trigger.
@@ -205,11 +196,11 @@ The quote acceptance flow logs:
 These appear in Apps Script execution logs.
 
 ## Apps Script Deployment
-**IMPORTANT**: After making changes to Code.gs:
+**IMPORTANT**: After making changes to any `.gs` file in `apps-script/`:
 
 1. **For menu functions, triggers, and spreadsheet UI code**: Just git push. Clasp is linked and runs automatically. Changes take effect immediately.
 
-2. **For the web app endpoint (`doPost()` or `doGet()`)**: After git push, you MUST also deploy a new version using clasp:
+2. **For the web app endpoint (`doPost()` or `doGet()` in Code.gs)**: After git push, you MUST also deploy a new version using clasp:
    ```bash
    cd apps-script && npx @google/clasp deploy -i AKfycbyBjf9TKEogrSWp5cLxs4tZWuGbIdWUYGn5oDGIBVWvVQWggNDjxZzgugrgo0s8LZ4stg -d "Description of changes"
    ```

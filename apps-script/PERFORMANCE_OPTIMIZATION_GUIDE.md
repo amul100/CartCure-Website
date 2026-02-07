@@ -3,28 +3,28 @@
 ## PROMPT FOR NEW CONTEXT - COPY THIS:
 
 ```
-Continue implementing performance optimizations in apps-script/Code.gs.
+Continue implementing performance optimizations in the apps-script/*.gs files.
 
 Read apps-script/PERFORMANCE_OPTIMIZATION_GUIDE.md for full details.
 
 COMPLETED:
 - Settings caching (already worked)
-- Column index caching in refreshDashboard()
-- Column index caching in refreshAnalytics() with consolidated single metrics loop
-- Column index caching in showOverdueJobs(), showOutstandingPayments(), showMonthlySummary()
-- autoSendQuoteReminders(), autoSendInvoiceReminders(), autoSendOverdueInvoices() already had proper caching
+- Column index caching in refreshDashboard() (Tests.gs)
+- Column index caching in refreshAnalytics() with consolidated single metrics loop (Setup.gs)
+- Column index caching in showOverdueJobs(), showOutstandingPayments(), showMonthlySummary() (Setup.gs)
+- autoSendQuoteReminders(), autoSendInvoiceReminders(), autoSendOverdueInvoices() already had proper caching (Operations.gs)
 
 TODO (if needed):
 - Batch setValue operations in updateAllSLAStatus() (more complex, low priority)
 - TextFinder for invoice lookups (if performance issues persist)
 
-Pattern to follow: See refreshDashboard() around line 13121 or refreshAnalytics() around line 5435 for examples of column caching.
+Pattern to follow: See refreshDashboard() in Tests.gs or refreshAnalytics() in Setup.gs for examples of column caching.
 ```
 
 ---
 
 ## Purpose
-This document describes caching optimizations to implement in `apps-script/Code.gs` to make operations run faster. Use this as a prompt for Claude to continue implementation.
+This document describes caching optimizations implemented across the `apps-script/*.gs` files to make operations run faster. Use this as a prompt for Claude to continue implementation.
 
 ---
 
@@ -35,18 +35,18 @@ Instead of loading the same data multiple times during one operation, load it on
 
 ## Existing Cache Infrastructure
 
-The code ALREADY has a caching system at lines ~2300-2390:
+The code ALREADY has a caching system in Config.gs:
 
 ```javascript
-// Cache object (line ~2309)
-const _cache = {
+// Cache object (in Config.gs)
+var _cache = {
   spreadsheet: null,
   sheets: {},
   settings: null,
   settingsLoaded: false
 };
 
-// getAllSettings() - loads settings once, caches them (line ~2356)
+// getAllSettings() - loads settings once, caches them (in Config.gs)
 function getAllSettings() {
   if (_cache.settingsLoaded) {
     return _cache.settings;
@@ -54,7 +54,7 @@ function getAllSettings() {
   // ... loads from sheet, caches result
 }
 
-// getSettingCached() - uses the cache (line ~2374)
+// getSettingCached() - uses the cache (in Config.gs)
 function getSettingCached(settingName) {
   const settings = getAllSettings();
   return settings.hasOwnProperty(settingName) ? settings[settingName] : null;
@@ -70,7 +70,7 @@ function getSettingCached(settingName) {
 **Status:** Already implemented! `getSetting()` already calls `getSettingCached()` which uses the cache.
 
 ```javascript
-// Line 7228 - getSetting already uses cache
+// getSetting already uses cache (in Operations.gs)
 function getSetting(settingName) {
   return getSettingCached(settingName);
 }
@@ -83,7 +83,7 @@ No changes needed for settings caching.
 ## OPTIMIZATION 2: Replace getSetting() with getSettingCached()
 
 ### Files to Search
-- `apps-script/Code.gs`
+- All `apps-script/*.gs` files (primarily Operations.gs, Email.gs, Setup.gs)
 
 ### How to Find
 Search for: `getSetting('` (with single quote)
@@ -140,13 +140,13 @@ for (let i = 1; i < data.length; i++) {
 ```
 
 ### Functions to Update:
-1. `refreshDashboard()` (~line 13122+)
-2. `refreshAnalytics()` (~line 5435+)
-3. `autoSendQuoteReminders()` (~line 10673+)
-4. `autoSendInvoiceReminders()` (~line 12059+)
-5. `autoSendOverdueInvoices()` (~line 12268+)
-6. `archiveOldJobs()` (~line 6000+)
-7. `archiveOldActivity()` (~line 6150+)
+1. `refreshDashboard()` (Tests.gs) - DONE
+2. `refreshAnalytics()` (Setup.gs) - DONE
+3. `autoSendQuoteReminders()` (Operations.gs) - already had caching
+4. `autoSendInvoiceReminders()` (Operations.gs) - already had caching
+5. `autoSendOverdueInvoices()` (Operations.gs) - already had caching
+6. `archiveOldJobs()` (Setup.gs)
+7. `archiveOldActivity()` (Setup.gs)
 8. Any function that loops through sheet data with indexOf inside
 
 ---
@@ -154,9 +154,9 @@ for (let i = 1; i < data.length; i++) {
 ## OPTIMIZATION 3: Consolidate Analytics Loops
 
 ### Problem
-`refreshAnalytics()` loops through jobs data 5 separate times to calculate different metrics.
+`refreshAnalytics()` (in Setup.gs) loops through jobs data 5 separate times to calculate different metrics.
 
-### Current Pattern (~line 5435-5520):
+### Current Pattern (Setup.gs - now consolidated):
 ```javascript
 // Loop 1: Calculate revenue
 jobs.forEach(row => { if (paid) totalRevenue += amount; });
@@ -215,9 +215,9 @@ jobs.forEach(row => {
 ## OPTIMIZATION 4: Batch setValue Operations
 
 ### Problem
-`updateAllSLAStatus()` calls individual `setValue()` inside a loop.
+`updateAllSLAStatus()` (in Tests.gs) calls individual `setValue()` inside a loop.
 
-### Current Pattern (~line 13353):
+### Current Pattern (Tests.gs):
 ```javascript
 for (let i = 0; i < updates.length; i++) {
   sheet.getRange(row, col1).setValue(updates[i].daysSince);
@@ -247,9 +247,9 @@ if (updates.length > 0) {
 ## OPTIMIZATION 5: Use TextFinder for Invoice Lookups
 
 ### Problem
-`getInvoicesByJobNumber()` loads ALL invoices then loops through them.
+`getInvoicesByJobNumber()` (in Operations.gs) loads ALL invoices then loops through them.
 
-### Current Pattern (~line 11063):
+### Current Pattern (Operations.gs):
 ```javascript
 const allData = sheet.getDataRange().getValues();  // Load ALL invoices
 for (let i = 1; i < allData.length; i++) {
@@ -304,11 +304,15 @@ for (const match of matches) {
 
 - The cache clears automatically between operations (safe)
 - Don't cache data that changes DURING an operation (rare)
-- All changes should be in `apps-script/Code.gs`
+- Changes may be in any `apps-script/*.gs` file depending on the function location
 - After changes, run `git push` (clasp auto-deploys for menu functions)
-- If doPost functions are modified, also run clasp deploy
+- If doPost functions are modified (Code.gs), also run clasp deploy
 
 ---
 
-## Current File Location
-`c:\Users\andre\OneDrive\Documents\CartCure\Cartcure-website\apps-script\Code.gs`
+## File Locations
+- **Cache system**: `apps-script/Config.gs` (`_cache` object, `getAllSettings()`, `getSettingCached()`)
+- **Dashboard**: `apps-script/Tests.gs` (`refreshDashboard()`, `updateAllSLAStatus()`)
+- **Analytics/Reports**: `apps-script/Setup.gs` (`refreshAnalytics()`, `showOverdueJobs()`, etc.)
+- **Auto-reminders**: `apps-script/Operations.gs` (`autoSendQuoteReminders()`, etc.)
+- **Invoice lookups**: `apps-script/Operations.gs` (`getInvoicesByJobNumber()`)

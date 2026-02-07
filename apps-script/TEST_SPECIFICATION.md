@@ -576,7 +576,7 @@ curl -s -X POST "$WEBAPP_URL" \
 
 ---
 
-## Existing Test Functions in Code.gs
+## Existing Test Functions in Tests.gs
 
 The following test functions already exist and can be run from the CartCure menu:
 
@@ -590,5 +590,5 @@ The following test functions already exist and can be run from the CartCure menu
 
 ---
 
-*Generated: 2025-01-28*
-*Source: Code.gs analysis + JOB_FLOW_CHART.txt*
+*Generated: 2025-01-28, Updated: 2026-02-07*
+*Source: apps-script/*.gs analysis + JOB_FLOW_CHART.txt*

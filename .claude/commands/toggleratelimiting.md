@@ -30,14 +30,14 @@ Comment out the recording around line 522:
 
 ### 2. Server-Side (apps-script/Code.gs)
 
-Comment out the check around line 142:
+Comment out the check around line 244:
 
 ```javascript
 // TEMPORARILY DISABLED FOR TESTING
 // checkServerRateLimit(emailForRateLimit);
 ```
 
-Comment out the recording around line 160:
+Comment out the recording around line 264:
 
 ```javascript
 // TEMPORARILY DISABLED FOR TESTING
@@ -58,7 +58,7 @@ Add/remove the `//` comment markers from all four locations above:
 ## Files Affected
 
 - **Client-side**: `/script.js` (lines ~367, ~522)
-- **Server-side**: `/apps-script/Code.gs` (lines ~142, ~160)
+- **Server-side**: `/apps-script/Code.gs` (lines ~244, ~264)
 - **Config**: `/security-config.js` (defines limits, don't modify)
 
 Push changes to git (code.gs will be automatically updated after git push)
