@@ -1221,7 +1221,7 @@ function buildMultiRowActionsDialogHtml(entityType, entityIds, entities, statusB
       `;
     } else {
       // Partial action - pass only valid entity IDs for this action
-      const validIdsJson = JSON.stringify(action.validEntityIds || []);
+      const validIdsJson = JSON.stringify(action.validEntityIds || []).replace(/"/g, '&quot;');
       partialButtonsHtml += `
         <button class="action-btn action-partial" onclick="executeBatchAction('${entityType}', '${action.id}', ${validIdsJson})">
           <span class="action-icon">${action.icon}</span>
