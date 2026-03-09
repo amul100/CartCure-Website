@@ -637,20 +637,70 @@
             font-size: 1.5rem;
         }
 
-        .strava-embeds {
+        .activity-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding: 12px 0;
+            gap: 10px;
         }
 
-        .strava-embeds iframe {
-            border: none;
-            border-radius: 8px;
-            width: 100%;
+        .activity-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--dark-border);
+            border-radius: 10px;
+            padding: 16px;
+            transition: border-color 0.3s ease;
         }
 
-        .strava-empty {
+        .activity-item:hover {
+            border-color: var(--gold-dark);
+        }
+
+        .activity-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .activity-item-name {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        .activity-item-date {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .activity-stats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .activity-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .activity-stat-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+
+        .activity-stat-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .garmin-empty {
             background: rgba(201, 168, 76, 0.05);
             border: 1px dashed var(--dark-border);
             border-radius: 12px;
@@ -659,18 +709,18 @@
             color: var(--text-muted);
         }
 
-        .strava-empty-icon {
+        .garmin-empty-icon {
             font-size: 2rem;
             margin-bottom: 8px;
             opacity: 0.5;
         }
 
-        .strava-empty p {
+        .garmin-empty p {
             font-size: 0.85rem;
             line-height: 1.6;
         }
 
-        .strava-badge {
+        .garmin-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -681,7 +731,15 @@
             font-size: 0.7rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: #FC4C02;
+            color: var(--gold);
+        }
+
+        .last-synced {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
         }
 
         /* ===== TRAINING CHART PLACEHOLDER ===== */
@@ -1198,12 +1256,12 @@
         </div>
     </section>
 
-    <!-- Strava Training Data -->
+    <!-- Garmin Training Data -->
     <section class="garmin-section" id="training">
         <div class="section-container">
             <div class="section-label reveal">Training Data</div>
-            <h2 class="section-title reveal">Strava Feed</h2>
-            <p class="section-subtitle reveal">Latest training activities from the team. Synced from Garmin watches via Strava.</p>
+            <h2 class="section-title reveal">Garmin Connect</h2>
+            <p class="section-subtitle reveal">Latest training activities synced automatically from the team's Garmin watches.</p>
 
             <div class="garmin-grid reveal">
                 <div class="garmin-card">
@@ -1211,13 +1269,11 @@
                         <div class="garmin-card-title">Andrew &mdash; Cycling</div>
                         <div class="garmin-card-icon">&#128692;</div>
                     </div>
-                    <div class="strava-embeds" id="strava-andrew-cycling">
-                        <!-- To add a ride: copy the activity ID from the Strava URL and add it to the STRAVA_ACTIVITIES array in the JS below -->
-                    </div>
-                    <div class="strava-empty" id="strava-andrew-cycling-empty">
-                        <div class="strava-empty-icon">&#128692;</div>
-                        <p>No rides logged yet.<br>Activities will appear here once synced from Strava.</p>
-                        <span class="strava-badge">Powered by Strava</span>
+                    <div class="activity-list" id="garmin-andrew-cycling"></div>
+                    <div class="garmin-empty" id="garmin-andrew-cycling-empty">
+                        <div class="garmin-empty-icon">&#128692;</div>
+                        <p>No rides logged yet.<br>Activities will appear here once synced from Garmin.</p>
+                        <span class="garmin-badge">Synced from Garmin</span>
                     </div>
                 </div>
 
@@ -1226,12 +1282,11 @@
                         <div class="garmin-card-title">Amanda &mdash; Swimming</div>
                         <div class="garmin-card-icon">&#127946;</div>
                     </div>
-                    <div class="strava-embeds" id="strava-amanda-swimming">
-                    </div>
-                    <div class="strava-empty" id="strava-amanda-swimming-empty">
-                        <div class="strava-empty-icon">&#127946;</div>
-                        <p>No swims logged yet.<br>Activities will appear here once synced from Strava.</p>
-                        <span class="strava-badge">Powered by Strava</span>
+                    <div class="activity-list" id="garmin-amanda-swimming"></div>
+                    <div class="garmin-empty" id="garmin-amanda-swimming-empty">
+                        <div class="garmin-empty-icon">&#127946;</div>
+                        <p>No swims logged yet.<br>Activities will appear here once synced from Garmin.</p>
+                        <span class="garmin-badge">Synced from Garmin</span>
                     </div>
                 </div>
 
@@ -1240,15 +1295,16 @@
                         <div class="garmin-card-title">Amanda &mdash; Running</div>
                         <div class="garmin-card-icon">&#127939;</div>
                     </div>
-                    <div class="strava-embeds" id="strava-amanda-running">
-                    </div>
-                    <div class="strava-empty" id="strava-amanda-running-empty">
-                        <div class="strava-empty-icon">&#127939;</div>
-                        <p>No runs logged yet.<br>Activities will appear here once synced from Strava.</p>
-                        <span class="strava-badge">Powered by Strava</span>
+                    <div class="activity-list" id="garmin-amanda-running"></div>
+                    <div class="garmin-empty" id="garmin-amanda-running-empty">
+                        <div class="garmin-empty-icon">&#127939;</div>
+                        <p>No runs logged yet.<br>Activities will appear here once synced from Garmin.</p>
+                        <span class="garmin-badge">Synced from Garmin</span>
                     </div>
                 </div>
             </div>
+
+            <div class="last-synced" id="lastSynced"></div>
 
             <!-- Training Volume Chart -->
             <div class="training-chart reveal">
@@ -1408,51 +1464,85 @@
             setInterval(updateCountdown, 1000);
 
             // =============================================
-            // STRAVA ACTIVITIES - Add activity IDs here!
+            // GARMIN CONNECT - Auto-synced activity data
             // =============================================
-            // How to add activities:
-            //   1. Open the activity on Strava (e.g. https://www.strava.com/activities/1234567890)
-            //   2. Copy the number from the URL (1234567890)
-            //   3. Add it to the appropriate array below
-            //   Activities show newest first (top of list = most recent)
-            var STRAVA_ACTIVITIES = {
-                'andrew-cycling': [
-                    // e.g. 1234567890,
-                ],
-                'amanda-swimming': [
-                    // e.g. 1234567890,
-                ],
-                'amanda-running': [
-                    // e.g. 1234567890,
-                ]
-            };
+            function renderActivity(activity, type) {
+                var item = document.createElement('div');
+                item.className = 'activity-item';
 
-            // Render Strava embeds using official embed script
-            Object.keys(STRAVA_ACTIVITIES).forEach(function(key) {
-                var ids = STRAVA_ACTIVITIES[key];
-                var container = document.getElementById('strava-' + key);
-                var emptyMsg = document.getElementById('strava-' + key + '-empty');
-
-                if (ids.length > 0) {
-                    emptyMsg.style.display = 'none';
-                    ids.forEach(function(activityId) {
-                        var placeholder = document.createElement('div');
-                        placeholder.className = 'strava-embed-placeholder';
-                        placeholder.setAttribute('data-embed-type', 'activity');
-                        placeholder.setAttribute('data-embed-id', activityId);
-                        placeholder.setAttribute('data-style', 'standard');
-                        container.appendChild(placeholder);
-                    });
+                var dateStr = activity.date;
+                if (dateStr) {
+                    var d = new Date(dateStr + 'T00:00:00');
+                    dateStr = d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
                 }
-            });
 
-            // Load Strava embed script (renders all placeholders)
-            var hasActivities = Object.keys(STRAVA_ACTIVITIES).some(function(k) { return STRAVA_ACTIVITIES[k].length > 0; });
-            if (hasActivities) {
-                var stravaScript = document.createElement('script');
-                stravaScript.src = 'https://strava-embeds.com/embed.js';
-                document.body.appendChild(stravaScript);
+                var statsHtml = '';
+                if (activity.distance) {
+                    statsHtml += '<div class="activity-stat"><div class="activity-stat-value">' + activity.distance + ' km</div><div class="activity-stat-label">Distance</div></div>';
+                }
+                if (activity.duration) {
+                    statsHtml += '<div class="activity-stat"><div class="activity-stat-value">' + activity.duration + '</div><div class="activity-stat-label">Duration</div></div>';
+                }
+                if (activity.pace) {
+                    statsHtml += '<div class="activity-stat"><div class="activity-stat-value">' + activity.pace + '</div><div class="activity-stat-label">' + (type === 'cycling' ? 'Avg Speed' : 'Pace') + '</div></div>';
+                }
+                if (activity.avgHR) {
+                    statsHtml += '<div class="activity-stat"><div class="activity-stat-value">' + activity.avgHR + ' bpm</div><div class="activity-stat-label">Avg HR</div></div>';
+                }
+                if (activity.elevation && type === 'cycling') {
+                    statsHtml += '<div class="activity-stat"><div class="activity-stat-value">' + activity.elevation + ' m</div><div class="activity-stat-label">Elevation</div></div>';
+                }
+
+                item.innerHTML = '<div class="activity-item-header">' +
+                    '<div class="activity-item-name">' + activity.name + '</div>' +
+                    '<div class="activity-item-date">' + dateStr + '</div>' +
+                    '</div>' +
+                    '<div class="activity-stats">' + statsHtml + '</div>';
+
+                return item;
             }
+
+            function loadGarminData() {
+                fetch('garmin-data.json')
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        var sections = [
+                            { athlete: 'andrew', type: 'cycling' },
+                            { athlete: 'amanda', type: 'swimming' },
+                            { athlete: 'amanda', type: 'running' }
+                        ];
+
+                        sections.forEach(function(s) {
+                            var activities = (data[s.athlete] && data[s.athlete][s.type]) || [];
+                            var container = document.getElementById('garmin-' + s.athlete + '-' + s.type);
+                            var emptyMsg = document.getElementById('garmin-' + s.athlete + '-' + s.type + '-empty');
+
+                            if (activities.length > 0) {
+                                emptyMsg.style.display = 'none';
+                                activities.forEach(function(act) {
+                                    container.appendChild(renderActivity(act, s.type));
+                                });
+                            }
+                        });
+
+                        // Show last synced time
+                        if (data.lastUpdated) {
+                            var syncDate = new Date(data.lastUpdated);
+                            var el = document.getElementById('lastSynced');
+                            if (el) {
+                                el.textContent = 'Last synced: ' + syncDate.toLocaleString('en-NZ', {
+                                    day: 'numeric', month: 'short', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                });
+                            }
+                        }
+                    })
+                    .catch(function(err) {
+                        console.log('Garmin data not yet available:', err);
+                    });
+            }
+
+            loadGarminData();
 
             // Training chart - placeholder data (weeks of sample training)
             var weeks = [

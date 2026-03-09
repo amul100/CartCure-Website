@@ -1,0 +1,43 @@
+name: Sync Garmin Activities
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install garminconnect
+
+      - name: Fetch Garmin activities
+        env:
+          GARMIN_EMAIL_ANDREW: ${{ secrets.GARMIN_EMAIL_ANDREW }}
+          GARMIN_PASSWORD_ANDREW: ${{ secrets.GARMIN_PASSWORD_ANDREW }}
+          GARMIN_EMAIL_AMANDA: ${{ secrets.GARMIN_EMAIL_AMANDA }}
+          GARMIN_PASSWORD_AMANDA: ${{ secrets.GARMIN_PASSWORD_AMANDA }}
+        run: python scripts/fetch_garmin.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DoubleAs/garmin-data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-sync Garmin training data"
+            git push
+          fi
