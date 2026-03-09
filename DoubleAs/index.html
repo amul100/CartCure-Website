@@ -637,28 +637,43 @@
             font-size: 1.5rem;
         }
 
-        .garmin-placeholder {
+        .strava-embeds {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px 0;
+        }
+
+        .strava-embeds iframe {
+            border: none;
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .strava-empty {
             background: rgba(201, 168, 76, 0.05);
             border: 1px dashed var(--dark-border);
             border-radius: 12px;
-            padding: 40px 20px;
+            padding: 30px 20px;
             text-align: center;
             color: var(--text-muted);
         }
 
-        .garmin-placeholder-icon {
+        .strava-empty-icon {
             font-size: 2rem;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             opacity: 0.5;
         }
 
-        .garmin-placeholder p {
+        .strava-empty p {
             font-size: 0.85rem;
             line-height: 1.6;
         }
 
-        .garmin-placeholder .connect-label {
-            display: inline-block;
+        .strava-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             margin-top: 12px;
             padding: 6px 16px;
             border: 1px solid var(--dark-border);
@@ -666,7 +681,7 @@
             font-size: 0.7rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: var(--gold);
+            color: #FC4C02;
         }
 
         /* ===== TRAINING CHART PLACEHOLDER ===== */
@@ -1183,12 +1198,12 @@
         </div>
     </section>
 
-    <!-- Garmin / Training Data -->
+    <!-- Strava Training Data -->
     <section class="garmin-section" id="training">
         <div class="section-container">
             <div class="section-label reveal">Training Data</div>
-            <h2 class="section-title reveal">Garmin Connect</h2>
-            <p class="section-subtitle reveal">Live training metrics synced from the team's Garmin watches. Track every swim stroke, pedal revolution, and stride.</p>
+            <h2 class="section-title reveal">Strava Feed</h2>
+            <p class="section-subtitle reveal">Latest training activities from the team. Synced from Garmin watches via Strava.</p>
 
             <div class="garmin-grid reveal">
                 <div class="garmin-card">
@@ -1196,10 +1211,13 @@
                         <div class="garmin-card-title">Andrew &mdash; Cycling</div>
                         <div class="garmin-card-icon">&#128692;</div>
                     </div>
-                    <div class="garmin-placeholder">
-                        <div class="garmin-placeholder-icon">&#9201;</div>
-                        <p>Garmin data will appear here once connected.<br>Weekly distance, avg speed, elevation gain & heart rate zones.</p>
-                        <span class="connect-label">Awaiting Garmin Sync</span>
+                    <div class="strava-embeds" id="strava-andrew-cycling">
+                        <!-- To add a ride: copy the activity ID from the Strava URL and add it to the STRAVA_ACTIVITIES array in the JS below -->
+                    </div>
+                    <div class="strava-empty" id="strava-andrew-cycling-empty">
+                        <div class="strava-empty-icon">&#128692;</div>
+                        <p>No rides logged yet.<br>Activities will appear here once synced from Strava.</p>
+                        <span class="strava-badge">Powered by Strava</span>
                     </div>
                 </div>
 
@@ -1208,10 +1226,12 @@
                         <div class="garmin-card-title">Amanda &mdash; Swimming</div>
                         <div class="garmin-card-icon">&#127946;</div>
                     </div>
-                    <div class="garmin-placeholder">
-                        <div class="garmin-placeholder-icon">&#9201;</div>
-                        <p>Garmin data will appear here once connected.<br>Lap times, SWOLF score, stroke count & distance tracked.</p>
-                        <span class="connect-label">Awaiting Garmin Sync</span>
+                    <div class="strava-embeds" id="strava-amanda-swimming">
+                    </div>
+                    <div class="strava-empty" id="strava-amanda-swimming-empty">
+                        <div class="strava-empty-icon">&#127946;</div>
+                        <p>No swims logged yet.<br>Activities will appear here once synced from Strava.</p>
+                        <span class="strava-badge">Powered by Strava</span>
                     </div>
                 </div>
 
@@ -1220,10 +1240,12 @@
                         <div class="garmin-card-title">Amanda &mdash; Running</div>
                         <div class="garmin-card-icon">&#127939;</div>
                     </div>
-                    <div class="garmin-placeholder">
-                        <div class="garmin-placeholder-icon">&#9201;</div>
-                        <p>Garmin data will appear here once connected.<br>Weekly km, pace trends, cadence & VO2 Max estimates.</p>
-                        <span class="connect-label">Awaiting Garmin Sync</span>
+                    <div class="strava-embeds" id="strava-amanda-running">
+                    </div>
+                    <div class="strava-empty" id="strava-amanda-running-empty">
+                        <div class="strava-empty-icon">&#127939;</div>
+                        <p>No runs logged yet.<br>Activities will appear here once synced from Strava.</p>
+                        <span class="strava-badge">Powered by Strava</span>
                     </div>
                 </div>
             </div>
@@ -1384,6 +1406,53 @@
 
             updateCountdown();
             setInterval(updateCountdown, 1000);
+
+            // =============================================
+            // STRAVA ACTIVITIES - Add activity IDs here!
+            // =============================================
+            // How to add activities:
+            //   1. Open the activity on Strava (e.g. https://www.strava.com/activities/1234567890)
+            //   2. Copy the number from the URL (1234567890)
+            //   3. Add it to the appropriate array below
+            //   Activities show newest first (top of list = most recent)
+            var STRAVA_ACTIVITIES = {
+                'andrew-cycling': [
+                    // e.g. 1234567890,
+                ],
+                'amanda-swimming': [
+                    // e.g. 1234567890,
+                ],
+                'amanda-running': [
+                    // e.g. 1234567890,
+                ]
+            };
+
+            // Render Strava embeds using official embed script
+            Object.keys(STRAVA_ACTIVITIES).forEach(function(key) {
+                var ids = STRAVA_ACTIVITIES[key];
+                var container = document.getElementById('strava-' + key);
+                var emptyMsg = document.getElementById('strava-' + key + '-empty');
+
+                if (ids.length > 0) {
+                    emptyMsg.style.display = 'none';
+                    ids.forEach(function(activityId) {
+                        var placeholder = document.createElement('div');
+                        placeholder.className = 'strava-embed-placeholder';
+                        placeholder.setAttribute('data-embed-type', 'activity');
+                        placeholder.setAttribute('data-embed-id', activityId);
+                        placeholder.setAttribute('data-style', 'standard');
+                        container.appendChild(placeholder);
+                    });
+                }
+            });
+
+            // Load Strava embed script (renders all placeholders)
+            var hasActivities = Object.keys(STRAVA_ACTIVITIES).some(function(k) { return STRAVA_ACTIVITIES[k].length > 0; });
+            if (hasActivities) {
+                var stravaScript = document.createElement('script');
+                stravaScript.src = 'https://strava-embeds.com/embed.js';
+                document.body.appendChild(stravaScript);
+            }
 
             // Training chart - placeholder data (weeks of sample training)
             var weeks = [
